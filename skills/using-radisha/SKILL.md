@@ -39,7 +39,65 @@ Planning comes BEFORE implementation. Always.
 4. Create TodoWrite list based on planning
 5. Then invoke domain-specific skills (programming, documentation, testing)
 6. Execute with todo tracking
-7. Mark each completed task in both TodoWrite AND the plan file
+7. **After each step: ask for validation** (see below)
+8. Mark each completed task in both TodoWrite AND the plan file
+
+## Step-by-Step Validation (REQUIRED)
+
+<IMPORTANT>
+After completing EACH implementation step, you MUST ask for user validation before proceeding to the next step.
+</IMPORTANT>
+
+**After each step, present these options:**
+
+> "I've completed [step description].
+>
+> **Please review and choose:**
+> 1. ✅ **Continue** - Implementation is good, proceed to next step
+> 2. ⬅️ **Revert & Stop** - Revert to previous state and stop implementation
+> 3. 🔄 **Improve** - Try to improve this implementation, then ask again
+>
+> Which option?"
+
+**Validation flow:**
+
+```
+Complete Step N
+      │
+      ▼
+Ask for validation
+      │
+      ├── "Continue" ────────→ Mark step done, proceed to Step N+1
+      │
+      ├── "Revert & Stop" ───→ Revert changes, stop implementation
+      │
+      └── "Improve" ─────────→ Revise implementation
+                                     │
+                                     ▼
+                              Ask for validation again
+```
+
+**What to show during validation:**
+- Brief summary of what was implemented
+- Key files changed
+- Any decisions made or assumptions
+- Code snippet of the main change (if small enough)
+
+**Example:**
+
+> "I've completed Step 2: Add validation to user input.
+>
+> **Changes:**
+> - Added `validate_input()` function in `src/utils/validation.cpp`
+> - Added input checks in `process_request()` 
+> - Returns `std::optional<error>` on validation failure
+>
+> **Please review and choose:**
+> 1. ✅ **Continue** - Proceed to Step 3 (Add error handling)
+> 2. ⬅️ **Revert & Stop** - Revert these changes and stop
+> 3. 🔄 **Improve** - Try a different approach
+>
+> Which option?"
 
 ## When Unclear: Offer Options
 
