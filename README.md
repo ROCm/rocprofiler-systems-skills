@@ -133,6 +133,12 @@ Applied during implementation phase. For refactoring, ALL are mandatory.
 |-------|-------------|
 | `git/pull-request` | PR planning, size guidelines, splitting strategy, PR template |
 
+### Radisha Skills
+
+| Skill | Description |
+|-------|-------------|
+| `radisha/update` | Update radisha to latest version in current project |
+
 ### Other Skills
 
 | Skill | Description |
@@ -352,8 +358,11 @@ skills/
 ├── testing/                    # Testing skills
 │   └── unit-tests/             # GTest/GMock
 │       └── SKILL.md
-└── git/                        # Git workflow skills
-    └── pull-request/           # PR creation guidelines
+├── git/                        # Git workflow skills
+│   └── pull-request/           # PR creation guidelines
+│       └── SKILL.md
+└── radisha/                    # Radisha management skills
+    └── update/                 # Update radisha to latest version
         └── SKILL.md
 ```
 

@@ -75,18 +75,33 @@ Planning comes BEFORE implementation. Always.
 
 <IMPORTANT>
 After completing EACH implementation step, you MUST ask for user validation before proceeding to the next step.
+
+**Use the `AskQuestion` tool** for interactive clickable menus instead of text-based options.
 </IMPORTANT>
 
-**After each step, present these options:**
+**After each step:**
 
-> "I've completed [step description].
->
-> **Please review and choose:**
-> 1. ✅ **Continue** - Implementation is good, proceed to next step
-> 2. ⬅️ **Revert & Stop** - Revert to previous state and stop implementation
-> 3. 🔄 **Improve** - Try to improve this implementation, then ask again
->
-> Which option?"
+1. Show a summary of what was implemented:
+   - Brief description of changes
+   - Key files changed
+   - Any decisions made or assumptions
+
+2. Use `AskQuestion` tool with these options:
+
+```json
+{
+  "title": "Step Validation: [Step Description]",
+  "questions": [{
+    "id": "validation",
+    "prompt": "I've completed [step]. Please review the changes above.",
+    "options": [
+      {"id": "continue", "label": "✅ Continue - Proceed to next step"},
+      {"id": "revert", "label": "⬅️ Revert & Stop - Revert changes and stop"},
+      {"id": "improve", "label": "🔄 Improve - Try a different approach"}
+    ]
+  }]
+}
+```
 
 **Validation flow:**
 
@@ -94,53 +109,51 @@ After completing EACH implementation step, you MUST ask for user validation befo
 Complete Step N
       │
       ▼
-Ask for validation
+Show summary of changes
       │
-      ├── "Continue" ────────→ Mark step done, proceed to Step N+1
+      ▼
+AskQuestion (interactive menu)
       │
-      ├── "Revert & Stop" ───→ Revert changes, stop implementation
+      ├── "continue" ──────→ Mark step done, proceed to Step N+1
       │
-      └── "Improve" ─────────→ Revise implementation
-                                     │
-                                     ▼
-                              Ask for validation again
+      ├── "revert" ────────→ Revert changes, stop implementation
+      │
+      └── "improve" ───────→ Revise implementation, ask again
 ```
-
-**What to show during validation:**
-- Brief summary of what was implemented
-- Key files changed
-- Any decisions made or assumptions
-- Code snippet of the main change (if small enough)
 
 **Example:**
 
-> "I've completed Step 2: Add validation to user input.
+First, show the changes:
+
+> **Completed: Step 2 - Add validation to user input**
 >
 > **Changes:**
 > - Added `validate_input()` function in `src/utils/validation.cpp`
 > - Added input checks in `process_request()` 
 > - Returns `std::optional<error>` on validation failure
->
-> **Please review and choose:**
-> 1. ✅ **Continue** - Proceed to Step 3 (Add error handling)
-> 2. ⬅️ **Revert & Stop** - Revert these changes and stop
-> 3. 🔄 **Improve** - Try a different approach
->
-> Which option?"
+
+Then use AskQuestion tool for the interactive menu.
 
 ## When Unclear: Offer Options
 
-If you're not sure which skill applies to the user's request, **ASK** by presenting available options:
+If you're not sure which skill applies to the user's request, use `AskQuestion` tool:
 
-> "I want to make sure I handle this correctly. Which best describes what you need?
-> 
-> 1. **New feature** - Add new functionality (`planning/feature`)
-> 2. **Bug fix** - Fix something that's broken (`planning/bugfix`)
-> 3. **Refactoring** - Improve existing code (`planning/refactor`)
-> 4. **Documentation** - Create or update docs (`planning/docs`)
-> 5. **Just a question** - No action needed, just explain something (`ask`)
->
-> Which one applies?"
+```json
+{
+  "title": "Task Type",
+  "questions": [{
+    "id": "task_type",
+    "prompt": "Which best describes what you need?",
+    "options": [
+      {"id": "feature", "label": "New feature - Add new functionality"},
+      {"id": "bugfix", "label": "Bug fix - Fix something that's broken"},
+      {"id": "refactor", "label": "Refactoring - Improve existing code"},
+      {"id": "docs", "label": "Documentation - Create or update docs"},
+      {"id": "question", "label": "Just a question - No action needed"}
+    ]
+  }]
+}
+```
 
 Do NOT guess. When in doubt, ask.
 
