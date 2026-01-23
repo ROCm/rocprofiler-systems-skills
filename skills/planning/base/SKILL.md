@@ -10,12 +10,15 @@ This is a base skill containing shared planning rules. Do not invoke this skill 
 Instead, use the appropriate specialized skill:
 - `planning/feature` - for new features
 - `planning/bugfix` - for bug fixes
+- `planning/refactor` - for refactoring
 - `planning/docs` - for documentation
 </IMPORTANT>
 
 ## Core Principles
 
 Planning MUST happen before ANY implementation. A task is non-trivial if it requires more than 2 distinct steps.
+
+**Every plan leads to a Pull Request.** Keep PR reviewability in mind from the start.
 
 ## Phase 0: Check for Existing Plans
 
@@ -38,7 +41,40 @@ Before writing ANY code or making ANY changes:
 3. **Find dependencies** - What existing code/patterns should be followed?
 4. **Spot risks** - What could go wrong? What needs extra attention?
 
-## Phase 2: Decompose
+## Phase 2: Assess PR Scope
+
+<IMPORTANT>
+Before decomposing, assess if this should be ONE PR or MULTIPLE PRs.
+Read `git/pull-request` skill for detailed PR guidelines.
+</IMPORTANT>
+
+### PR Size Guidelines
+- **< 400 lines** - Ideal, easy to review
+- **400-800 lines** - Acceptable for complex work
+- **> 800 lines** - Must split into multiple PRs
+
+### When to Split
+- Changes touch multiple unrelated systems
+- Refactoring can be separated from feature work
+- Infrastructure changes can land independently
+- Tests can be added before implementation
+
+### If Splitting Required
+
+Plan each PR separately:
+```markdown
+## PR Strategy
+
+### PR 1: [Title]
+**Scope:** [What's included]
+**Dependencies:** None
+
+### PR 2: [Title]
+**Scope:** [What's included]  
+**Dependencies:** PR 1
+```
+
+## Phase 3: Decompose
 
 Break the task into concrete, actionable steps:
 
@@ -46,8 +82,9 @@ Break the task into concrete, actionable steps:
 - Steps should be ordered by dependency (what must come first)
 - Keep steps small enough to track progress meaningfully
 - Include validation/testing steps where appropriate
+- **Group steps by PR** if multiple PRs are planned
 
-## Phase 3: Create Todo List
+## Phase 4: Create Todo List
 
 Use `TodoWrite` to create a structured task list:
 
@@ -66,7 +103,7 @@ Example todo structure:
 - `completed` - Finished and verified
 - `cancelled` - No longer needed
 
-## Phase 4: Persist the Plan
+## Phase 5: Persist the Plan
 
 Save the plan to the `planning/` folder in the project root:
 
@@ -78,7 +115,7 @@ Save the plan to the `planning/` folder in the project root:
    - Todo list with status markers
    - Any relevant context or decisions made
 
-## Phase 5: Confirm (Optional)
+## Phase 6: Confirm (Optional)
 
 For complex or risky changes, present the plan to the user:
 
@@ -108,3 +145,16 @@ Do NOT create todos for:
 - Reading/searching the codebase (this is implicit)
 - Running linters (this is automatic)
 - Basic validation steps that are part of normal workflow
+
+## After Execution: Create Pull Request
+
+Once all tasks are complete and tests are written (if requested):
+
+1. **Ask user** if they want to create a PR
+2. **Read `git/pull-request` skill** for PR template
+3. **Create PR** with required sections:
+   - **Motivation** - Why is this change needed?
+   - **Technical Details** - What changed and how?
+   - **Test Plan** - How was this tested?
+
+PR creation is the final step of every feature/bugfix/refactor workflow.

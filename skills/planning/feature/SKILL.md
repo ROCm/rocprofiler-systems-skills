@@ -29,16 +29,27 @@ This summary will be added to CHANGELOG.md upon completion.
 
 ### Test Case Consideration
 
-After decomposing the feature into tasks, ASK the user:
+After COMPLETING the feature implementation, ASK the user:
 
-> "Should I create test cases for this feature? Consider:
-> - Unit tests for new functions/methods
-> - Integration tests for component interactions
-> - E2E tests for user workflows
->
-> Which test types would you like? (all/unit/integration/e2e/none)"
+> "Feature implementation is complete. Would you like me to add unit tests?
+> - Which components/functions should be tested?
+> - Are there specific edge cases to cover?"
 
-If user requests tests, add them as tasks in the plan.
+If user requests tests:
+1. Read the testing skill: `testing/unit-tests`
+2. Follow the test planning process from that skill
+3. Write tests ONE BY ONE, waiting for user approval after each test
+
+### Pull Request
+
+After tests (if any), ASK the user:
+
+> "Ready to create a Pull Request. Should I proceed?"
+
+If yes, read `git/pull-request` skill and create PR with:
+- **Motivation** - Why this feature is needed
+- **Technical Details** - What was implemented
+- **Test Plan** - How it was tested
 
 ## Plan File Format
 
@@ -56,6 +67,13 @@ Save to `planning/feature-<name>.md`:
 
 ## Analysis
 <Key findings, scope, dependencies, risks>
+
+## PR Strategy
+<Single PR or split? If split, list each PR with scope>
+
+### PR 1: <Title> (if multiple PRs)
+**Scope:** <What's included>
+**Estimated size:** ~X lines
 
 ## Tasks
 - [ ] Task 1
@@ -92,6 +110,9 @@ Add ability for users to upload and display profile avatars
 - Scope: ProfileSettings component, user API, storage service
 - Dependencies: existing file upload utility, image processing library
 - Risks: Large file handling, image format validation
+
+## PR Strategy
+Single PR (~350 lines) - scope is focused and reviewable.
 
 ## Tasks
 - [ ] Add avatar upload endpoint to user API

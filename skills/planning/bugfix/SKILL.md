@@ -43,9 +43,26 @@ If yes, include changelog entry:
 
 ### Regression Prevention
 
-Consider whether a test should be added to prevent regression:
+After COMPLETING the bugfix, ASK the user:
 
-> "Should I add a test case to prevent this bug from recurring? (yes/no)"
+> "Bugfix is complete. Would you like me to add a regression test to prevent this bug from recurring?"
+
+If user agrees:
+1. Read the testing skill: `testing/unit-tests`
+2. Create a test that specifically reproduces the bug scenario
+3. Verify the test would have failed before the fix
+4. Wait for user approval of the test
+
+### Pull Request
+
+After tests (if any), ASK the user:
+
+> "Ready to create a Pull Request. Should I proceed?"
+
+If yes, read `git/pull-request` skill and create PR with:
+- **Motivation** - What bug was fixed and its impact
+- **Technical Details** - Root cause and fix
+- **Test Plan** - Regression test that prevents recurrence
 
 ## Plan File Format
 

@@ -11,6 +11,18 @@ IF A SKILL APPLIES TO YOUR TASK, YOU DO NOT HAVE A CHOICE. YOU MUST USE IT.
 This is not negotiable. This is not optional. You cannot rationalize your way out of this.
 </EXTREMELY-IMPORTANT>
 
+## Language Rule
+
+<IMPORTANT>
+**ALL output MUST be in English**, regardless of what language the user writes in.
+
+- User writes in Serbian → Respond in English
+- User writes in German → Respond in English
+- User writes in any language → Respond in English
+
+This ensures consistency and readability across all documentation, plans, code comments, and conversations.
+</IMPORTANT>
+
 ## How to Access Skills
 
 **In Claude Code:** Use the `Skill` tool. When you invoke a skill, its content is loaded and presented to you—follow it directly. Never use the Read tool on skill files.
@@ -25,22 +37,39 @@ This is not negotiable. This is not optional. You cannot rationalize your way ou
 Before starting ANY non-trivial task (more than 2 steps), you MUST invoke the appropriate planning skill.
 
 Planning comes BEFORE implementation. Always.
+
+**NEVER switch to Plan mode.** Always stay in Agent mode and use the planning skills. This ensures:
+- Full tool access during planning AND execution
+- Plans persist in files (can resume later)
+- Single continuous workflow
 </IMPORTANT>
 
 **Choose the right planning skill:**
 - `planning/feature` - New features (includes changelog + test case prompts)
 - `planning/bugfix` - Bug fixes (asks about changelog)
+- `planning/refactor` - Improving existing code (best practices, testability, reduce duplication)
 - `planning/docs` - Documentation (no changelog)
+
+**After implementation, offer unit tests:**
+- Read `testing/unit-tests` skill
+- Write tests ONE BY ONE, waiting for user approval after each test
+
+**After tests, offer Pull Request:**
+- Read `git/pull-request` skill
+- Create PR with Motivation, Technical Details, Test Plan
 
 **Workflow:**
 1. Receive user request
-2. Determine task type (feature / bugfix / documentation)
+2. Determine task type (feature / bugfix / refactor / documentation)
 3. If task is non-trivial → invoke appropriate `planning/*` skill
-4. Create TodoWrite list based on planning
-5. Then invoke domain-specific skills (programming, documentation, testing)
-6. Execute with todo tracking
-7. **After each step: ask for validation** (see below)
-8. Mark each completed task in both TodoWrite AND the plan file
+4. **Assess PR scope** - split into multiple PRs if > 800 lines
+5. Create TodoWrite list based on planning
+6. Invoke domain-specific skills (programming, documentation, testing)
+7. Execute with todo tracking
+8. **After each step: ask for validation** (see below)
+9. Mark each completed task in both TodoWrite AND the plan file
+10. **Ask about unit tests** after implementation
+11. **Ask about creating PR** after tests
 
 ## Step-by-Step Validation (REQUIRED)
 
@@ -107,8 +136,9 @@ If you're not sure which skill applies to the user's request, **ASK** by present
 > 
 > 1. **New feature** - Add new functionality (`planning/feature`)
 > 2. **Bug fix** - Fix something that's broken (`planning/bugfix`)
-> 3. **Documentation** - Create or update docs (`planning/docs`)
-> 4. **Just a question** - No action needed, just explain something (`ask`)
+> 3. **Refactoring** - Improve existing code (`planning/refactor`)
+> 4. **Documentation** - Create or update docs (`planning/docs`)
+> 5. **Just a question** - No action needed, just explain something (`ask`)
 >
 > Which one applies?"
 
@@ -175,11 +205,13 @@ digraph skill_flow {
     "Determine task type" [shape=diamond];
     "planning/feature" [shape=box];
     "planning/bugfix" [shape=box];
+    "planning/refactor" [shape=box];
     "planning/docs" [shape=box];
     "Create TodoWrite from plan" [shape=box];
     "Might domain skill apply?" [shape=diamond];
     "Invoke domain Skill tool" [shape=box];
     "Execute and mark done" [shape=box];
+    "Ask about unit tests" [shape=box];
     "Respond" [shape=doublecircle];
 
     "User message received" -> "Is it a question only?";
@@ -193,14 +225,17 @@ digraph skill_flow {
     "Is task non-trivial?" -> "Might domain skill apply?" [label="no, trivial"];
     "Determine task type" -> "planning/feature" [label="new feature"];
     "Determine task type" -> "planning/bugfix" [label="bug fix"];
+    "Determine task type" -> "planning/refactor" [label="refactoring"];
     "Determine task type" -> "planning/docs" [label="documentation"];
     "planning/feature" -> "Create TodoWrite from plan";
     "planning/bugfix" -> "Create TodoWrite from plan";
+    "planning/refactor" -> "Create TodoWrite from plan";
     "planning/docs" -> "Create TodoWrite from plan";
     "Create TodoWrite from plan" -> "Might domain skill apply?";
     "Might domain skill apply?" -> "Invoke domain Skill tool" [label="yes"];
     "Might domain skill apply?" -> "Execute and mark done" [label="no"];
     "Invoke domain Skill tool" -> "Execute and mark done";
-    "Execute and mark done" -> "Respond";
+    "Execute and mark done" -> "Ask about unit tests";
+    "Ask about unit tests" -> "Respond";
 }
 ```
