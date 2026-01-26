@@ -54,6 +54,12 @@ Actively look for these problem indicators and suggest the matching pattern:
 | **Template Method** | Algorithm structure is fixed but some steps vary in subclasses |
 | **Visitor** | Need to add operations to objects without modifying their classes |
 
+### C++ Idioms
+
+| Pattern | Suggest When... |
+|---------|-----------------|
+| **Type Erasure** | Need polymorphism for unrelated types without inheritance (duck typing) |
+
 ## How to Suggest
 
 When you detect a pattern opportunity, present it like this:
@@ -362,6 +368,107 @@ public:
 };
 ```
 **Use when:** Need to add operations without modifying element classes.
+
+## C++ Idioms
+
+### Type Erasure (Type View)
+
+Type erasure allows storing heterogeneous types in a container without inheritance.
+
+**Suggest when:**
+- Need a container of unrelated types that share a common interface (but don't inherit from a base class)
+- Want polymorphism without virtual inheritance
+- Working with types you can't modify (third-party, built-in)
+
+```cpp
+// Type-erased view - stores any type with a postprocess() method
+class postprocessable_view {
+public:
+    template<typename T>
+    explicit postprocessable_view(T& obj)
+        : m_object{&obj}
+        , m_postprocess_impl{[](void* ptr) {
+              static_cast<T*>(ptr)->postprocess();
+          }}
+    {}
+
+    void postprocess() { m_postprocess_impl(m_object); }
+
+private:
+    void* m_object;
+    std::function<void(void*)> m_postprocess_impl;
+};
+
+// Usage: unrelated types, no common base class
+struct sensor {
+    void postprocess() { /* calibrate */ }
+};
+
+struct image {
+    void postprocess() { /* apply filters */ }
+};
+
+// Store heterogeneous types in one container
+std::vector<postprocessable_view> items;
+sensor s;
+image img;
+items.emplace_back(s);
+items.emplace_back(img);
+
+for (auto& item : items) {
+    item.postprocess();  // Calls correct implementation
+}
+```
+
+**Key points:**
+- **No inheritance required** - types just need matching method signature
+- **Non-owning** - view references external objects (caller manages lifetime)
+- **Runtime cost** - `std::function` has overhead; for hot paths use function pointers
+
+**Owning variant** (owns the object):
+
+```cpp
+class postprocessable {
+public:
+    template<typename T>
+    explicit postprocessable(T obj)
+        : m_storage{std::make_unique<model<T>>(std::move(obj))}
+    {}
+
+    void postprocess() { m_storage->postprocess(); }
+
+private:
+    struct concept_t {
+        virtual ~concept_t() = default;
+        virtual void postprocess() = 0;
+    };
+
+    template<typename T>
+    struct model : concept_t {
+        explicit model(T obj) : m_obj(std::move(obj)) {}
+        void postprocess() override { m_obj.postprocess(); }
+        T m_obj;
+    };
+
+    std::unique_ptr<concept_t> m_storage;
+};
+
+// Owns the objects
+std::vector<postprocessable> items;
+items.emplace_back(sensor{});
+items.emplace_back(image{});
+```
+
+**When to use which:**
+
+| Variant | Use When |
+|---------|----------|
+| **Type View (non-owning)** | Objects live elsewhere, just need polymorphic access |
+| **Owning Type Erasure** | Container should own the objects |
+| **std::variant** | Fixed set of known types (prefer this when possible) |
+| **Virtual inheritance** | Types naturally form a hierarchy |
+
+**Standard library examples:** `std::function`, `std::any`, `std::move_only_function` (C++23)
 
 ## Anti-Patterns to Avoid
 
