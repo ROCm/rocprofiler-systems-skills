@@ -1,5 +1,5 @@
 ---
-name: pull-request
+name: git/pull-request
 description: Create well-structured Pull Requests - split large changes into logical PRs, write clear descriptions with Motivation, Technical Details, and Test Plan
 ---
 

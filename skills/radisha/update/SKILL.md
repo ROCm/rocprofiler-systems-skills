@@ -1,5 +1,5 @@
 ---
-name: radisha-update
+name: radisha/update
 description: Update radisha skills to the latest version in the current project
 ---
 

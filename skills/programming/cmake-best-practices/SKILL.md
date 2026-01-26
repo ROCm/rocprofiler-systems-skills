@@ -1,5 +1,5 @@
 ---
-name: cmake-best-practices
+name: programming/cmake-best-practices
 description: Create, refactor, link, and build CMake projects following modern CMake guidelines from official documentation
 ---
 

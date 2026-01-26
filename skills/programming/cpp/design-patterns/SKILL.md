@@ -1,5 +1,5 @@
 ---
-name: cpp-design-patterns
+name: programming/cpp/design-patterns
 description: C++ design patterns reference - suggests applicable patterns when code matches a problem that a pattern solves
 ---
 

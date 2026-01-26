@@ -1,5 +1,5 @@
 ---
-name: unit-tests
+name: testing/unit-tests
 description: Plan and write C++ unit tests using GTest and GMock - creates test plan and implements tests one by one with user approval
 ---
 

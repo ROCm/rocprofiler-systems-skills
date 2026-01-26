@@ -1,5 +1,5 @@
 ---
-name: programming-cpp
+name: programming/cpp
 description: C++ programming skill based on C++ Core Guidelines - use for implementing C++ code
 ---
 

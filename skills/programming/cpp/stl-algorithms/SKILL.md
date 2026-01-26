@@ -1,5 +1,5 @@
 ---
-name: cpp-stl-algorithms
+name: programming/cpp/stl-algorithms
 description: C++ STL algorithms and data structures - suggests appropriate containers and algorithms when they solve the problem at hand
 ---
 
