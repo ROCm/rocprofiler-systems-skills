@@ -615,6 +615,93 @@ Follow project conventions. If none exist, use:
 - `m_` or `_` prefix for member variables
 - Avoid Hungarian notation
 
+## Documentation & Comments
+
+### Doxygen Style (REQUIRED)
+
+Use Doxygen-style comments for all public APIs:
+
+```cpp
+/**
+ * Calculates the sum of two integers.
+ * @param a The first integer.
+ * @param b The second integer.
+ * @return The sum of a and b.
+ */
+int add(int a, int b) {
+    return a + b;
+}
+
+/**
+ * Represents a network connection to a remote server.
+ * 
+ * This class manages the lifecycle of a TCP connection,
+ * including automatic reconnection on failure.
+ */
+class connection {
+public:
+    /**
+     * Establishes a connection to the specified host.
+     * @param host The hostname or IP address.
+     * @param port The port number.
+     * @throws connection_error If the connection cannot be established.
+     */
+    void connect(std::string_view host, uint16_t port);
+
+    /**
+     * Sends data over the connection.
+     * @param data Pointer to the data buffer.
+     * @param size Number of bytes to send.
+     * @return Number of bytes actually sent.
+     */
+    [[nodiscard]] size_t send(const void* data, size_t size);
+};
+```
+
+### Common Doxygen Tags
+
+| Tag | Usage |
+|-----|-------|
+| `@param name` | Document a function parameter |
+| `@return` | Document return value |
+| `@throws exception` | Document exceptions thrown |
+| `@note` | Additional notes |
+| `@warning` | Important warnings |
+| `@see` | Cross-reference to related items |
+| `@deprecated` | Mark as deprecated |
+| `@code` / `@endcode` | Code example block |
+
+### When NOT to Document
+
+Don't add Doxygen comments for:
+- Trivial getters/setters (self-explanatory)
+- Private implementation details
+- Obvious code (let the code speak)
+
+```cpp
+// ❌ UNNECESSARY - obvious getter
+/**
+ * Gets the name.
+ * @return The name.
+ */
+const std::string& get_name() const { return m_name; }
+
+// ✅ GOOD - just the code, it's self-explanatory
+const std::string& get_name() const { return m_name; }
+```
+
+### Inline Comments
+
+Use sparingly, only for non-obvious logic:
+
+```cpp
+// ❌ BAD - restates the code
+i++; // Increment i
+
+// ✅ GOOD - explains why
+i++; // Skip the header row
+```
+
 ## Code Style Checklist
 
 Before submitting C++ code:
@@ -650,6 +737,7 @@ Before submitting C++ code:
 ### Style
 - [ ] No implicit conversions that could be surprising
 - [ ] No magic numbers - use named constants
+- [ ] Public APIs documented with Doxygen (`/** */`)
 
 ## References
 
