@@ -1,5 +1,5 @@
 ---
-name: planning-feature
+name: planning/feature
 description: Planning skill for new features - includes changelog summary and test case consideration
 ---
 

@@ -1,5 +1,5 @@
 ---
-name: planning-refactor
+name: planning/refactor
 description: Planning skill for refactoring - improves existing code following best practices, reduces duplication, improves readability and testability
 ---
 

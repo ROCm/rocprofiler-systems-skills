@@ -1,5 +1,5 @@
 ---
-name: planning-base
+name: planning/base
 description: Base planning skill with shared rules - do not invoke directly, use specific planning skills instead
 ---
 

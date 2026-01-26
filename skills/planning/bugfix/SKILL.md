@@ -1,5 +1,5 @@
 ---
-name: planning-bugfix
+name: planning/bugfix
 description: Planning skill for bug fixes - includes optional changelog update
 ---
 

@@ -1,5 +1,5 @@
 ---
-name: planning-docs
+name: planning/docs
 description: Planning skill for documentation - no changelog updates
 ---
 
