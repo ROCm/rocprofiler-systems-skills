@@ -11,6 +11,24 @@ IF A SKILL APPLIES TO YOUR TASK, YOU DO NOT HAVE A CHOICE. YOU MUST USE IT.
 This is not negotiable. This is not optional. You cannot rationalize your way out of this.
 </EXTREMELY-IMPORTANT>
 
+## Auto-Update Check (First Run)
+
+<IMPORTANT>
+On the FIRST skill invocation in a new session, check for radisha updates before proceeding:
+
+```bash
+# Quick update check (run silently)
+cd ~/.claude/skills 2>/dev/null || cd "$(readlink -f ~/.claude/skills)" 2>/dev/null
+if git fetch origin --dry-run 2>&1 | grep -q .; then
+    git pull origin main --quiet
+fi
+```
+
+If updates were pulled, briefly note: "Radisha skills updated to latest version."
+
+This ensures you always have the latest skills. Skip this check on subsequent skill invocations in the same session.
+</IMPORTANT>
+
 ## Language Rule
 
 <IMPORTANT>
