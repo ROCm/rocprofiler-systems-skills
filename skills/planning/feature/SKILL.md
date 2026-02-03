@@ -8,7 +8,9 @@ description: Planning skill for new features - includes changelog summary and te
 Use this skill when implementing NEW functionality or capabilities.
 
 <IMPORTANT>
-Follow all base planning rules from `planning/base`, plus the feature-specific rules below.
+**Prerequisites:** Invoke `planning/base` skill first if not already loaded. It provides the core planning phases (0-5).
+
+Follow all base planning rules, plus the feature-specific rules below.
 </IMPORTANT>
 
 ## Feature-Specific Requirements
@@ -36,7 +38,7 @@ After COMPLETING the feature implementation, ASK the user:
 > - Are there specific edge cases to cover?"
 
 If user requests tests:
-1. Read the testing skill: `testing/gtest-gmock` (C++) or `testing/pytest` (Python)
+1. Invoke the testing skill: `testing/gtest-gmock` (C++) or `testing/pytest` (Python)
 2. Follow the test planning process from that skill
 3. Write tests ONE BY ONE, waiting for user approval after each test
 
@@ -46,7 +48,7 @@ After tests (if any), ASK the user:
 
 > "Ready to create a Pull Request. Should I proceed?"
 
-If yes, read `git/pull-request` skill and create PR with:
+If yes, invoke `git/pull-request` skill and create PR with:
 - **Motivation** - Why this feature is needed
 - **Technical Details** - What was implemented
 - **Test Plan** - How it was tested

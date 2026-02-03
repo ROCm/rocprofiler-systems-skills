@@ -8,13 +8,15 @@ description: Planning skill for refactoring - improves existing code following b
 Use this skill when improving EXISTING code without changing its external behavior.
 
 <IMPORTANT>
-Follow all base planning rules from `planning/base`, plus the refactoring-specific rules below.
+**Prerequisites:** Invoke `planning/base` skill first if not already loaded. It provides the core planning phases (0-5).
 
-**Mandatory:** Read and apply ALL programming skills during refactoring:
-- `skills/programming/cpp/SKILL.md` - C++ best practices, performance, testability
-- `skills/programming/cpp/design-patterns/SKILL.md` - Suggest applicable patterns
-- `skills/programming/cpp/stl-algorithms/SKILL.md` - Replace loops with STL algorithms
-- `skills/programming/cmake-best-practices/SKILL.md` - Modern CMake practices
+Follow all base planning rules, plus the refactoring-specific rules below.
+
+**Mandatory:** Invoke and apply ALL relevant programming skills during refactoring:
+- `programming/cpp` - C++ best practices, performance, testability
+- `programming/cpp/design-patterns` - Suggest applicable patterns
+- `programming/cpp/stl-algorithms` - Replace loops with STL algorithms
+- `programming/cmake-best-practices` - Modern CMake practices
 </IMPORTANT>
 
 ## Refactoring Goals
@@ -217,7 +219,7 @@ After COMPLETING the refactoring, ASK the user:
 > - Are there functions not covered by tests?"
 
 If user agrees:
-1. Read the testing skill: `testing/gtest-gmock` (C++) or `testing/pytest` (Python)
+1. Invoke the testing skill: `testing/gtest-gmock` (C++) or `testing/pytest` (Python)
 2. Follow the test planning process from that skill
 3. Write tests ONE BY ONE, waiting for user approval after each test
 
@@ -227,7 +229,7 @@ After tests (if any), ASK the user:
 
 > "Ready to create a Pull Request. Should I proceed?"
 
-If yes, read `git/pull-request` skill and create PR with:
+If yes, invoke `git/pull-request` skill and create PR with:
 - **Motivation** - Why refactoring was needed (code smells, testability, etc.)
 - **Technical Details** - What was changed and design decisions
 - **Test Plan** - Verification that behavior is unchanged

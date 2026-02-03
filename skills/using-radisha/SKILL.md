@@ -33,11 +33,32 @@ This ensures consistency and readability across all documentation, plans, code c
 
 **Every Plan Leads to a Pull Request** - Keep PR reviewability in mind from the start.
 
+**Emoji Policy** - Avoid emojis in code, comments, and general output. Exception: User-facing interactive menus may use emojis for visual clarity (e.g., ✅ Continue, ⬅️ Revert).
+
 ## How to Access Skills
 
-**In Claude Code:** Use the `Skill` tool. When you invoke a skill, its content is loaded and presented to you—follow it directly. Never use the Read tool on skill files.
+**In Claude Code:**
+1. Use the `Skill` tool to invoke skills by name (e.g., `planning/feature`)
+2. When you invoke a skill, its content is loaded and presented to you—follow it directly
+3. **Fallback:** If skills are not found in the project, manually read from `~/.claude/skills/` using the `Read` tool
+
+**In Cursor:**
+1. Use `@skill-name` mention in Chat/Composer
+2. Skills are loaded from `.cursor/skills/` or user skills folder
 
 **In other environments:** Check your platform's documentation for how skills are loaded.
+
+## Platform Tool Mapping
+
+Different platforms use different tool names. Use this mapping:
+
+| Action | Claude Code | Cursor |
+|--------|-------------|--------|
+| Ask user question | `AskUserQuestion` tool | Built-in question UI |
+| Create/track tasks | `TaskCreate`, `TaskUpdate`, `TaskList` | `TodoWrite` |
+| Enter planning mode | `EnterPlanMode` tool | Switch to Plan Mode |
+| Invoke skill | `Skill` tool | `@skill-name` mention |
+| Read file | `Read` tool | `Read` tool |
 
 # Using Skills
 
@@ -71,12 +92,12 @@ This ensures plans persist in files and can be resumed later.
 - AMD SMI: `libraries/amd-smi` - GPU/CPU monitoring and management
 
 **After implementation, offer unit tests:**
-- For C++: Read `testing/gtest-gmock` skill
-- For Python: Read `testing/pytest` skill
+- For C++: Invoke `testing/gtest-gmock` skill
+- For Python: Invoke `testing/pytest` skill
 - Write tests ONE BY ONE, waiting for user approval after each test
 
 **After tests, offer Pull Request:**
-- Read `git/pull-request` skill
+- Invoke `git/pull-request` skill
 - Create PR with Motivation, Technical Details, Test Plan
 
 **Workflow:**
@@ -84,11 +105,11 @@ This ensures plans persist in files and can be resumed later.
 2. Determine task type (feature / bugfix / refactor / documentation)
 3. If task is non-trivial → invoke appropriate `planning/*` skill
 4. **Assess PR scope** - split into multiple PRs if > 800 lines
-5. Create TodoWrite list based on planning
+5. Create task list based on planning (use platform's task tracking tool)
 6. Invoke domain-specific skills (programming, documentation, testing)
-7. Execute with todo tracking
+7. Execute with task tracking
 8. **After each step: ask for validation** (see below)
-9. Mark each completed task in both TodoWrite AND the plan file
+9. Mark each completed task in both task tracker AND the plan file
 10. **Ask about unit tests** after implementation
 11. **Ask about creating PR** after tests
 
@@ -99,7 +120,7 @@ After completing EACH implementation step that modifies code:
 1. **Autonomous verification first** - run tests, check logs, verify correctness (if possible)
 2. **Then ask user** for validation before proceeding to the next step
 
-**Use the `AskQuestion` tool** for interactive clickable menus instead of text-based options.
+**Use the `AskUserQuestion` tool** for interactive clickable menus instead of text-based options.
 </IMPORTANT>
 
 **After each step:**
@@ -116,7 +137,7 @@ After completing EACH implementation step that modifies code:
    - Verification results (tests passed/failed, etc.)
    - Any decisions made or assumptions
 
-3. Use `AskQuestion` tool with these options:
+3. Use `AskUserQuestion` tool with these options:
 
 ```json
 {
@@ -145,7 +166,7 @@ Autonomous verification (run tests, check logs)
 Show summary + verification results
       │
       ▼
-AskQuestion (interactive menu)
+AskUserQuestion (interactive menu)
       │
       ├── "continue" ──────→ Mark step done, proceed to Step N+1
       │
@@ -170,7 +191,7 @@ First, show the changes with verification:
 > - ✅ No linter errors
 > - ✅ Manual check: invalid input correctly rejected
 
-Then use AskQuestion tool for the interactive menu.
+Then use AskUserQuestion tool for the interactive menu.
 
 ## Re-planning When Things Go Wrong
 
@@ -237,7 +258,7 @@ Challenge your own work before presenting it to the user.
 
 ## When Unclear: Offer Options
 
-If you're not sure which skill applies to the user's request, use `AskQuestion` tool:
+If you're not sure which skill applies to the user's request, use `AskUserQuestion` tool:
 
 ```json
 {

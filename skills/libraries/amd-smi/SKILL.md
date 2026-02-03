@@ -1,5 +1,5 @@
 ---
-name: amd-smi-library
+name: libraries/amd-smi
 description: AMD SMI C++ library for GPU/CPU monitoring and management. Use when working with AMD hardware monitoring, GPU temperature, power, memory, clocks, PCIe, XGMI, or any amdsmi.h functions.
 ---
 

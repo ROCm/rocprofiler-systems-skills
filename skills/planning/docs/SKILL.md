@@ -8,7 +8,9 @@ description: Planning skill for documentation - no changelog updates
 Use this skill when creating or updating documentation.
 
 <IMPORTANT>
-Follow all base planning rules from `planning/base`, plus the documentation-specific rules below.
+**Prerequisites:** Invoke `planning/base` skill first if not already loaded. It provides the core planning phases (0-5).
+
+Follow all base planning rules, plus the documentation-specific rules below.
 Documentation changes do NOT require changelog updates.
 </IMPORTANT>
 

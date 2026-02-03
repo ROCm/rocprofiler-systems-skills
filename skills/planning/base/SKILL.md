@@ -23,10 +23,13 @@ Planning MUST happen before ANY implementation. A task is non-trivial if it requ
 ## Planning Mode Workflow
 
 <IMPORTANT>
-Use Cursor's **planning mode** for all planning phases (0-4). After completing the plan:
-1. Switch to **agent mode**
-2. **Immediately** save the plan to `planning/` folder (Phase 5)
-3. Then begin implementation
+Complete all planning phases (0-4) before implementation. After completing the plan:
+1. Save the plan to `planning/` folder (Phase 5)
+2. Then begin implementation
+
+**Platform-specific:**
+- **Cursor:** Use Plan Mode for phases 0-4, then switch to Agent Mode
+- **Claude Code:** Use `EnterPlanMode` tool or simply complete planning before coding
 
 This ensures the plan is persisted before any code changes begin.
 </IMPORTANT>
@@ -56,7 +59,7 @@ Before writing ANY code or making ANY changes:
 
 <IMPORTANT>
 Before decomposing, assess if this should be ONE PR or MULTIPLE PRs.
-Read `git/pull-request` skill for detailed PR guidelines.
+Invoke `git/pull-request` skill for detailed PR guidelines.
 </IMPORTANT>
 
 ### PR Size Guidelines
@@ -95,12 +98,14 @@ Break the task into concrete, actionable steps:
 - Include validation/testing steps where appropriate
 - **Group steps by PR** if multiple PRs are planned
 
-## Phase 4: Create Todo List
+## Phase 4: Create Task List
 
-Use `TodoWrite` to create a structured task list:
+Use your platform's task tracking tool to create a structured task list:
+- **Claude Code:** `TaskCreate`, `TaskUpdate`, `TaskList` tools
+- **Cursor:** `TodoWrite`
 
 ```
-Example todo structure:
+Example task structure:
 1. [pending] Analyze existing code structure
 2. [pending] Create/modify necessary files
 3. [pending] Implement core logic
@@ -108,7 +113,7 @@ Example todo structure:
 5. [pending] Verify changes work correctly
 ```
 
-**Todo Status Rules:**
+**Task Status Rules:**
 - `pending` - Not yet started
 - `in_progress` - Currently working on (only ONE at a time)
 - `completed` - Finished and verified
@@ -117,7 +122,7 @@ Example todo structure:
 ## Phase 5: Persist the Plan
 
 <IMPORTANT>
-This phase happens **immediately after switching to agent mode** - before any implementation begins.
+This phase happens **immediately after planning is complete** - before any implementation begins.
 </IMPORTANT>
 
 Save the plan to the `planning/` folder in the project root:
@@ -144,19 +149,19 @@ For complex or risky changes, present the plan to the user:
 
 <IMPORTANT>
 After completing EACH task or solution, you MUST:
-1. Mark the todo as `completed` using TodoWrite
+1. Mark the task as `completed` using your platform's task tracking tool
 2. Update the plan file - change `- [ ]` to `- [x]` for the completed task
 </IMPORTANT>
 
-- Mark each todo as `in_progress` when you start working on it
+- Mark each task as `in_progress` when you start working on it
 - Mark as `completed` immediately after finishing each task
 - Update the plan file in `planning/` to reflect current progress
-- If a step reveals new requirements, add new todos AND update the plan file
+- If a step reveals new requirements, add new tasks AND update the plan file
 - If a step becomes unnecessary, mark as `cancelled`
 
-## What NOT to Include in Todos
+## What NOT to Include in Tasks
 
-Do NOT create todos for:
+Do NOT create tasks for:
 - Reading/searching the codebase (this is implicit)
 - Running linters (this is automatic)
 - Basic validation steps that are part of normal workflow
@@ -166,7 +171,7 @@ Do NOT create todos for:
 Once all tasks are complete and tests are written (if requested):
 
 1. **Ask user** if they want to create a PR
-2. **Read `git/pull-request` skill** for PR template
+2. **Invoke `git/pull-request` skill** for PR template
 3. **Create PR** with required sections:
    - **Motivation** - Why is this change needed?
    - **Technical Details** - What changed and how?

@@ -18,28 +18,31 @@ A comprehensive skills system for AI-assisted software development (C++, Python,
 
 **Every non-trivial task starts with planning.** The AI must:
 
-1. Use **Plan Mode** for planning phases
+1. Complete planning phases before implementation
 2. Analyze the request and identify scope
 3. Create a structured plan with tasks
-4. Switch to **Agent Mode**
-5. **Immediately** save the plan to `planning/` folder
-6. Track progress using TodoWrite
-7. Execute step-by-step with verification and user validation
-8. Offer unit tests after completion
+4. Save the plan to `planning/` folder
+5. Track progress using platform's task tracking tool
+6. Execute step-by-step with verification and user validation
+7. Offer unit tests after completion
 
 ### Plan Mode Workflow
 
-**Use Cursor's Plan Mode for planning, then switch to Agent Mode for execution:**
+**Complete planning phases before implementation:**
 
 ```
-Plan Mode (phases 0-4)          Agent Mode (execution)
+Planning Phase (phases 0-4)     Execution Phase
 ┌─────────────────────┐         ┌─────────────────────┐
 │ - Analyze request   │         │ - Save plan to file │
 │ - Identify scope    │ ──────► │ - Execute tasks     │
 │ - Decompose tasks   │         │ - Verify & validate │
-│ - Create todo list  │         │ - Mark progress     │
+│ - Create task list  │         │ - Mark progress     │
 └─────────────────────┘         └─────────────────────┘
 ```
+
+**Platform-specific:**
+- **Cursor:** Use Plan Mode for planning, then switch to Agent Mode
+- **Claude Code:** Use `EnterPlanMode` tool or simply complete planning before coding
 
 This ensures plans persist in files and can be resumed later.
 
@@ -331,9 +334,9 @@ Covers:
 - Naming conventions (PascalCase classes, snake_case functions/variables)
 - Type annotations and mypy
 - Exception handling
-- Async/await patterns
-- Dataclasses and Pydantic
-- Testing patterns with pytest
+- Dataclasses and modern Python features
+- Performance best practices
+- Testability patterns
 
 ### Testing Skills
 
@@ -581,11 +584,26 @@ skills/
 
 ## How to Use
 
+### In Claude Code
+
+1. Add skills to your project's `skills/` directory or `~/.claude/skills/` for global access
+2. Use the `Skill` tool to invoke skills by name (e.g., `planning/feature`)
+3. **Fallback:** If skills are not found, manually read from `~/.claude/skills/` using the `Read` tool
+
 ### In Cursor
 
 1. Add skills to your project's `.cursor/skills/` directory or user skills folder
 2. In Chat/Composer, type `@skill-name` to invoke a skill
 3. The AI loads and follows the skill's instructions
+
+### Platform Tool Mapping
+
+| Action | Claude Code | Cursor |
+|--------|-------------|--------|
+| Ask user question | `AskUserQuestion` tool | Built-in question UI |
+| Create/track tasks | `TaskCreate`, `TaskUpdate`, `TaskList` | `TodoWrite` |
+| Enter planning mode | `EnterPlanMode` tool | Switch to Plan Mode |
+| Invoke skill | `Skill` tool | `@skill-name` mention |
 
 ### Adding from GitHub
 

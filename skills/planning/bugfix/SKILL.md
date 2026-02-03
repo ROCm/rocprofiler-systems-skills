@@ -8,7 +8,9 @@ description: Planning skill for bug fixes - includes optional changelog update
 Use this skill when fixing bugs, errors, or unexpected behavior.
 
 <IMPORTANT>
-Follow all base planning rules from `planning/base`, plus the bugfix-specific rules below.
+**Prerequisites:** Invoke `planning/base` skill first if not already loaded. It provides the core planning phases (0-5).
+
+Follow all base planning rules, plus the bugfix-specific rules below.
 </IMPORTANT>
 
 ## Bugfix-Specific Requirements
@@ -48,7 +50,7 @@ After COMPLETING the bugfix, ASK the user:
 > "Bugfix is complete. Would you like me to add a regression test to prevent this bug from recurring?"
 
 If user agrees:
-1. Read the testing skill: `testing/gtest-gmock` (C++) or `testing/pytest` (Python)
+1. Invoke the testing skill: `testing/gtest-gmock` (C++) or `testing/pytest` (Python)
 2. Create a test that specifically reproduces the bug scenario
 3. Verify the test would have failed before the fix
 4. Wait for user approval of the test
@@ -59,7 +61,7 @@ After tests (if any), ASK the user:
 
 > "Ready to create a Pull Request. Should I proceed?"
 
-If yes, read `git/pull-request` skill and create PR with:
+If yes, invoke `git/pull-request` skill and create PR with:
 - **Motivation** - What bug was fixed and its impact
 - **Technical Details** - Root cause and fix
 - **Test Plan** - Regression test that prevents recurrence
