@@ -83,6 +83,9 @@ This ensures plans persist in files and can be resumed later.
 - `planning/refactor` - Improving existing code (best practices, testability, reduce duplication)
 - `planning/docs` - Documentation (no changelog)
 
+**Exploration skills (before planning):**
+- `exploration/explore-code` - Systematic exploration of unfamiliar code before extraction
+
 **Programming skills by language:**
 - C++: `programming/cpp`, `programming/cpp/design-patterns`, `programming/cpp/stl-algorithms`, `programming/cpp/naming-rules`
 - Python: `programming/python`

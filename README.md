@@ -204,6 +204,12 @@ Domain-specific knowledge for working with specific libraries and APIs.
 |-------|-------------|
 | `radisha/update` | Update radisha to latest version in current project |
 
+### Exploration Skills
+
+| Skill | Description |
+|-------|-------------|
+| `exploration/explore-code` | Systematic exploration of unfamiliar codebases before extraction |
+
 ### Other Skills
 
 | Skill | Description |
@@ -417,6 +423,31 @@ Covers:
 - Error handling patterns
 - Common pitfalls and best practices
 
+### Exploration Skills
+
+#### `exploration/explore-code`
+Systematic exploration of unfamiliar codebases before extraction.
+
+**When to use:**
+- Understanding code before extracting it into a library
+- Learning how a database layer, API client, or subsystem works
+- Preparing for refactoring by mapping dependencies
+
+**The What/How/Where framework:**
+1. **What is used** - Components, functions, resources
+2. **How it is used** - Patterns, conditions, parameters
+3. **Where to use it** - Call sites, contexts, triggers
+
+**Output:** `planning/exploration-<topic>.md`
+
+**Process:**
+1. Scoping questions (mandatory)
+2. Initial exploration with checkpoint
+3. Deep dive with checkpoints per area
+4. Synthesize and generate document
+
+The exploration document feeds into `planning/feature` or `planning/refactor` skills.
+
 ### Git Skills
 
 #### `git/pull-request`
@@ -592,6 +623,9 @@ skills/
 │       └── SKILL.md
 ├── libraries/                  # Library-specific skills
 │   └── amd-smi/                # AMD SMI library
+│       └── SKILL.md
+├── exploration/                # Code exploration skills
+│   └── explore-code/           # Systematic codebase exploration
 │       └── SKILL.md
 ├── git/                        # Git workflow skills
 │   └── pull-request/           # PR creation guidelines

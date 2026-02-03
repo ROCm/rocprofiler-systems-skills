@@ -24,8 +24,15 @@ Do NOT use this skill if the user wants you to:
 - Fix bugs
 - Implement features
 - Create documentation files
+- **Systematic code exploration** with structured output (use `exploration/explore-code` skill)
 
 If action is needed, use the appropriate planning skill instead.
+
+**Quick explanation vs. deep exploration:**
+| User Request | Skill to Use |
+|--------------|--------------|
+| "How does auth work here?" (quick answer) | `ask` |
+| "Explore the auth system so I can extract it" (structured analysis) | `exploration/explore-code` |
 
 ## How to Respond
 
