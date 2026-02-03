@@ -36,7 +36,7 @@ After COMPLETING the feature implementation, ASK the user:
 > - Are there specific edge cases to cover?"
 
 If user requests tests:
-1. Read the testing skill: `testing/unit-tests`
+1. Read the testing skill: `testing/gtest-gmock` (C++) or `testing/pytest` (Python)
 2. Follow the test planning process from that skill
 3. Write tests ONE BY ONE, waiting for user approval after each test
 

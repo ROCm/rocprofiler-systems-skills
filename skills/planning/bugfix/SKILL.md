@@ -48,7 +48,7 @@ After COMPLETING the bugfix, ASK the user:
 > "Bugfix is complete. Would you like me to add a regression test to prevent this bug from recurring?"
 
 If user agrees:
-1. Read the testing skill: `testing/unit-tests`
+1. Read the testing skill: `testing/gtest-gmock` (C++) or `testing/pytest` (Python)
 2. Create a test that specifically reproduces the bug scenario
 3. Verify the test would have failed before the fix
 4. Wait for user approval of the test

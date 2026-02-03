@@ -62,8 +62,17 @@ This ensures plans persist in files and can be resumed later.
 - `planning/refactor` - Improving existing code (best practices, testability, reduce duplication)
 - `planning/docs` - Documentation (no changelog)
 
+**Programming skills by language:**
+- C++: `programming/cpp`, `programming/cpp/design-patterns`, `programming/cpp/stl-algorithms`, `programming/cpp/naming-rules`
+- Python: `programming/python`
+- CMake: `programming/cmake-best-practices`
+
+**Library-specific skills:**
+- AMD SMI: `libraries/amd-smi` - GPU/CPU monitoring and management
+
 **After implementation, offer unit tests:**
-- Read `testing/unit-tests` skill
+- For C++: Read `testing/gtest-gmock` skill
+- For Python: Read `testing/pytest` skill
 - Write tests ONE BY ONE, waiting for user approval after each test
 
 **After tests, offer Pull Request:**

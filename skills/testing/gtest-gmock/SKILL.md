@@ -1,9 +1,9 @@
 ---
-name: testing/unit-tests
+name: testing/gtest-gmock
 description: Plan and write C++ unit tests using GTest and GMock - creates test plan and implements tests one by one with user approval
 ---
 
-# Unit Testing Skill
+# GTest/GMock Testing Skill
 
 Use this skill when writing unit tests for C++ code using Google Test (GTest) and Google Mock (GMock).
 
@@ -11,9 +11,9 @@ Use this skill when writing unit tests for C++ code using Google Test (GTest) an
 **When to trigger this skill:**
 After completing a feature, refactoring, or bugfix, ASK the user:
 
-> "Implementacija je završena. Da li želiš da dodam unit testove?
-> - Koje komponente/funkcije treba testirati?
-> - Da li ima specifičnih edge case-ova koje treba pokriti?"
+> "Implementation is complete. Would you like me to add unit tests?
+> - Which components/functions should be tested?
+> - Are there specific edge cases to cover?"
 
 If user agrees, follow the planning process below.
 
@@ -68,7 +68,7 @@ Save to `planning/tests-<component>.md`:
 
 1. Write ONE test
 2. Show it to the user
-3. Say: "Evo testa za <description>. Da li je OK? Mogu da nastavim sa sledećim testom?"
+3. Say: "Here's the test for <description>. Is it OK? Should I continue with the next test?"
 4. WAIT for user approval
 5. Only after approval, proceed to next test
 6. Mark completed test in plan file

@@ -1,6 +1,6 @@
 # Radisha - Cursor Skills Repository
 
-A comprehensive skills system for AI-assisted C++ development. Skills are reusable AI behavior definitions that standardize and automate development workflows.
+A comprehensive skills system for AI-assisted software development (C++, Python, and more). Skills are reusable AI behavior definitions that standardize and automate development workflows.
 
 ## Philosophy
 
@@ -155,20 +155,38 @@ All planning skills extend `planning/base` which provides core planning phases.
 
 ### Programming Skills
 
-Applied during implementation phase. For refactoring, ALL are mandatory.
+Applied during implementation phase. For refactoring, ALL language-specific skills are mandatory.
+
+#### C++ Skills
 
 | Skill | Description |
 |-------|-------------|
 | `programming/cpp` | C++ Core Guidelines, C++17 features, performance, testability |
 | `programming/cpp/design-patterns` | Suggests applicable patterns when code matches a problem |
 | `programming/cpp/stl-algorithms` | Suggests STL algorithms to replace manual loops |
+| `programming/cpp/naming-rules` | File/class naming conventions, folder structure = namespace |
 | `programming/cmake-best-practices` | Modern CMake (3.15+), target-based approach |
+
+#### Python Skills
+
+| Skill | Description |
+|-------|-------------|
+| `programming/python` | PEP 8 style guide, type hints, modern Python 3.8+ best practices |
 
 ### Testing Skills
 
 | Skill | Description |
 |-------|-------------|
-| `testing/unit-tests` | GTest/GMock patterns, test planning, one-by-one implementation |
+| `testing/gtest-gmock` | GTest/GMock patterns for C++ testing, one-by-one implementation |
+| `testing/pytest` | Pytest patterns for Python testing, fixtures, parametrization |
+
+### Library Skills
+
+Domain-specific knowledge for working with specific libraries and APIs.
+
+| Skill | Description |
+|-------|-------------|
+| `libraries/amd-smi` | AMD SMI C++ library for GPU/CPU monitoring and management |
 
 ### Git Skills
 
@@ -283,6 +301,15 @@ Suggests STL algorithms instead of manual loops:
 
 Also covers container selection (vector vs map vs unordered_map, etc.)
 
+#### `programming/cpp/naming-rules`
+File and class naming conventions for C++:
+- **Folder structure = namespace** - Don't repeat namespace prefixes in filenames
+- **No redundant prefixes** - `amd_smi/driver.hpp` not `amd_smi/amd_smi_driver.hpp`
+- **Class name = file name** - `driver.hpp` contains `class driver`
+- **One class per file** (when practical)
+
+Uses C++17 nested namespace syntax.
+
 #### `programming/cmake-best-practices`
 Modern CMake (3.15+) following official guidelines:
 - Target-based approach (`target_*()` instead of global variables)
@@ -291,9 +318,26 @@ Modern CMake (3.15+) following official guidelines:
 - FetchContent for dependencies
 - Proper install/export
 
+#### `programming/python`
+Python best practices based on [PEP 8](https://peps.python.org/pep-0008/).
+
+Key principles:
+- **Python 3.8+ standard** - Use modern features (dataclasses, type hints, walrus operator)
+- **Type hints are REQUIRED** - All functions, methods, and class attributes must have type annotations
+- **Readability counts** - Follow the Zen of Python (PEP 20)
+- **All code MUST be unit testable** - Dependency injection, avoid global state
+
+Covers:
+- Naming conventions (PascalCase classes, snake_case functions/variables)
+- Type annotations and mypy
+- Exception handling
+- Async/await patterns
+- Dataclasses and Pydantic
+- Testing patterns with pytest
+
 ### Testing Skills
 
-#### `testing/unit-tests`
+#### `testing/gtest-gmock`
 GTest/GMock patterns for C++ testing.
 
 **Workflow:**
@@ -314,6 +358,44 @@ Covers:
 - Edge case checklist
 - Test naming conventions
 - CMake configuration
+
+#### `testing/pytest`
+Pytest patterns for Python testing.
+
+**Key principles:**
+- **Tests MUST be isolated** - Each test independent, no execution order dependencies
+- **Fixtures over setup/teardown** - Use pytest fixtures for test dependencies
+- **Parametrize for data-driven tests** - Use `@pytest.mark.parametrize`
+- **Test behavior, not implementation** - Focus on what code does, not how
+
+Covers:
+- Test discovery and naming conventions
+- Fixtures (scope, autouse, factory patterns)
+- Parametrization
+- Mocking with `pytest-mock` and `unittest.mock`
+- Markers and custom markers
+- Async testing with `pytest-asyncio`
+- Coverage configuration
+- conftest.py organization
+
+### Library Skills
+
+#### `libraries/amd-smi`
+AMD System Management Interface (SMI) library for GPU/CPU monitoring.
+
+**Use when:**
+- Working with AMD hardware monitoring
+- GPU temperature, power, memory, clocks
+- PCIe, XGMI topology
+- Any `amdsmi.h` functions
+
+Covers:
+- Initialization and shutdown patterns
+- Device handle hierarchy (socket → processor → GPU/CPU)
+- GPU metrics (temperature, power, memory, clocks, utilization)
+- PCIe information and XGMI links
+- Error handling patterns
+- Common pitfalls and best practices
 
 ### Git Skills
 
@@ -469,16 +551,25 @@ skills/
 │   └── docs/                   # Documentation planning
 │       └── SKILL.md
 ├── programming/                # Implementation skills
-│   ├── cpp/                    # C++ Core Guidelines
-│   │   ├── SKILL.md
+│   ├── cpp/                    # C++ programming
+│   │   ├── SKILL.md            # C++ Core Guidelines
 │   │   ├── design-patterns/    # Design pattern suggestions
 │   │   │   └── SKILL.md
-│   │   └── stl-algorithms/     # STL algorithm suggestions
+│   │   ├── stl-algorithms/     # STL algorithm suggestions
+│   │   │   └── SKILL.md
+│   │   └── naming-rules/       # File/class naming conventions
 │   │       └── SKILL.md
+│   ├── python/                 # Python programming (PEP 8)
+│   │   └── SKILL.md
 │   └── cmake-best-practices/   # Modern CMake
 │       └── SKILL.md
 ├── testing/                    # Testing skills
-│   └── unit-tests/             # GTest/GMock
+│   ├── gtest-gmock/            # GTest/GMock for C++
+│   │   └── SKILL.md
+│   └── pytest/                 # Pytest for Python
+│       └── SKILL.md
+├── libraries/                  # Library-specific skills
+│   └── amd-smi/                # AMD SMI library
 │       └── SKILL.md
 ├── git/                        # Git workflow skills
 │   └── pull-request/           # PR creation guidelines
@@ -517,9 +608,21 @@ https://github.com/adjordje-amd/radisha/blob/main/skills/planning/feature/SKILL.
 
 ## Resources
 
+### C++
 - [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines)
 - [Refactoring.Guru - Design Patterns](https://refactoring.guru/design-patterns/cpp)
 - [CppReference](https://en.cppreference.com/)
 - [GoogleTest Documentation](https://google.github.io/googletest/)
 - [Modern CMake](https://cliutils.gitlab.io/modern-cmake/)
+
+### Python
+- [PEP 8 - Style Guide](https://peps.python.org/pep-0008/)
+- [PEP 20 - Zen of Python](https://peps.python.org/pep-0020/)
+- [Pytest Documentation](https://docs.pytest.org/)
+- [Mypy Documentation](https://mypy.readthedocs.io/)
+
+### AMD
+- [AMD SMI Documentation](https://rocm.docs.amd.com/projects/amdsmi/en/latest/)
+
+### Tools
 - [Cursor Skills Documentation](https://cursor.com/docs/context/skills)
