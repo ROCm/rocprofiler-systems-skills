@@ -91,7 +91,11 @@ This ensures plans persist in files and can be resumed later.
 **Library-specific skills:**
 - AMD SMI: `libraries/amd-smi` - GPU/CPU monitoring and management
 
-**After implementation, offer unit tests:**
+**After implementation, create test plan:**
+- Invoke `testing/testplan` skill
+- Create `planning/testplan-<name>.md` with verification scenarios
+
+**After test plan, offer unit tests:**
 - For C++: Invoke `testing/gtest-gmock` skill
 - For Python: Invoke `testing/pytest` skill
 - Write tests ONE BY ONE, waiting for user approval after each test
@@ -110,8 +114,9 @@ This ensures plans persist in files and can be resumed later.
 7. Execute with task tracking
 8. **After each step: ask for validation** (see below)
 9. Mark each completed task in both task tracker AND the plan file
-10. **Ask about unit tests** after implementation
-11. **Ask about creating PR** after tests
+10. **Create test plan** - `planning/testplan-<name>.md`
+11. **Ask about unit tests** after implementation
+12. **Ask about creating PR** after tests
 
 ## Step-by-Step Validation (REQUIRED)
 

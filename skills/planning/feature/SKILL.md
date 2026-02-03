@@ -29,9 +29,18 @@ Every new feature MUST include a changelog summary. After analysis, create a con
 
 This summary will be added to CHANGELOG.md upon completion.
 
-### Test Case Consideration
+### Test Plan
 
-After COMPLETING the feature implementation, ASK the user:
+After COMPLETING the feature implementation:
+
+1. **Create test plan file:** `planning/testplan-<feature-name>.md`
+2. Invoke `testing/testplan` skill for the template
+3. Document automated tests and manual verification scenarios
+4. Include regression checks for related features
+
+### Unit Tests
+
+Then ASK the user:
 
 > "Feature implementation is complete. Would you like me to add unit tests?
 > - Which components/functions should be tested?
@@ -41,6 +50,7 @@ If user requests tests:
 1. Invoke the testing skill: `testing/gtest-gmock` (C++) or `testing/pytest` (Python)
 2. Follow the test planning process from that skill
 3. Write tests ONE BY ONE, waiting for user approval after each test
+4. Update test plan file with test status
 
 ### Pull Request
 

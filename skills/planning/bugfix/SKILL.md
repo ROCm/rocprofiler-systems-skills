@@ -43,9 +43,18 @@ If yes, include changelog entry:
 - <Brief description of what was broken and how it's fixed>
 ```
 
+### Test Plan
+
+After COMPLETING the bugfix:
+
+1. **Create test plan file:** `planning/testplan-<bugfix-name>.md`
+2. Invoke `testing/testplan` skill for the template
+3. Document how the fix was verified
+4. Include regression check for related functionality
+
 ### Regression Prevention
 
-After COMPLETING the bugfix, ASK the user:
+Then ASK the user:
 
 > "Bugfix is complete. Would you like me to add a regression test to prevent this bug from recurring?"
 
@@ -54,6 +63,7 @@ If user agrees:
 2. Create a test that specifically reproduces the bug scenario
 3. Verify the test would have failed before the fix
 4. Wait for user approval of the test
+5. Update test plan file with test status
 
 ### Pull Request
 

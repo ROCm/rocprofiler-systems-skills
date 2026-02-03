@@ -180,6 +180,7 @@ Applied during implementation phase. For refactoring, ALL language-specific skil
 
 | Skill | Description |
 |-------|-------------|
+| `testing/testplan` | Create test plan files for developer verification and QA handoff |
 | `testing/gtest-gmock` | GTest/GMock patterns for C++ testing, one-by-one implementation |
 | `testing/pytest` | Pytest patterns for Python testing, fixtures, parametrization |
 
@@ -339,6 +340,22 @@ Covers:
 - Testability patterns
 
 ### Testing Skills
+
+#### `testing/testplan`
+Create test plan files that document what needs to be verified for a change.
+
+**When to create:**
+- After implementation is complete
+- Before or alongside writing unit tests
+- Before creating a Pull Request
+
+**Test plan file:** `planning/testplan-<feature-name>.md`
+
+Includes:
+- Automated tests (unit/integration)
+- Manual verification scenarios
+- Regression checklist
+- Notes for QA
 
 #### `testing/gtest-gmock`
 GTest/GMock patterns for C++ testing.
@@ -567,6 +584,8 @@ skills/
 │   └── cmake-best-practices/   # Modern CMake
 │       └── SKILL.md
 ├── testing/                    # Testing skills
+│   ├── testplan/               # Test plan creation for QA handoff
+│   │   └── SKILL.md
 │   ├── gtest-gmock/            # GTest/GMock for C++
 │   │   └── SKILL.md
 │   └── pytest/                 # Pytest for Python

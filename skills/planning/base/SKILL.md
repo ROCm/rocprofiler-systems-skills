@@ -166,7 +166,19 @@ Do NOT create tasks for:
 - Running linters (this is automatic)
 - Basic validation steps that are part of normal workflow
 
-## After Execution: Create Pull Request
+## After Execution: Create Test Plan
+
+Once implementation is complete:
+
+1. **Create test plan file:** `planning/testplan-<feature-name>.md`
+2. **Invoke `testing/testplan` skill** for the template
+3. **Fill in:**
+   - Automated tests (what tests exist or will be written)
+   - Manual verification scenarios (for developer and QA)
+   - Regression check (related features to verify)
+4. **Verify manually** and check off items
+
+## After Test Plan: Create Pull Request
 
 Once all tasks are complete and tests are written (if requested):
 
@@ -175,6 +187,6 @@ Once all tasks are complete and tests are written (if requested):
 3. **Create PR** with required sections:
    - **Motivation** - Why is this change needed?
    - **Technical Details** - What changed and how?
-   - **Test Plan** - How was this tested?
+   - **Test Plan** - Reference `planning/testplan-<name>.md`
 
 PR creation is the final step of every feature/bugfix/refactor workflow.
