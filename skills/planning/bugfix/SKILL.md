@@ -71,7 +71,7 @@ After tests (if any), ASK the user:
 
 > "Ready to create a Pull Request. Should I proceed?"
 
-If yes, invoke `git/pull-request` skill and create PR with:
+If yes, invoke `git/create-pull-request` skill and create PR with:
 - **Motivation** - What bug was fixed and its impact
 - **Technical Details** - Root cause and fix
 - **Test Plan** - Regression test that prevents recurrence

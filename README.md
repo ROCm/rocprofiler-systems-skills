@@ -196,13 +196,15 @@ Domain-specific knowledge for working with specific libraries and APIs.
 
 | Skill | Description |
 |-------|-------------|
-| `git/pull-request` | PR planning, size guidelines, splitting strategy, PR template |
+| `git/create-pull-request` | Create PRs - size guidelines, splitting strategy, PR template |
+| `git/review-pull-request` | Review PRs - code quality, correctness, tests, actionable feedback |
 
 ### Radisha Skills
 
 | Skill | Description |
 |-------|-------------|
 | `radisha/update` | Update radisha to latest version in current project |
+| `radisha/create-skill` | Create new skills with validation and integration |
 
 ### Exploration Skills
 
@@ -450,7 +452,7 @@ The exploration document feeds into `planning/feature` or `planning/refactor` sk
 
 ### Git Skills
 
-#### `git/pull-request`
+#### `git/create-pull-request`
 Guidelines for creating reviewable Pull Requests.
 
 **PR Size Guidelines:**
@@ -473,6 +475,47 @@ Guidelines for creating reviewable Pull Requests.
 - PR scope is assessed during Phase 2 of planning
 - Large tasks are split into multiple PRs upfront
 - Each PR is planned as a logical, reviewable unit
+
+#### `git/review-pull-request`
+Structured approach to reviewing Pull Requests.
+
+**Process:**
+1. Gather PR info (description, files, commits)
+2. Understand the change (goal, scope, type)
+3. Load relevant programming skills for the languages in the PR
+4. Review across dimensions (correctness, best practices, tests, security, design)
+5. Summarize with categorized issues
+
+**Issue Categories:**
+- **Must Fix** - Blocking issues (bugs, security, missing tests)
+- **Should Fix** - Non-blocking improvements
+- **Nitpicks** - Optional suggestions
+
+**Key feature:** Invokes `programming/*` skills to review code against language-specific best practices.
+
+### Radisha Skills
+
+#### `radisha/create-skill`
+Meta-skill for creating new radisha skills with validation and integration.
+
+**Process:**
+1. User provides skill content
+2. AI analyzes for usefulness, alignment, and conflicts
+3. AI presents findings and suggests fixes
+4. User approves
+5. AI creates skill and integrates with radisha
+
+**What it checks:**
+- Usefulness (structure, triggers, anti-patterns)
+- Alignment with existing skills
+- Conflicts/overlaps with other skills
+- Consistency (tool names, formatting, conventions)
+
+**What it updates:**
+- Creates `skills/[category]/[name]/SKILL.md`
+- Updates `using-radisha/SKILL.md`
+- Updates `README.md` (tables, details, directory tree)
+- Updates related skills if disambiguation needed
 
 ## Step-by-Step Validation
 
@@ -628,10 +671,14 @@ skills/
 │   └── explore-code/           # Systematic codebase exploration
 │       └── SKILL.md
 ├── git/                        # Git workflow skills
-│   └── pull-request/           # PR creation guidelines
+│   ├── create-pull-request/    # PR creation guidelines
+│   │   └── SKILL.md
+│   └── review-pull-request/    # PR review guidelines
 │       └── SKILL.md
 └── radisha/                    # Radisha management skills
-    └── update/                 # Update radisha to latest version
+    ├── update/                 # Update radisha to latest version
+    │   └── SKILL.md
+    └── create-skill/           # Create new skills with validation
         └── SKILL.md
 ```
 

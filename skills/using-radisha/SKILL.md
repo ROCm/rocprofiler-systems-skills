@@ -94,6 +94,10 @@ This ensures plans persist in files and can be resumed later.
 **Library-specific skills:**
 - AMD SMI: `libraries/amd-smi` - GPU/CPU monitoring and management
 
+**Radisha management skills:**
+- `radisha/update` - Update radisha to latest version
+- `radisha/create-skill` - Create new skills with validation and integration
+
 **After implementation, create test plan:**
 - Invoke `testing/testplan` skill
 - Create `planning/testplan-<name>.md` with verification scenarios
@@ -104,7 +108,7 @@ This ensures plans persist in files and can be resumed later.
 - Write tests ONE BY ONE, waiting for user approval after each test
 
 **After tests, offer Pull Request:**
-- Invoke `git/pull-request` skill
+- Invoke `git/create-pull-request` skill
 - Create PR with Motivation, Technical Details, Test Plan
 
 **Workflow:**

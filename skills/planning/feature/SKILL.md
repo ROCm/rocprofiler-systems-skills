@@ -58,7 +58,7 @@ After tests (if any), ASK the user:
 
 > "Ready to create a Pull Request. Should I proceed?"
 
-If yes, invoke `git/pull-request` skill and create PR with:
+If yes, invoke `git/create-pull-request` skill and create PR with:
 - **Motivation** - Why this feature is needed
 - **Technical Details** - What was implemented
 - **Test Plan** - How it was tested

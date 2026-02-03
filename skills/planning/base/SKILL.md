@@ -59,7 +59,7 @@ Before writing ANY code or making ANY changes:
 
 <IMPORTANT>
 Before decomposing, assess if this should be ONE PR or MULTIPLE PRs.
-Invoke `git/pull-request` skill for detailed PR guidelines.
+Invoke `git/create-pull-request` skill for detailed PR guidelines.
 </IMPORTANT>
 
 ### PR Size Guidelines
@@ -183,7 +183,7 @@ Once implementation is complete:
 Once all tasks are complete and tests are written (if requested):
 
 1. **Ask user** if they want to create a PR
-2. **Invoke `git/pull-request` skill** for PR template
+2. **Invoke `git/create-pull-request` skill** for PR template
 3. **Create PR** with required sections:
    - **Motivation** - Why is this change needed?
    - **Technical Details** - What changed and how?

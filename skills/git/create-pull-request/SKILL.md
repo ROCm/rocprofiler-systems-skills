@@ -1,11 +1,11 @@
 ---
-name: git/pull-request
+name: git/create-pull-request
 description: Create well-structured Pull Requests - split large changes into logical PRs, write clear descriptions with Motivation, Technical Details, and Test Plan
 ---
 
-# Pull Request Skill
+# Create Pull Request Skill
 
-Use this skill when planning and creating Pull Requests.
+Use this skill when planning and creating Pull Requests. For reviewing PRs, use `git/review-pull-request` instead.
 
 <IMPORTANT>
 **PR planning happens DURING task planning, not after.**
