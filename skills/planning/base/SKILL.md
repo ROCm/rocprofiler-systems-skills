@@ -20,6 +20,17 @@ Planning MUST happen before ANY implementation. A task is non-trivial if it requ
 
 **Every plan leads to a Pull Request.** Keep PR reviewability in mind from the start.
 
+## Planning Mode Workflow
+
+<IMPORTANT>
+Use Cursor's **planning mode** for all planning phases (0-4). After completing the plan:
+1. Switch to **agent mode**
+2. **Immediately** save the plan to `planning/` folder (Phase 5)
+3. Then begin implementation
+
+This ensures the plan is persisted before any code changes begin.
+</IMPORTANT>
+
 ## Phase 0: Check for Existing Plans
 
 Before creating a new plan, check the `planning/` folder in project root:
@@ -105,10 +116,14 @@ Example todo structure:
 
 ## Phase 5: Persist the Plan
 
+<IMPORTANT>
+This phase happens **immediately after switching to agent mode** - before any implementation begins.
+</IMPORTANT>
+
 Save the plan to the `planning/` folder in the project root:
 
 1. **Create folder** if it doesn't exist: `planning/`
-2. **Save plan** as a markdown file with descriptive name
+2. **Save plan** as a markdown file with descriptive name (see specific skill for naming)
 3. **Include in the plan file:**
    - Original request/goal
    - Analysis summary

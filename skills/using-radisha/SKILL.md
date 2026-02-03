@@ -23,6 +23,16 @@ This is not negotiable. This is not optional. You cannot rationalize your way ou
 This ensures consistency and readability across all documentation, plans, code comments, and conversations.
 </IMPORTANT>
 
+## Core Principles
+
+**Simplicity First** - Make every change as simple as possible. Impact minimal code.
+
+**No Laziness** - Find root causes. No temporary fixes. Senior developer standards.
+
+**Minimal Impact** - Changes should only touch what's necessary. Avoid introducing bugs.
+
+**Every Plan Leads to a Pull Request** - Keep PR reviewability in mind from the start.
+
 ## How to Access Skills
 
 **In Claude Code:** Use the `Skill` tool. When you invoke a skill, its content is loaded and presented to you—follow it directly. Never use the Read tool on skill files.
@@ -38,10 +48,12 @@ Before starting ANY non-trivial task (more than 2 steps), you MUST invoke the ap
 
 Planning comes BEFORE implementation. Always.
 
-**NEVER switch to Plan mode.** Always stay in Agent mode and use the planning skills. This ensures:
-- Full tool access during planning AND execution
-- Plans persist in files (can resume later)
-- Single continuous workflow
+**Use Cursor's Plan Mode for planning phases.** After completing the plan:
+1. Switch to **Agent Mode**
+2. **Immediately** save the plan to `planning/` folder
+3. Then begin implementation
+
+This ensures plans persist in files and can be resumed later.
 </IMPORTANT>
 
 **Choose the right planning skill:**
@@ -74,19 +86,28 @@ Planning comes BEFORE implementation. Always.
 ## Step-by-Step Validation (REQUIRED)
 
 <IMPORTANT>
-After completing EACH implementation step, you MUST ask for user validation before proceeding to the next step.
+After completing EACH implementation step that modifies code:
+1. **Autonomous verification first** - run tests, check logs, verify correctness (if possible)
+2. **Then ask user** for validation before proceeding to the next step
 
 **Use the `AskQuestion` tool** for interactive clickable menus instead of text-based options.
 </IMPORTANT>
 
 **After each step:**
 
-1. Show a summary of what was implemented:
+1. **Autonomous verification** (if code was changed):
+   - Run relevant tests if they exist
+   - Check for linter errors
+   - Verify the change works as expected
+   - Note any issues found
+
+2. Show a summary of what was implemented:
    - Brief description of changes
    - Key files changed
+   - Verification results (tests passed/failed, etc.)
    - Any decisions made or assumptions
 
-2. Use `AskQuestion` tool with these options:
+3. Use `AskQuestion` tool with these options:
 
 ```json
 {
@@ -109,7 +130,10 @@ After completing EACH implementation step, you MUST ask for user validation befo
 Complete Step N
       │
       ▼
-Show summary of changes
+Autonomous verification (run tests, check logs)
+      │
+      ▼
+Show summary + verification results
       │
       ▼
 AskQuestion (interactive menu)
@@ -123,7 +147,7 @@ AskQuestion (interactive menu)
 
 **Example:**
 
-First, show the changes:
+First, show the changes with verification:
 
 > **Completed: Step 2 - Add validation to user input**
 >
@@ -131,8 +155,76 @@ First, show the changes:
 > - Added `validate_input()` function in `src/utils/validation.cpp`
 > - Added input checks in `process_request()` 
 > - Returns `std::optional<error>` on validation failure
+>
+> **Verification:**
+> - ✅ All existing tests pass
+> - ✅ No linter errors
+> - ✅ Manual check: invalid input correctly rejected
 
 Then use AskQuestion tool for the interactive menu.
+
+## Re-planning When Things Go Wrong
+
+<IMPORTANT>
+If something goes sideways during implementation, **STOP and re-plan immediately**. Don't keep pushing forward hoping it will work out.
+</IMPORTANT>
+
+**When to stop and re-plan:**
+- Multiple unexpected errors or failures
+- The approach reveals unforeseen complexity
+- Tests fail in ways that suggest the design is wrong
+- You find yourself making "just one more fix" repeatedly
+
+**How to re-plan:**
+1. Stop current implementation
+2. Document what went wrong and what was learned
+3. Switch back to Plan Mode
+4. Create a revised plan incorporating the new understanding
+5. Get user confirmation before resuming
+
+## Subagent Strategy
+
+Use subagents liberally to keep the main context window clean and focused.
+
+**When to use subagents:**
+- Research and exploration tasks
+- Parallel analysis of multiple files/components
+- Complex problems that benefit from more compute
+- Tasks that can be isolated and delegated
+
+**Subagent rules:**
+- **One task per subagent** - keep execution focused
+- **Offload research** - don't clutter main context with exploration
+- **Parallel analysis** - spin up multiple subagents for independent investigations
+- **Clear handoff** - provide subagent with all necessary context upfront
+
+**Example use cases:**
+- "Explore how authentication works in this codebase" → subagent
+- "Find all usages of deprecated API" → subagent
+- "Analyze performance of these 3 modules" → 3 parallel subagents
+
+## Elegance Check (Non-Trivial Changes)
+
+<IMPORTANT>
+For non-trivial changes, pause before completing and ask yourself: "Is there a more elegant way?"
+</IMPORTANT>
+
+**When to apply:**
+- Changes that affect multiple files
+- New abstractions or patterns being introduced
+- Refactoring existing code
+- Architectural decisions
+
+**Skip this for:**
+- Simple, obvious fixes
+- One-line changes
+- Typo corrections
+- Config updates
+
+**If a fix feels hacky:**
+> "Knowing everything I know now, is there a more elegant solution?"
+
+Challenge your own work before presenting it to the user.
 
 ## When Unclear: Offer Options
 

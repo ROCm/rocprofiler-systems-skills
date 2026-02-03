@@ -4,23 +4,44 @@ A comprehensive skills system for AI-assisted C++ development. Skills are reusab
 
 ## Philosophy
 
+### Core Principles
+
+**Simplicity First** - Make every change as simple as possible. Impact minimal code.
+
+**No Laziness** - Find root causes. No temporary fixes. Senior developer standards.
+
+**Minimal Impact** - Changes should only touch what's necessary. Avoid introducing bugs.
+
+**Every Plan Leads to a Pull Request** - Keep PR reviewability in mind from the start.
+
 ### Planning First, Always
 
 **Every non-trivial task starts with planning.** The AI must:
 
-1. Analyze the request and identify scope
-2. Create a structured plan with tasks
-3. Save the plan to `planning/` folder (persistence)
-4. Track progress using TodoWrite
-5. Execute step-by-step with user validation
-6. Offer unit tests after completion
+1. Use **Plan Mode** for planning phases
+2. Analyze the request and identify scope
+3. Create a structured plan with tasks
+4. Switch to **Agent Mode**
+5. **Immediately** save the plan to `planning/` folder
+6. Track progress using TodoWrite
+7. Execute step-by-step with verification and user validation
+8. Offer unit tests after completion
 
-### Stay in Agent Mode
+### Plan Mode Workflow
 
-**Never switch to Plan mode.** Always stay in Agent mode and use planning skills. This ensures:
-- Full tool access during planning AND execution
-- Plans persist in files (can resume later)
-- Single continuous workflow
+**Use Cursor's Plan Mode for planning, then switch to Agent Mode for execution:**
+
+```
+Plan Mode (phases 0-4)          Agent Mode (execution)
+┌─────────────────────┐         ┌─────────────────────┐
+│ - Analyze request   │         │ - Save plan to file │
+│ - Identify scope    │ ──────► │ - Execute tasks     │
+│ - Decompose tasks   │         │ - Verify & validate │
+│ - Create todo list  │         │ - Mark progress     │
+└─────────────────────┘         └─────────────────────┘
+```
+
+This ensures plans persist in files and can be resumed later.
 
 ### English Output
 
@@ -51,25 +72,47 @@ All output is in English, regardless of input language. This ensures consistency
                                            ├── refactor ─→ planning/refactor
                                            └── docs ─────→ planning/docs
                                                     │
+                                         ┌──────────┴──────────┐
+                                         │     PLAN MODE       │
+                                         └─────────────────────┘
+                                                    │
                                                     ▼
                                     ┌───────────────────────────────┐
                                     │  PHASE 1: PLANNING            │
                                     │  - Analyze scope & risks      │
                                     │  - Assess PR scope (split?)   │
                                     │  - Decompose into tasks       │
-                                    │  - Save plan to planning/     │
+                                    │  - Create TodoWrite list      │
                                     └───────────────────────────────┘
+                                                    │
+                                         ┌──────────┴──────────┐
+                                         │    AGENT MODE       │
+                                         │ (save plan first!)  │
+                                         └─────────────────────┘
                                                     │
                                                     ▼
                                     ┌───────────────────────────────┐
                                     │  PHASE 2: IMPLEMENTATION      │
+                                    │  - Save plan to planning/     │
                                     │  - Load programming skills    │
                                     │  - Execute step by step       │
-                                    │  - Ask validation each step   │
+                                    │  - Verify autonomously        │
+                                    │  - Ask user validation        │
                                     │  - Mark progress in plan      │
                                     └───────────────────────────────┘
                                                     │
-                                                    ▼
+                                          ┌────────┴────────┐
+                                          │ Things go wrong?│
+                                          └────────┬────────┘
+                                                   │
+                                         yes ◄─────┴─────► no
+                                          │                │
+                                          ▼                │
+                                    ┌───────────┐          │
+                                    │ STOP and  │          │
+                                    │ RE-PLAN   │──────────┤
+                                    └───────────┘          │
+                                                           ▼
                                     ┌───────────────────────────────┐
                                     │  PHASE 3: TESTING             │
                                     │  - Ask: "Want unit tests?"    │
@@ -153,10 +196,11 @@ Applied during implementation phase. For refactoring, ALL are mandatory.
 Shared planning rules - **do not invoke directly**. Provides:
 - **Phase 0**: Check for existing plans in `planning/` folder
 - **Phase 1**: Analyze (understand, scope, dependencies, risks)
-- **Phase 2**: Decompose into actionable steps
-- **Phase 3**: Create TodoWrite list
-- **Phase 4**: Save plan to `planning/` folder
-- **Phase 5**: Optional confirmation for high-risk changes
+- **Phase 2**: Assess PR scope (split if > 800 lines)
+- **Phase 3**: Decompose into actionable steps
+- **Phase 4**: Create TodoWrite list
+- **Phase 5**: Save plan to `planning/` folder (immediately after switching to Agent Mode)
+- **Phase 6**: Optional confirmation for high-risk changes
 
 #### `planning/feature`
 For new functionality. Adds:
@@ -299,16 +343,94 @@ Guidelines for creating reviewable Pull Requests.
 
 ## Step-by-Step Validation
 
-After completing EACH implementation step, present options:
+After completing EACH implementation step that modifies code:
+
+### 1. Autonomous Verification First
+
+Before asking user, verify autonomously (if possible):
+- Run relevant tests if they exist
+- Check for linter errors
+- Verify the change works as expected
+- Note any issues found
+
+### 2. Then Ask User
+
+Present summary with verification results and options:
 
 > "I've completed [step description].
+>
+> **Changes:**
+> - [List of changes made]
+>
+> **Verification:**
+> - ✅ All existing tests pass
+> - ✅ No linter errors
 >
 > **Please review and choose:**
 > 1. ✅ **Continue** - Implementation is good, proceed to next step
 > 2. ⬅️ **Revert & Stop** - Revert to previous state and stop
 > 3. 🔄 **Improve** - Try to improve this implementation
->
-> Which option?"
+
+## Re-planning When Things Go Wrong
+
+If something goes sideways during implementation, **STOP and re-plan immediately**. Don't keep pushing forward hoping it will work out.
+
+**When to stop and re-plan:**
+- Multiple unexpected errors or failures
+- The approach reveals unforeseen complexity
+- Tests fail in ways that suggest the design is wrong
+- You find yourself making "just one more fix" repeatedly
+
+**How to re-plan:**
+1. Stop current implementation
+2. Document what went wrong and what was learned
+3. Switch back to Plan Mode
+4. Create a revised plan incorporating the new understanding
+5. Get user confirmation before resuming
+
+## Subagent Strategy
+
+Use subagents liberally to keep the main context window clean and focused.
+
+**When to use subagents:**
+- Research and exploration tasks
+- Parallel analysis of multiple files/components
+- Complex problems that benefit from more compute
+- Tasks that can be isolated and delegated
+
+**Subagent rules:**
+| Rule | Description |
+|------|-------------|
+| One task per subagent | Keep execution focused |
+| Offload research | Don't clutter main context with exploration |
+| Parallel analysis | Spin up multiple subagents for independent investigations |
+| Clear handoff | Provide subagent with all necessary context upfront |
+
+**Example use cases:**
+- "Explore how authentication works in this codebase" → subagent
+- "Find all usages of deprecated API" → subagent
+- "Analyze performance of these 3 modules" → 3 parallel subagents
+
+## Elegance Check
+
+For non-trivial changes, pause before completing and ask: "Is there a more elegant way?"
+
+**When to apply:**
+- Changes that affect multiple files
+- New abstractions or patterns being introduced
+- Refactoring existing code
+- Architectural decisions
+
+**Skip this for:**
+- Simple, obvious fixes
+- One-line changes
+- Typo corrections
+- Config updates
+
+**If a fix feels hacky:**
+> "Knowing everything I know now, is there a more elegant solution?"
+
+Challenge your own work before presenting it to the user.
 
 ## Plan Persistence
 
