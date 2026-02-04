@@ -546,6 +546,56 @@ def get_username(user_id: int) -> str:
     return users[user_id].username
 ```
 
+### Inline Comments
+
+**IMPORTANT: Avoid meaningless comments.** Only add inline comments when the code's intent is not self-evident. Python emphasizes readability - write self-documenting code with clear names and structure.
+
+```python
+# ❌ BAD - restates the obvious
+count = 0  # Initialize count to zero
+total = sum(numbers)  # Sum the numbers
+result.append(item)  # Append item to result
+user_list = []  # Empty list of users
+
+# ❌ BAD - obvious operations
+for user in users:  # Loop through users
+    user.save()  # Save each user
+
+# ❌ BAD - explaining standard Python features
+data = [x for x in items if x > 0]  # List comprehension to filter positive values
+
+# ✅ GOOD - explains why, not what
+timeout *= 2  # Exponential backoff for retries
+buffer_size = 8192  # Optimal size for network I/O on this system
+
+# ✅ GOOD - explains non-obvious business logic
+discount = 0.15 if is_vip else 0.05  # VIP customers get 15% discount per policy
+offset = 3  # Skip magic bytes in file header
+
+# ✅ GOOD - documents workarounds
+time.sleep(0.1)  # Rate limit: API allows 10 requests/second
+result = data.get("value", None)  # API sometimes omits this field
+
+# ✅ GOOD - clarifies complex algorithms
+# Binary search requires sorted input
+idx = bisect.bisect_left(sorted_items, target)
+```
+
+**When to add comments:**
+- Explaining **why** decisions were made (design rationale, business rules)
+- Clarifying non-obvious algorithms or complex logic
+- Documenting workarounds or known limitations
+- Noting assumptions or preconditions
+- Explaining performance optimizations
+- TODOs or FIXMEs (sparingly, with ticket numbers)
+
+**When NOT to add comments:**
+- Describing what the code obviously does
+- Repeating variable or function names
+- Explaining basic Python syntax or standard library usage
+- Commenting every line or obvious operations
+- Adding docstring-style comments for internal/private functions (use docstrings instead)
+
 ## Performance Best Practices
 
 ### List Comprehensions and Generator Expressions
@@ -954,7 +1004,8 @@ Before submitting Python code:
 ### Type Hints & Documentation
 - [ ] All functions have type hints for parameters and return values
 - [ ] All public APIs have docstrings (Google style)
-- [ ] Complex logic has explanatory comments (sparingly)
+- [ ] Inline comments explain **why**, not what (avoid obvious/meaningless comments)
+- [ ] Complex logic has explanatory comments only when non-obvious
 
 ### Style & Conventions
 - [ ] Follows PEP 8 naming conventions (snake_case, PascalCase, etc.)

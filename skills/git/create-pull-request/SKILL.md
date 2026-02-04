@@ -151,7 +151,7 @@ Use this template for all PRs:
 
 - [ ] Code follows project style guidelines
 - [ ] Self-review completed
-- [ ] Comments added for complex logic
+- [ ] Comments added only for non-obvious logic (no meaningless/obvious comments)
 - [ ] Documentation updated (if applicable)
 - [ ] No unrelated changes included
 ```

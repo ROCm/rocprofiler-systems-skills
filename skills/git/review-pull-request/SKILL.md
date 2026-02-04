@@ -203,7 +203,7 @@ Review each dimension systematically:
 | Check | Questions |
 |-------|-----------|
 | PR description | Is motivation clear? |
-| Code comments | Is complex logic explained? |
+| Code comments | Are comments meaningful (explain why, not what)? No obvious/trivial comments? |
 | API docs | Are public APIs documented? |
 | README | Updated if needed? |
 

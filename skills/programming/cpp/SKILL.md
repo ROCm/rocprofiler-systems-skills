@@ -692,15 +692,42 @@ const std::string& get_name() const { return m_name; }
 
 ### Inline Comments
 
-Use sparingly, only for non-obvious logic:
+**IMPORTANT: Avoid meaningless comments.** Only add inline comments when the code's intent is not self-evident. Most code should be self-documenting through clear naming and structure.
 
 ```cpp
-// ❌ BAD - restates the code
+// ❌ BAD - restates the obvious
 i++; // Increment i
+int sum = a + b; // Add a and b
+std::vector<int> numbers; // Vector of numbers
+result.clear(); // Clear the result
 
-// ✅ GOOD - explains why
+// ❌ BAD - obvious operations
+for (auto& item : items) { // Loop through items
+    process(item); // Process each item
+}
+
+// ✅ GOOD - explains why, not what
 i++; // Skip the header row
+timeout *= 2; // Exponential backoff
+buffer.reserve(1024); // Avoid reallocations in hot path
+
+// ✅ GOOD - explains non-obvious behavior
+result |= 0x80; // Set MSB for negative flag per protocol spec
+constexpr int offset = 3; // Account for metadata bytes in packet header
 ```
+
+**When to add comments:**
+- Explaining **why**, not what (design decisions, workarounds, non-obvious algorithms)
+- Clarifying complex business logic or domain-specific requirements
+- Documenting assumptions or preconditions
+- Explaining performance optimizations
+- Noting TODOs or FIXMEs (sparingly)
+
+**When NOT to add comments:**
+- Describing what the code obviously does
+- Repeating variable or function names
+- Explaining standard language features or library calls
+- Commenting every line or block
 
 ## Code Style Checklist
 
@@ -734,10 +761,12 @@ Before submitting C++ code:
 - [ ] No hidden dependencies (time, random, file system, network)
 - [ ] Pure functions where possible
 
-### Style
+### Style & Documentation
 - [ ] No implicit conversions that could be surprising
 - [ ] No magic numbers - use named constants
 - [ ] Public APIs documented with Doxygen (`/** */`)
+- [ ] Inline comments explain **why**, not what (avoid obvious/meaningless comments)
+- [ ] No comments on trivial code (getters, setters, obvious operations)
 
 ## References
 
