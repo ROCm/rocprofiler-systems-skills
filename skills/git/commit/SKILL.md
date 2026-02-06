@@ -254,8 +254,6 @@ Key changes:
 This enables rocm-smi to display temperature for the latest hardware.
 
 Fixes #234
-
-Co-Authored-By: Claude <noreply@anthropic.com>
 EOF
 )"
 ```
