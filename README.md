@@ -2,6 +2,43 @@
 
 A comprehensive skills system for AI-assisted software development. Skills are reusable AI behavior definitions that guide Claude to follow consistent, professional development workflows.
 
+## Table of Contents
+
+- [What is Radisha?](#what-is-radisha)
+- [Philosophy](#philosophy)
+  - [Core Principles](#core-principles)
+  - [Planning First, Always](#planning-first-always)
+  - [Complete Workflow](#complete-workflow)
+- [Installation](#installation)
+- [How to Use](#how-to-use)
+  - [Claude Code CLI](#claude-code-cli)
+  - [Cursor IDE](#cursor-ide)
+  - [Quick Reference](#quick-reference)
+- [Skill Categories](#skill-categories)
+  - [Planning Skills](#planning-skills)
+  - [Programming Skills](#programming-skills)
+  - [Testing Skills](#testing-skills)
+  - [Library Skills](#library-skills)
+  - [Git Skills](#git-skills)
+  - [Exploration Skills](#exploration-skills)
+  - [Radisha Skills](#radisha-skills)
+- [Key Concepts](#key-concepts)
+  - [Step-by-Step Validation](#step-by-step-validation)
+  - [Re-planning When Things Go Wrong](#re-planning-when-things-go-wrong)
+  - [Plan Persistence](#plan-persistence)
+  - [Platform Tool Mapping](#platform-tool-mapping)
+- [Directory Structure](#directory-structure)
+- [Skill Details](#skill-details)
+  - [Planning Skills Details](#planning-skills-1)
+  - [Programming Skills Details](#programming-skills-1)
+  - [Testing Skills Details](#testing-skills-1)
+  - [Library Skills Details](#library-skills-1)
+  - [Exploration Skills Details](#exploration-skills-1)
+  - [Git Skills Details](#git-skills-1)
+  - [Radisha Skills Details](#radisha-skills-1)
+- [Contributing](#contributing)
+- [Resources](#resources)
+
 ## What is Radisha?
 
 Radisha is a skill library that teaches AI assistants how to:
