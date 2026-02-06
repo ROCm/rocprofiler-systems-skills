@@ -2,21 +2,30 @@
 
 AI-assisted development with structured workflows.
 
-## Quick Commands
+## How to Use Skills
 
-| Command | Description |
-|---------|-------------|
-| `/plan` | Start planning (asks which type) |
-| `/plan-feature` | Plan a new feature |
-| `/plan-bugfix` | Plan a bug fix |
-| `/plan-refactor` | Plan refactoring |
-| `/commit` | Create a commit |
-| `/pr` | Prepare a pull request |
-| `/review` | Review a pull request |
-| `/testplan` | Create test plan |
-| `/explore` | Explore unfamiliar code |
-| `/skills` | List all available skills |
-| `/update` | Update radisha |
+**In Claude Code CLI:** Just ask naturally in plain English:
+- "commit these changes" → uses `git/commit` skill
+- "plan this feature" → uses `planning/feature` skill
+- "review the PR" → uses `git/review-pull-request` skill
+- "create a test plan" → uses `testing/testplan` skill
+
+Skills are automatically loaded from `~/.claude/skills/` and applied when relevant.
+
+## Available Skills
+
+| Task | Skill Used |
+|------|------------|
+| Plan a new feature | `planning/feature` |
+| Plan a bug fix | `planning/bugfix` |
+| Plan refactoring | `planning/refactor` |
+| Create a commit | `git/commit` |
+| Prepare a pull request | `git/prepare-pull-request` |
+| Review a pull request | `git/review-pull-request` |
+| Create test plan | `testing/testplan` |
+| Explore unfamiliar code | `exploration/explore-code` |
+| List all skills | `radisha/skills` |
+| Update radisha | `radisha/update` |
 
 ## Core Rules
 

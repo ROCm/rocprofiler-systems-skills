@@ -45,17 +45,19 @@ Or run `./install.sh` from your project directory and answer "y" to project setu
 
 ## Quick Start
 
-Use these commands in any Claude Code or Cursor session:
+### Claude Code CLI
 
-| Command | Description |
-|---------|-------------|
-| `/plan` | Start planning (asks which type) |
-| `/plan-feature` | Plan a new feature |
-| `/plan-bugfix` | Plan a bug fix |
-| `/pr` | Prepare a pull request |
-| `/testplan` | Create test plan |
-| `/explore` | Explore code |
-| `/skills` | List all skills |
+Just ask naturally - skills are automatically applied:
+- "commit these changes" → uses `git/commit` skill
+- "plan this feature" → uses `planning/feature` skill
+- "review the PR" → uses `git/review-pull-request` skill
+
+### Cursor IDE
+
+Use `@skill-name` mentions:
+- `@git/commit` - Create a commit
+- `@planning/feature` - Plan a feature
+- `@git/prepare-pull-request` - Prepare a PR
 
 See [Command Aliases](#command-aliases) for the full list.
 
@@ -695,43 +697,44 @@ Benefits:
 
 ## Command Aliases
 
-Radisha provides short commands for frequently-used skills:
+**Note:** Command syntax varies by platform:
+- **Claude Code CLI:** Use natural language (no `/` commands)
+- **Cursor IDE:** Use `@skill-name` mentions
 
 ### Planning
 
-| Alias | Skill | Description |
-|-------|-------|-------------|
-| `/plan` | (smart menu) | Asks which planning type |
-| `/plan-feature` | `planning/feature` | New feature planning |
-| `/plan-bugfix` | `planning/bugfix` | Bug fix planning |
-| `/plan-refactor` | `planning/refactor` | Refactoring planning |
+| Natural Request (Claude Code) | Cursor Command | Skill |
+|-------------------------------|----------------|-------|
+| "plan this feature" | `@planning/feature` | `planning/feature` |
+| "plan this bugfix" | `@planning/bugfix` | `planning/bugfix` |
+| "plan refactoring" | `@planning/refactor` | `planning/refactor` |
 
 ### Git
 
-| Alias | Skill | Description |
-|-------|-------|-------------|
-| `/commit` | `git/commit` | Create a commit |
-| `/pr` | `git/prepare-pull-request` | Prepare a pull request |
-| `/review` | `git/review-pull-request` | Review a pull request |
+| Natural Request (Claude Code) | Cursor Command | Skill |
+|-------------------------------|----------------|-------|
+| "commit these changes" | `@git/commit` | `git/commit` |
+| "prepare a pull request" | `@git/prepare-pull-request` | `git/prepare-pull-request` |
+| "review this PR" | `@git/review-pull-request` | `git/review-pull-request` |
 
 ### Testing
 
-| Alias | Skill | Description |
-|-------|-------|-------------|
-| `/testplan` | `testing/testplan` | Create test plan |
+| Natural Request (Claude Code) | Cursor Command | Skill |
+|-------------------------------|----------------|-------|
+| "create a test plan" | `@testing/testplan` | `testing/testplan` |
 
 ### Exploration
 
-| Alias | Skill | Description |
-|-------|-------|-------------|
-| `/explore` | `exploration/explore-code` | Explore unfamiliar code |
+| Natural Request (Claude Code) | Cursor Command | Skill |
+|-------------------------------|----------------|-------|
+| "explore this code" | `@exploration/explore-code` | `exploration/explore-code` |
 
 ### Radisha
 
-| Alias | Skill | Description |
-|-------|-------|-------------|
-| `/skills` | `radisha/skills` | List all available skills |
-| `/update` | `radisha/update` | Update radisha |
+| Natural Request (Claude Code) | Cursor Command | Skill |
+|-------------------------------|----------------|-------|
+| "list all skills" | `@radisha/skills` | `radisha/skills` |
+| "update radisha" | `@radisha/update` | `radisha/update` |
 
 ## Directory Structure
 
@@ -796,12 +799,14 @@ skills/
 
 ## How to Use
 
-### In Claude Code
+### In Claude Code CLI
 
 1. Skills are auto-loaded from `~/.claude/skills/` via the global installation
 2. Core rules are loaded from `CLAUDE.md` in your project root
-3. Use the `Skill` tool to invoke skills by name (e.g., `planning/feature`)
-4. **Fallback:** If skills are not found, manually read from `~/.claude/skills/` using the `Read` tool
+3. **Just ask naturally** - Use plain English requests:
+   - "commit these changes" → automatically uses `git/commit` skill
+   - "plan this feature" → automatically uses `planning/feature` skill
+4. Claude reads the appropriate skill from `~/.claude/skills/` and follows it
 
 ### In Cursor
 
