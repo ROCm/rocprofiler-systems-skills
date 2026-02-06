@@ -1,65 +1,17 @@
 # Radisha - AI Development Skills
 
-A comprehensive skills system for AI-assisted software development (C++, Python, and more). Skills are reusable AI behavior definitions that standardize and automate development workflows.
+A comprehensive skills system for AI-assisted software development. Skills are reusable AI behavior definitions that guide Claude to follow consistent, professional development workflows.
 
-## Installation
+## What is Radisha?
 
-### Quick Install (For public repos)
+Radisha is a skill library that teaches AI assistants how to:
+- **Plan before coding** - Structured planning phases before implementation
+- **Follow best practices** - Language-specific guidelines (C++17, Python, CMake)
+- **Write meaningful commits** - Well-structured commit messages
+- **Create reviewable PRs** - Proper PR scope and documentation
+- **Test thoroughly** - Comprehensive test plans and implementation
 
-**Note:** This repo is currently private. The one-liner won't work without authentication. Use manual installation below.
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/ROCm/rocprofiler-systems-skills/main/install.sh | bash
-```
-
-### Manual Installation (Recommended)
-
-1. **Clone the repository:**
-   ```bash
-   git clone git@github.com:ROCm/rocprofiler-systems-skills.git ~/work/radisha
-   ```
-
-2. **Run the installer:**
-   ```bash
-   cd ~/work/radisha
-   ./install.sh
-   ```
-
-3. **Or manually create symlink:**
-   ```bash
-   # For Claude Code
-   ln -sf ~/work/radisha/skills ~/.claude/skills
-
-   # For Cursor (global)
-   ln -sf ~/work/radisha/skills ~/.cursor/skills
-   ```
-
-### Project Setup
-
-After global installation, set up individual projects:
-
-1. Copy `CLAUDE.md` to your project root (for Claude Code)
-2. Copy `.cursorrules` to your project root (for Cursor)
-
-Or run `./install.sh` from your project directory and answer "y" to project setup.
-
-## Quick Start
-
-### Claude Code CLI
-
-Just ask naturally - skills are automatically applied:
-- "commit these changes" → uses `git/commit` skill
-- "plan this feature" → uses `planning/feature` skill
-- "review the PR" → uses `git/review-pull-request` skill
-
-### Cursor IDE
-
-Use `@skill-name` mentions:
-- `@git/commit` - Create a commit
-- `@planning/feature` - Plan a feature
-- `@git/prepare-pull-request` - Prepare a PR
-
-See [Command Aliases](#command-aliases) for the full list.
+Think of it as a **senior developer's handbook** encoded as AI instructions.
 
 ## Philosophy
 
@@ -81,13 +33,10 @@ See [Command Aliases](#command-aliases) for the full list.
 2. Analyze the request and identify scope
 3. Create a structured plan with tasks
 4. Save the plan to `planning/` folder
-5. Track progress using platform's task tracking tool
-6. Execute step-by-step with verification and user validation
-7. Offer unit tests after completion
+5. Execute step-by-step with verification and user validation
+6. Offer unit tests after completion
 
 ### Plan Mode Workflow
-
-**Complete planning phases before implementation:**
 
 ```
 Planning Phase (phases 0-4)     Execution Phase
@@ -103,13 +52,7 @@ Planning Phase (phases 0-4)     Execution Phase
 - **Cursor:** Use Plan Mode for planning, then switch to Agent Mode
 - **Claude Code:** Use `EnterPlanMode` tool or simply complete planning before coding
 
-This ensures plans persist in files and can be resumed later.
-
-### English Output
-
-All output is in English, regardless of input language. This ensures consistency across documentation, plans, code comments, and conversations.
-
-## Complete Workflow
+### Complete Workflow
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -128,11 +71,11 @@ All output is in English, regardless of input language. This ensures consistency
                     │   ask   │    │  Determine type    │
                     │  skill  │    │  (if unclear, ask) │
                     └─────────┘    └────────────────────┘
-                           │                │
-                           ▼                ├── feature ──→ planning/feature
-                       RESPOND              ├── bugfix ───→ planning/bugfix
-                                           ├── refactor ─→ planning/refactor
-                                           └── docs ─────→ planning/docs
+                                            │
+                                            ├── feature ──→ planning/feature
+                                            ├── bugfix ───→ planning/bugfix
+                                            ├── refactor ─→ planning/refactor
+                                            └── docs ─────→ planning/docs
                                                     │
                                          ┌──────────┴──────────┐
                                          │     PLAN MODE       │
@@ -144,7 +87,7 @@ All output is in English, regardless of input language. This ensures consistency
                                     │  - Analyze scope & risks      │
                                     │  - Assess PR scope (split?)   │
                                     │  - Decompose into tasks       │
-                                    │  - Create TodoWrite list      │
+                                    │  - Create task list           │
                                     └───────────────────────────────┘
                                                     │
                                          ┌──────────┴──────────┐
@@ -196,13 +139,106 @@ All output is in English, regardless of input language. This ensures consistency
                                                 RESPOND
 ```
 
+### English Output
+
+All output is in English, regardless of input language. This ensures consistency across documentation, plans, code comments, and conversations.
+
+## Installation
+
+### Quick Install (For public repos)
+
+**Note:** This repo is currently private. The one-liner won't work without authentication. Use manual installation below.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ROCm/rocprofiler-systems-skills/main/install.sh | bash
+```
+
+### Manual Installation (Recommended)
+
+1. **Clone the repository:**
+   ```bash
+   git clone git@github.com:ROCm/rocprofiler-systems-skills.git ~/work/radisha
+   ```
+
+2. **Run the installer:**
+   ```bash
+   cd ~/work/radisha
+   ./install.sh
+   ```
+
+3. **Or manually create symlink:**
+   ```bash
+   # For Claude Code
+   ln -sf ~/work/radisha/skills ~/.claude/skills
+
+   # For Cursor (global)
+   ln -sf ~/work/radisha/skills ~/.cursor/skills
+   ```
+
+### Project Setup
+
+After global installation, set up individual projects:
+
+1. Copy `CLAUDE.md` to your project root (for Claude Code)
+2. Copy `.cursorrules` to your project root (for Cursor)
+
+Or run `./install.sh` from your project directory and answer "y" to project setup.
+
+## How to Use
+
+### Claude Code CLI
+
+Just ask naturally - skills are automatically applied:
+- "commit these changes" → uses `git/commit` skill
+- "plan this feature" → uses `planning/feature` skill
+- "review the PR" → uses `git/review-pull-request` skill
+
+**How it works:**
+1. Skills are auto-loaded from `~/.claude/skills/`
+2. Core rules are loaded from `CLAUDE.md` in your project root
+3. When you make requests, Claude reads the appropriate skill and follows it
+4. No special commands needed - just natural language
+
+### Cursor IDE
+
+Use `@skill-name` mentions:
+- `@git/commit` - Create a commit
+- `@planning/feature` - Plan a feature
+- `@git/prepare-pull-request` - Prepare a PR
+
+**How it works:**
+1. Skills are loaded from `.cursor/skills/` or user skills folder
+2. Core rules are loaded from `.cursorrules` in your project root
+3. Type `@skill-name` in Chat/Composer to invoke a skill
+4. The AI loads and follows the skill's instructions
+
+### Quick Reference
+
+**Claude Code CLI:**
+
+| What you say | Skill used |
+|--------------|------------|
+| "plan this feature" | `planning/feature` |
+| "plan this bugfix" | `planning/bugfix` |
+| "commit these changes" | `git/commit` |
+| "prepare a pull request" | `git/prepare-pull-request` |
+| "review this PR" | `git/review-pull-request` |
+| "create a test plan" | `testing/testplan` |
+| "explore this code" | `exploration/explore-code` |
+
+**Cursor IDE:**
+
+| Command | Skill |
+|---------|-------|
+| `@planning/feature` | Plan a new feature |
+| `@planning/bugfix` | Plan a bug fix |
+| `@git/commit` | Create a commit |
+| `@git/prepare-pull-request` | Prepare a PR |
+| `@git/review-pull-request` | Review a PR |
+| `@testing/testplan` | Create test plan |
+| `@exploration/explore-code` | Explore code |
+
 ## Skill Categories
-
-### Entry Point
-
-| Skill | Description |
-|-------|-------------|
-| `radisha/help` | **Full reference.** Detailed workflow rules, validation process, skill usage |
 
 ### Planning Skills
 
@@ -245,8 +281,6 @@ Applied during implementation phase. For refactoring, ALL language-specific skil
 
 ### Library Skills
 
-Domain-specific knowledge for working with specific libraries and APIs.
-
 | Skill | Description |
 |-------|-------------|
 | `libraries/amd-smi` | AMD SMI C++ library for GPU/CPU monitoring and management |
@@ -259,6 +293,12 @@ Domain-specific knowledge for working with specific libraries and APIs.
 | `git/prepare-pull-request` | Prepare PRs - size guidelines, splitting strategy, PR template |
 | `git/review-pull-request` | Review PRs - code quality, correctness, tests, actionable feedback |
 
+### Exploration Skills
+
+| Skill | Description |
+|-------|-------------|
+| `exploration/explore-code` | Systematic exploration of unfamiliar codebases before extraction |
+
 ### Radisha Skills
 
 | Skill | Description |
@@ -268,17 +308,147 @@ Domain-specific knowledge for working with specific libraries and APIs.
 | `radisha/create-skill` | Create new skills with validation and integration |
 | `radisha/skills` | List all available skills with aliases |
 
-### Exploration Skills
-
-| Skill | Description |
-|-------|-------------|
-| `exploration/explore-code` | Systematic exploration of unfamiliar codebases before extraction |
-
 ### Other Skills
 
 | Skill | Description |
 |-------|-------------|
 | `ask` | Questions without actions - explanations, clarifications |
+
+## Key Concepts
+
+### Step-by-Step Validation
+
+After completing EACH implementation step that modifies code:
+
+**1. Autonomous Verification First**
+
+Before asking user, verify autonomously (if possible):
+- Run relevant tests if they exist
+- Check for linter errors
+- Verify the change works as expected
+- Note any issues found
+
+**2. Then Ask User**
+
+Present summary with verification results and options:
+
+> "I've completed [step description].
+>
+> **Changes:**
+> - [List of changes made]
+>
+> **Verification:**
+> - All existing tests pass
+> - No linter errors
+>
+> **Please review and choose:**
+> 1. **Continue** - Implementation is good, proceed to next step
+> 2. **Revert & Stop** - Revert to previous state and stop
+> 3. **Improve** - Try to improve this implementation
+
+### Re-planning When Things Go Wrong
+
+If something goes sideways during implementation, **STOP and re-plan immediately**. Don't keep pushing forward hoping it will work out.
+
+**When to stop and re-plan:**
+- Multiple unexpected errors or failures
+- The approach reveals unforeseen complexity
+- Tests fail in ways that suggest the design is wrong
+- You find yourself making "just one more fix" repeatedly
+
+**How to re-plan:**
+1. Stop current implementation
+2. Document what went wrong and what was learned
+3. Switch back to Plan Mode
+4. Create a revised plan incorporating the new understanding
+5. Get user confirmation before resuming
+
+### Plan Persistence
+
+Plans are saved to the `planning/` folder in your project root:
+
+```
+planning/
+├── feature-user-avatar.md
+├── bugfix-session-timeout.md
+├── refactor-parser-module.md
+└── docs-auth-flow.md
+```
+
+Benefits:
+- **Resume work** - Continue from where you left off
+- **Track progress** - `[x]` done vs `[ ]` pending
+- **Reuse plans** - Similar requests can adapt existing plans
+
+### Platform Tool Mapping
+
+| Action | Claude Code | Cursor |
+|--------|-------------|--------|
+| Ask user question | `AskUserQuestion` tool | Built-in question UI |
+| Create/track tasks | `TaskCreate`, `TaskUpdate`, `TaskList` | `TodoWrite` |
+| Enter planning mode | `EnterPlanMode` tool | Switch to Plan Mode |
+| Invoke skill | Natural language | `@skill-name` mention |
+
+## Directory Structure
+
+```
+skills/
+├── ask/                        # Questions without actions
+│   └── SKILL.md
+├── planning/                   # Planning skills (run first)
+│   ├── base/                   # Shared planning rules (don't invoke directly)
+│   │   └── SKILL.md
+│   ├── feature/                # New feature planning
+│   │   └── SKILL.md
+│   ├── bugfix/                 # Bug fix planning
+│   │   └── SKILL.md
+│   ├── refactor/               # Refactoring planning
+│   │   └── SKILL.md
+│   └── docs/                   # Documentation planning
+│       └── SKILL.md
+├── programming/                # Implementation skills
+│   ├── cpp/                    # C++ programming
+│   │   ├── SKILL.md            # C++ Core Guidelines
+│   │   ├── design-patterns/    # Design pattern suggestions
+│   │   │   └── SKILL.md
+│   │   ├── stl-algorithms/     # STL algorithm suggestions
+│   │   │   └── SKILL.md
+│   │   └── naming-rules/       # File/class naming conventions
+│   │       └── SKILL.md
+│   ├── python/                 # Python programming (PEP 8)
+│   │   └── SKILL.md
+│   └── cmake-best-practices/   # Modern CMake
+│       └── SKILL.md
+├── testing/                    # Testing skills
+│   ├── testplan/               # Test plan creation for QA handoff
+│   │   └── SKILL.md
+│   ├── gtest-gmock/            # GTest/GMock for C++
+│   │   └── SKILL.md
+│   └── pytest/                 # Pytest for Python
+│       └── SKILL.md
+├── libraries/                  # Library-specific skills
+│   └── amd-smi/                # AMD SMI library
+│       └── SKILL.md
+├── exploration/                # Code exploration skills
+│   └── explore-code/           # Systematic codebase exploration
+│       └── SKILL.md
+├── git/                        # Git workflow skills
+│   ├── commit/                 # Meaningful commit messages
+│   │   └── SKILL.md
+│   ├── prepare-pull-request/   # PR preparation guidelines
+│   │   └── SKILL.md
+│   └── review-pull-request/    # PR review guidelines
+│       └── SKILL.md
+└── radisha/                    # Radisha management skills
+    ├── update/                 # Update radisha to latest version
+    │   └── SKILL.md
+    ├── help/                   # Full workflow reference
+    │   └── SKILL.md
+    ├── create-skill/           # Create new skills with validation
+    │   └── SKILL.md
+    └── skills/                 # List all available skills
+        └── SKILL.md
+```
 
 ## Skill Details
 
@@ -290,7 +460,7 @@ Shared planning rules - **do not invoke directly**. Provides:
 - **Phase 1**: Analyze (understand, scope, dependencies, risks)
 - **Phase 2**: Assess PR scope (split if > 800 lines)
 - **Phase 3**: Decompose into actionable steps
-- **Phase 4**: Create TodoWrite list
+- **Phase 4**: Create task list
 - **Phase 5**: Save plan to `planning/` folder (immediately after switching to Agent Mode)
 - **Phase 6**: Optional confirmation for high-risk changes
 
@@ -514,6 +684,30 @@ The exploration document feeds into `planning/feature` or `planning/refactor` sk
 
 ### Git Skills
 
+#### `git/commit`
+Create meaningful git commits with well-structured messages.
+
+**Process:**
+1. Analyze staged changes and understand purpose
+2. Categorize commit type (feat, fix, refactor, etc.)
+3. Draft commit message following conventional commits
+4. Present to user for approval
+5. Execute commit
+
+**Message structure:**
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+**Key rules:**
+- Subject line: imperative mood, max 50 chars, no period
+- Body: explains WHY (72 char wrap)
+- Footer: issue references, breaking changes
+
 #### `git/prepare-pull-request`
 Guidelines for creating reviewable Pull Requests.
 
@@ -528,15 +722,9 @@ Guidelines for creating reviewable Pull Requests.
 - Infrastructure changes can land independently
 
 **Every PR MUST have:**
-
 1. **Motivation** - Why is this change needed?
 2. **Technical Details** - What changed and how?
 3. **Test Plan** - How was this tested?
-
-**Integration with Planning:**
-- PR scope is assessed during Phase 2 of planning
-- Large tasks are split into multiple PRs upfront
-- Each PR is planned as a logical, reviewable unit
 
 #### `git/review-pull-request`
 Structured approach to reviewing Pull Requests.
@@ -553,17 +741,10 @@ Structured approach to reviewing Pull Requests.
 - **Should Fix** - Non-blocking improvements
 - **Nitpicks** - Optional suggestions
 
-**Key feature:** Invokes `programming/*` skills to review code against language-specific best practices.
-
 ### Radisha Skills
 
 #### `radisha/help`
 Full workflow reference with detailed rules for using radisha effectively.
-
-**When to use:**
-- Need comprehensive guidance on radisha workflows
-- Want to understand step-by-step validation process
-- Need the complete skill invocation flowchart
 
 #### `radisha/create-skill`
 Meta-skill for creating new radisha skills with validation and integration.
@@ -587,242 +768,11 @@ Meta-skill for creating new radisha skills with validation and integration.
 - Updates `README.md` (tables, details, directory tree)
 - Updates related skills if disambiguation needed
 
-## Step-by-Step Validation
+#### `radisha/update`
+Update radisha to the latest version by pulling from the git repository.
 
-After completing EACH implementation step that modifies code:
-
-### 1. Autonomous Verification First
-
-Before asking user, verify autonomously (if possible):
-- Run relevant tests if they exist
-- Check for linter errors
-- Verify the change works as expected
-- Note any issues found
-
-### 2. Then Ask User
-
-Present summary with verification results and options:
-
-> "I've completed [step description].
->
-> **Changes:**
-> - [List of changes made]
->
-> **Verification:**
-> - All existing tests pass
-> - No linter errors
->
-> **Please review and choose:**
-> 1. **Continue** - Implementation is good, proceed to next step
-> 2. **Revert & Stop** - Revert to previous state and stop
-> 3. **Improve** - Try to improve this implementation
-
-## Re-planning When Things Go Wrong
-
-If something goes sideways during implementation, **STOP and re-plan immediately**. Don't keep pushing forward hoping it will work out.
-
-**When to stop and re-plan:**
-- Multiple unexpected errors or failures
-- The approach reveals unforeseen complexity
-- Tests fail in ways that suggest the design is wrong
-- You find yourself making "just one more fix" repeatedly
-
-**How to re-plan:**
-1. Stop current implementation
-2. Document what went wrong and what was learned
-3. Switch back to Plan Mode
-4. Create a revised plan incorporating the new understanding
-5. Get user confirmation before resuming
-
-## Subagent Strategy
-
-Use subagents liberally to keep the main context window clean and focused.
-
-**When to use subagents:**
-- Research and exploration tasks
-- Parallel analysis of multiple files/components
-- Complex problems that benefit from more compute
-- Tasks that can be isolated and delegated
-
-**Subagent rules:**
-| Rule | Description |
-|------|-------------|
-| One task per subagent | Keep execution focused |
-| Offload research | Don't clutter main context with exploration |
-| Parallel analysis | Spin up multiple subagents for independent investigations |
-| Clear handoff | Provide subagent with all necessary context upfront |
-
-**Example use cases:**
-- "Explore how authentication works in this codebase" → subagent
-- "Find all usages of deprecated API" → subagent
-- "Analyze performance of these 3 modules" → 3 parallel subagents
-
-## Elegance Check
-
-For non-trivial changes, pause before completing and ask: "Is there a more elegant way?"
-
-**When to apply:**
-- Changes that affect multiple files
-- New abstractions or patterns being introduced
-- Refactoring existing code
-- Architectural decisions
-
-**Skip this for:**
-- Simple, obvious fixes
-- One-line changes
-- Typo corrections
-- Config updates
-
-**If a fix feels hacky:**
-> "Knowing everything I know now, is there a more elegant solution?"
-
-Challenge your own work before presenting it to the user.
-
-## Plan Persistence
-
-Plans are saved to the `planning/` folder in your project root:
-
-```
-planning/
-├── feature-user-avatar.md
-├── bugfix-session-timeout.md
-├── refactor-parser-module.md
-└── docs-auth-flow.md
-```
-
-Benefits:
-- **Resume work** - Continue from where you left off
-- **Track progress** - `[x]` done vs `[ ]` pending
-- **Reuse plans** - Similar requests can adapt existing plans
-
-## Command Aliases
-
-**Note:** Command syntax varies by platform:
-- **Claude Code CLI:** Use natural language (no `/` commands)
-- **Cursor IDE:** Use `@skill-name` mentions
-
-### Planning
-
-| Natural Request (Claude Code) | Cursor Command | Skill |
-|-------------------------------|----------------|-------|
-| "plan this feature" | `@planning/feature` | `planning/feature` |
-| "plan this bugfix" | `@planning/bugfix` | `planning/bugfix` |
-| "plan refactoring" | `@planning/refactor` | `planning/refactor` |
-
-### Git
-
-| Natural Request (Claude Code) | Cursor Command | Skill |
-|-------------------------------|----------------|-------|
-| "commit these changes" | `@git/commit` | `git/commit` |
-| "prepare a pull request" | `@git/prepare-pull-request` | `git/prepare-pull-request` |
-| "review this PR" | `@git/review-pull-request` | `git/review-pull-request` |
-
-### Testing
-
-| Natural Request (Claude Code) | Cursor Command | Skill |
-|-------------------------------|----------------|-------|
-| "create a test plan" | `@testing/testplan` | `testing/testplan` |
-
-### Exploration
-
-| Natural Request (Claude Code) | Cursor Command | Skill |
-|-------------------------------|----------------|-------|
-| "explore this code" | `@exploration/explore-code` | `exploration/explore-code` |
-
-### Radisha
-
-| Natural Request (Claude Code) | Cursor Command | Skill |
-|-------------------------------|----------------|-------|
-| "list all skills" | `@radisha/skills` | `radisha/skills` |
-| "update radisha" | `@radisha/update` | `radisha/update` |
-
-## Directory Structure
-
-```
-skills/
-├── ask/                        # Questions without actions
-│   └── SKILL.md
-├── planning/                   # Planning skills (run first)
-│   ├── base/                   # Shared planning rules (don't invoke directly)
-│   │   └── SKILL.md
-│   ├── feature/                # New feature planning
-│   │   └── SKILL.md
-│   ├── bugfix/                 # Bug fix planning
-│   │   └── SKILL.md
-│   ├── refactor/               # Refactoring planning
-│   │   └── SKILL.md
-│   └── docs/                   # Documentation planning
-│       └── SKILL.md
-├── programming/                # Implementation skills
-│   ├── cpp/                    # C++ programming
-│   │   ├── SKILL.md            # C++ Core Guidelines
-│   │   ├── design-patterns/    # Design pattern suggestions
-│   │   │   └── SKILL.md
-│   │   ├── stl-algorithms/     # STL algorithm suggestions
-│   │   │   └── SKILL.md
-│   │   └── naming-rules/       # File/class naming conventions
-│   │       └── SKILL.md
-│   ├── python/                 # Python programming (PEP 8)
-│   │   └── SKILL.md
-│   └── cmake-best-practices/   # Modern CMake
-│       └── SKILL.md
-├── testing/                    # Testing skills
-│   ├── testplan/               # Test plan creation for QA handoff
-│   │   └── SKILL.md
-│   ├── gtest-gmock/            # GTest/GMock for C++
-│   │   └── SKILL.md
-│   └── pytest/                 # Pytest for Python
-│       └── SKILL.md
-├── libraries/                  # Library-specific skills
-│   └── amd-smi/                # AMD SMI library
-│       └── SKILL.md
-├── exploration/                # Code exploration skills
-│   └── explore-code/           # Systematic codebase exploration
-│       └── SKILL.md
-├── git/                        # Git workflow skills
-│   ├── commit/                 # Meaningful commit messages
-│   │   └── SKILL.md
-│   ├── prepare-pull-request/   # PR preparation guidelines
-│   │   └── SKILL.md
-│   └── review-pull-request/    # PR review guidelines
-│       └── SKILL.md
-└── radisha/                    # Radisha management skills
-    ├── update/                 # Update radisha to latest version
-    │   └── SKILL.md
-    ├── help/                   # Full workflow reference
-    │   └── SKILL.md
-    ├── create-skill/           # Create new skills with validation
-    │   └── SKILL.md
-    └── skills/                 # List all available skills
-        └── SKILL.md
-```
-
-## How to Use
-
-### In Claude Code CLI
-
-1. Skills are auto-loaded from `~/.claude/skills/` via the global installation
-2. Core rules are loaded from `CLAUDE.md` in your project root
-3. **Just ask naturally** - Use plain English requests:
-   - "commit these changes" → automatically uses `git/commit` skill
-   - "plan this feature" → automatically uses `planning/feature` skill
-4. Claude reads the appropriate skill from `~/.claude/skills/` and follows it
-
-### In Cursor
-
-1. Skills are loaded from `.cursor/skills/` or user skills folder
-2. Core rules are loaded from `.cursorrules` in your project root
-3. In Chat/Composer, type `@skill-name` to invoke a skill
-4. The AI loads and follows the skill's instructions
-
-### Platform Tool Mapping
-
-| Action | Claude Code | Cursor |
-|--------|-------------|--------|
-| Ask user question | `AskUserQuestion` tool | Built-in question UI |
-| Create/track tasks | `TaskCreate`, `TaskUpdate`, `TaskList` | `TodoWrite` |
-| Enter planning mode | `EnterPlanMode` tool | Switch to Plan Mode |
-| Invoke skill | `Skill` tool | `@skill-name` mention |
+#### `radisha/skills`
+List all available skills with their descriptions and command aliases.
 
 ## Contributing
 
