@@ -1,6 +1,6 @@
 ---
-name: using-radisha
-description: Use when starting any conversation - establishes how to find and use skills, requiring Skill tool invocation before ANY response including clarifying questions
+name: radisha/help
+description: Full workflow reference and detailed rules - invoke when you need comprehensive guidance on how to use radisha skills
 ---
 
 <EXTREMELY-IMPORTANT>
@@ -52,6 +52,30 @@ This ensures consistency and readability across all documentation, plans, code c
 **Every Plan Leads to a Pull Request** - Keep PR reviewability in mind from the start.
 
 **Emoji Policy** - Avoid emojis in code, comments, and general output. Exception: User-facing interactive menus may use emojis for visual clarity (e.g., ✅ Continue, ⬅️ Revert).
+
+## Quick Commands
+
+Use these shortcuts for fast access to common skills:
+
+| Command | Description |
+|---------|-------------|
+| `/plan` | Start planning - asks which type |
+| `/plan-feature` | Plan a new feature |
+| `/plan-bugfix` | Plan a bug fix |
+| `/plan-refactor` | Plan refactoring |
+| `/commit` | Create a commit |
+| `/pr` | Prepare a pull request |
+| `/review` | Review a pull request |
+| `/testplan` | Create a test plan |
+| `/explore` | Explore unfamiliar code |
+| `/skills` | List all available skills |
+| `/update` | Update radisha |
+
+<IMPORTANT>
+When a user types a quick command (e.g., `/plan`, `/pr`), invoke the corresponding skill immediately.
+
+For `/plan` specifically: Present an interactive menu using `AskUserQuestion` to ask which planning type (feature/bugfix/refactor/docs), then invoke the selected skill.
+</IMPORTANT>
 
 ## How to Access Skills
 
@@ -114,7 +138,7 @@ This ensures plans persist in files and can be resumed later.
 
 **Radisha management skills:**
 - `radisha/update` - Update radisha to latest version
-- `radisha/create-skill` - Create new skills with validation and integration
+- `radisha/help` - Full workflow reference (this skill)
 
 **After implementation, create test plan:**
 - Invoke `testing/testplan` skill
@@ -126,7 +150,7 @@ This ensures plans persist in files and can be resumed later.
 - Write tests ONE BY ONE, waiting for user approval after each test
 
 **After tests, offer Pull Request:**
-- Invoke `git/create-pull-request` skill
+- Invoke `git/prepare-pull-request` skill
 - Create PR with Motivation, Technical Details, Test Plan
 
 **Workflow:**
@@ -213,7 +237,7 @@ First, show the changes with verification:
 >
 > **Changes:**
 > - Added `validate_input()` function in `src/utils/validation.cpp`
-> - Added input checks in `process_request()` 
+> - Added input checks in `process_request()`
 > - Returns `std::optional<error>` on validation failure
 >
 > **Verification:**

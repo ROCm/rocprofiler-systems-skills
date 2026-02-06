@@ -5,7 +5,7 @@ description: Review Pull Requests thoroughly - check code quality, correctness, 
 
 # Review Pull Request Skill
 
-Use this skill when reviewing Pull Requests. For creating PRs, use `git/create-pull-request` instead.
+Use this skill when reviewing Pull Requests. For preparing PRs, use `git/prepare-pull-request` instead.
 
 ## Overview
 

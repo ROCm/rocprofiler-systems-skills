@@ -51,7 +51,7 @@ Use this skill when:
                                           ▼
                               ┌───────────────────────┐
                               │ Phase 4: Integrate    │
-                              │ - Update using-radisha│
+                              │ - Update radisha/help │
                               │ - Update README       │
                               │ - Update related skills│
                               └───────────────────────┘
@@ -250,7 +250,7 @@ Write `SKILL.md` to the directory.
 
 After creating the skill, update these files:
 
-### 4.1 Update `using-radisha/SKILL.md`
+### 4.1 Update `radisha/help/SKILL.md`
 
 Add to appropriate section:
 
@@ -306,7 +306,7 @@ After all integration:
 - `skills/[category]/[skill-name]/SKILL.md`
 
 **Files updated:**
-- `skills/using-radisha/SKILL.md` - Added to skill list
+- `skills/radisha/help/SKILL.md` - Added to skill list
 - `README.md` - Added to tables and directory structure
 - [Other updated files if any]
 
@@ -325,7 +325,7 @@ Before completing, verify:
 - [ ] Frontmatter has correct `name` and `description`
 - [ ] Tool names are platform-correct (`AskUserQuestion`, etc.)
 - [ ] No conflicts with existing skills (or conflicts resolved)
-- [ ] `using-radisha` updated with skill reference
+- [ ] `radisha/help` updated with skill reference
 - [ ] `README.md` tables updated
 - [ ] `README.md` detailed section added
 - [ ] `README.md` directory structure updated
@@ -339,6 +339,7 @@ Before completing, verify:
 | Skipping conflict check | Read existing skills before creating |
 | Wrong tool names | Use `AskUserQuestion`, `TaskCreate`, etc. |
 | Forgetting README updates | Update all three sections |
+| Forgetting radisha/help update | Add skill reference to radisha/help/SKILL.md |
 | No user approval | Always present analysis, wait for approval |
 | Wrong category | Match purpose to existing categories |
 
@@ -351,6 +352,6 @@ Before completing, verify:
 | `testing/` | Testing approaches | testplan, gtest-gmock, pytest |
 | `exploration/` | Code understanding | explore-code |
 | `libraries/` | Library-specific knowledge | amd-smi |
-| `git/` | Git workflows | create-pull-request, review-pull-request |
+| `git/` | Git workflows | prepare-pull-request, review-pull-request |
 | `radisha/` | Radisha management | update, create-skill |
 | `ask` | Quick explanations | (standalone) |

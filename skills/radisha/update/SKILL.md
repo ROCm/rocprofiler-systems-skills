@@ -9,7 +9,7 @@ Use this skill when the user asks to update radisha skills.
 
 ## Overview
 
-**Default Repository:** `https://github.com/adjordje-amd/radisha.git`
+**Default Repository:** `https://github.com/ROCm/rocprofiler-systems-skills.git`
 
 **Auto-Update:** On first skill invocation in a session, radisha automatically checks for updates and pulls the latest version before executing any skill. This ensures you always have the latest skills.
 
@@ -43,7 +43,15 @@ Radisha can be installed in different ways:
                                 │
                                 ▼
                     ┌───────────────────────┐
-                    │ Phase 3: Report       │
+                    │ Phase 3: Update       │
+                    │ Project Files         │
+                    │ - CLAUDE.md           │
+                    │ - .cursorrules        │
+                    └───────────────────────┘
+                                │
+                                ▼
+                    ┌───────────────────────┐
+                    │ Phase 4: Report       │
                     │ - Show what changed   │
                     │ - List new skills     │
                     └───────────────────────┘
@@ -90,7 +98,7 @@ else
 fi
 ```
 
-## Phase 2: Update
+## Phase 2: Update Skills
 
 ### Standard Update (no local changes)
 
@@ -153,7 +161,73 @@ git diff --name-only --diff-filter=U
 
 Ask user how to resolve.
 
-## Phase 3: Report
+## Phase 3: Update Project Files
+
+After updating skills, check if project files need updating.
+
+### Find Radisha Repo Root
+
+The radisha repo root is the parent of the skills directory:
+
+```bash
+# If symlink
+if [ -L ~/.claude/skills ]; then
+    RADISHA_REPO=$(dirname "$(readlink -f ~/.claude/skills)")
+else
+    RADISHA_REPO=$(dirname "$RADISHA_PATH")
+fi
+```
+
+### Check for Project Files
+
+If the current project has `CLAUDE.md` or `.cursorrules`, offer to update them:
+
+```bash
+# Check if project has outdated files
+if [ -f "CLAUDE.md" ]; then
+    if ! diff -q "CLAUDE.md" "$RADISHA_REPO/CLAUDE.md" >/dev/null 2>&1; then
+        echo "CLAUDE.md differs from latest version"
+    fi
+fi
+
+if [ -f ".cursorrules" ]; then
+    if ! diff -q ".cursorrules" "$RADISHA_REPO/.cursorrules" >/dev/null 2>&1; then
+        echo ".cursorrules differs from latest version"
+    fi
+fi
+```
+
+### Offer to Update
+
+Use `AskUserQuestion` to ask:
+
+```json
+{
+  "questions": [{
+    "question": "Project files differ from latest radisha. Update them?",
+    "header": "Update files",
+    "options": [
+      {"label": "Update both", "description": "Update CLAUDE.md and .cursorrules to latest"},
+      {"label": "Update CLAUDE.md only", "description": "Only update Claude Code rules"},
+      {"label": "Update .cursorrules only", "description": "Only update Cursor rules"},
+      {"label": "Skip", "description": "Keep current project files"}
+    ],
+    "multiSelect": false
+  }]
+}
+```
+
+### Apply Updates
+
+```bash
+# Update CLAUDE.md
+cp "$RADISHA_REPO/CLAUDE.md" "CLAUDE.md"
+
+# Update .cursorrules
+cp "$RADISHA_REPO/.cursorrules" ".cursorrules"
+```
+
+## Phase 4: Report
 
 ### Show What Changed
 
@@ -191,6 +265,10 @@ find "$RADISHA_PATH" -name "SKILL.md" -type f | \
 ### Files Changed
 - [file 1]
 - [file 2]
+
+### Project Files Updated
+- [x] CLAUDE.md
+- [x] .cursorrules
 
 ### Available Skills
 [List all skills currently available]
@@ -259,7 +337,7 @@ fi
 
 | Issue | Solution |
 |-------|----------|
-| "Not a git repository" | Radisha was copied, not cloned. Re-clone from `https://github.com/adjordje-amd/radisha.git` |
+| "Not a git repository" | Radisha was copied, not cloned. Re-clone from `https://github.com/ROCm/rocprofiler-systems-skills.git` |
 | "Permission denied" | Check file permissions on skills directory |
 | "Merge conflicts" | Ask user to resolve or reset to remote |
 | "Symlink broken" | Re-create symlink to radisha repo |
@@ -273,32 +351,41 @@ If radisha is not installed or needs fresh install:
 
 ```bash
 # Clone radisha repo
-git clone https://github.com/adjordje-amd/radisha.git ~/work/radisha
+git clone https://github.com/ROCm/rocprofiler-systems-skills.git ~/work/radisha
 
 # Create symlink
 ln -sf ~/work/radisha/skills ~/.claude/skills
+
+# Copy project files
+cp ~/work/radisha/CLAUDE.md .
+cp ~/work/radisha/.cursorrules .
 ```
 
 ### Cursor (recommended: symlink)
 
 ```bash
 # Clone radisha repo
-git clone https://github.com/adjordje-amd/radisha.git ~/work/radisha
+git clone https://github.com/ROCm/rocprofiler-systems-skills.git ~/work/radisha
 
 # Create symlink for project
 ln -sf ~/work/radisha/skills .cursor/skills/radisha
 
 # Or global
 ln -sf ~/work/radisha/skills ~/.cursor/skills/radisha
+
+# Copy project files
+cp ~/work/radisha/.cursorrules .
 ```
 
-### Direct Clone
+### Using Install Script
+
+The easiest way to install or update:
 
 ```bash
-# Claude Code
-git clone https://github.com/adjordje-amd/radisha.git ~/.claude/skills-repo
-ln -sf ~/.claude/skills-repo/skills ~/.claude/skills
+# From existing clone
+cd ~/work/radisha
+./install.sh
 
-# Cursor
-git clone https://github.com/adjordje-amd/radisha.git .cursor/skills/radisha
+# Or one-liner from GitHub
+curl -fsSL https://raw.githubusercontent.com/ROCm/rocprofiler-systems-skills/main/install.sh | bash
 ```

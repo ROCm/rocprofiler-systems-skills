@@ -1,6 +1,61 @@
-# Radisha - Cursor Skills Repository
+# Radisha - AI Development Skills
 
 A comprehensive skills system for AI-assisted software development (C++, Python, and more). Skills are reusable AI behavior definitions that standardize and automate development workflows.
+
+## Installation
+
+### One-liner Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ROCm/rocprofiler-systems-skills/main/install.sh | bash
+```
+
+### Manual Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/ROCm/rocprofiler-systems-skills.git ~/work/radisha
+   ```
+
+2. **Run the installer:**
+   ```bash
+   cd ~/work/radisha
+   ./install.sh
+   ```
+
+3. **Or manually create symlink:**
+   ```bash
+   # For Claude Code
+   ln -sf ~/work/radisha/skills ~/.claude/skills
+
+   # For Cursor (global)
+   ln -sf ~/work/radisha/skills ~/.cursor/skills
+   ```
+
+### Project Setup
+
+After global installation, set up individual projects:
+
+1. Copy `CLAUDE.md` to your project root (for Claude Code)
+2. Copy `.cursorrules` to your project root (for Cursor)
+
+Or run `./install.sh` from your project directory and answer "y" to project setup.
+
+## Quick Start
+
+Use these commands in any Claude Code or Cursor session:
+
+| Command | Description |
+|---------|-------------|
+| `/plan` | Start planning (asks which type) |
+| `/plan-feature` | Plan a new feature |
+| `/plan-bugfix` | Plan a bug fix |
+| `/pr` | Prepare a pull request |
+| `/testplan` | Create test plan |
+| `/explore` | Explore code |
+| `/skills` | List all skills |
+
+See [Command Aliases](#command-aliases) for the full list.
 
 ## Philosophy
 
@@ -143,7 +198,7 @@ All output is in English, regardless of input language. This ensures consistency
 
 | Skill | Description |
 |-------|-------------|
-| `using-radisha` | **Start here.** Defines how to use all skills, workflow rules, validation process |
+| `radisha/help` | **Full reference.** Detailed workflow rules, validation process, skill usage |
 
 ### Planning Skills
 
@@ -196,7 +251,8 @@ Domain-specific knowledge for working with specific libraries and APIs.
 
 | Skill | Description |
 |-------|-------------|
-| `git/create-pull-request` | Create PRs - size guidelines, splitting strategy, PR template |
+| `git/commit` | Create meaningful commits with well-structured messages |
+| `git/prepare-pull-request` | Prepare PRs - size guidelines, splitting strategy, PR template |
 | `git/review-pull-request` | Review PRs - code quality, correctness, tests, actionable feedback |
 
 ### Radisha Skills
@@ -204,7 +260,9 @@ Domain-specific knowledge for working with specific libraries and APIs.
 | Skill | Description |
 |-------|-------------|
 | `radisha/update` | Update radisha to latest version in current project |
+| `radisha/help` | Full workflow reference and detailed rules |
 | `radisha/create-skill` | Create new skills with validation and integration |
+| `radisha/skills` | List all available skills with aliases |
 
 ### Exploration Skills
 
@@ -452,7 +510,7 @@ The exploration document feeds into `planning/feature` or `planning/refactor` sk
 
 ### Git Skills
 
-#### `git/create-pull-request`
+#### `git/prepare-pull-request`
 Guidelines for creating reviewable Pull Requests.
 
 **PR Size Guidelines:**
@@ -495,6 +553,14 @@ Structured approach to reviewing Pull Requests.
 
 ### Radisha Skills
 
+#### `radisha/help`
+Full workflow reference with detailed rules for using radisha effectively.
+
+**When to use:**
+- Need comprehensive guidance on radisha workflows
+- Want to understand step-by-step validation process
+- Need the complete skill invocation flowchart
+
 #### `radisha/create-skill`
 Meta-skill for creating new radisha skills with validation and integration.
 
@@ -513,7 +579,7 @@ Meta-skill for creating new radisha skills with validation and integration.
 
 **What it updates:**
 - Creates `skills/[category]/[name]/SKILL.md`
-- Updates `using-radisha/SKILL.md`
+- Updates `radisha/help` skill
 - Updates `README.md` (tables, details, directory tree)
 - Updates related skills if disambiguation needed
 
@@ -539,13 +605,13 @@ Present summary with verification results and options:
 > - [List of changes made]
 >
 > **Verification:**
-> - ✅ All existing tests pass
-> - ✅ No linter errors
+> - All existing tests pass
+> - No linter errors
 >
 > **Please review and choose:**
-> 1. ✅ **Continue** - Implementation is good, proceed to next step
-> 2. ⬅️ **Revert & Stop** - Revert to previous state and stop
-> 3. 🔄 **Improve** - Try to improve this implementation
+> 1. **Continue** - Implementation is good, proceed to next step
+> 2. **Revert & Stop** - Revert to previous state and stop
+> 3. **Improve** - Try to improve this implementation
 
 ## Re-planning When Things Go Wrong
 
@@ -625,12 +691,50 @@ Benefits:
 - **Track progress** - `[x]` done vs `[ ]` pending
 - **Reuse plans** - Similar requests can adapt existing plans
 
+## Command Aliases
+
+Radisha provides short commands for frequently-used skills:
+
+### Planning
+
+| Alias | Skill | Description |
+|-------|-------|-------------|
+| `/plan` | (smart menu) | Asks which planning type |
+| `/plan-feature` | `planning/feature` | New feature planning |
+| `/plan-bugfix` | `planning/bugfix` | Bug fix planning |
+| `/plan-refactor` | `planning/refactor` | Refactoring planning |
+
+### Git
+
+| Alias | Skill | Description |
+|-------|-------|-------------|
+| `/commit` | `git/commit` | Create a commit |
+| `/pr` | `git/prepare-pull-request` | Prepare a pull request |
+| `/review` | `git/review-pull-request` | Review a pull request |
+
+### Testing
+
+| Alias | Skill | Description |
+|-------|-------|-------------|
+| `/testplan` | `testing/testplan` | Create test plan |
+
+### Exploration
+
+| Alias | Skill | Description |
+|-------|-------|-------------|
+| `/explore` | `exploration/explore-code` | Explore unfamiliar code |
+
+### Radisha
+
+| Alias | Skill | Description |
+|-------|-------|-------------|
+| `/skills` | `radisha/skills` | List all available skills |
+| `/update` | `radisha/update` | Update radisha |
+
 ## Directory Structure
 
 ```
 skills/
-├── using-radisha/              # Entry point - how to use all skills
-│   └── SKILL.md
 ├── ask/                        # Questions without actions
 │   └── SKILL.md
 ├── planning/                   # Planning skills (run first)
@@ -671,14 +775,20 @@ skills/
 │   └── explore-code/           # Systematic codebase exploration
 │       └── SKILL.md
 ├── git/                        # Git workflow skills
-│   ├── create-pull-request/    # PR creation guidelines
+│   ├── commit/                 # Meaningful commit messages
+│   │   └── SKILL.md
+│   ├── prepare-pull-request/   # PR preparation guidelines
 │   │   └── SKILL.md
 │   └── review-pull-request/    # PR review guidelines
 │       └── SKILL.md
 └── radisha/                    # Radisha management skills
     ├── update/                 # Update radisha to latest version
     │   └── SKILL.md
-    └── create-skill/           # Create new skills with validation
+    ├── help/                   # Full workflow reference
+    │   └── SKILL.md
+    ├── create-skill/           # Create new skills with validation
+    │   └── SKILL.md
+    └── skills/                 # List all available skills
         └── SKILL.md
 ```
 
@@ -686,15 +796,17 @@ skills/
 
 ### In Claude Code
 
-1. Add skills to your project's `skills/` directory or `~/.claude/skills/` for global access
-2. Use the `Skill` tool to invoke skills by name (e.g., `planning/feature`)
-3. **Fallback:** If skills are not found, manually read from `~/.claude/skills/` using the `Read` tool
+1. Skills are auto-loaded from `~/.claude/skills/` via the global installation
+2. Core rules are loaded from `CLAUDE.md` in your project root
+3. Use the `Skill` tool to invoke skills by name (e.g., `planning/feature`)
+4. **Fallback:** If skills are not found, manually read from `~/.claude/skills/` using the `Read` tool
 
 ### In Cursor
 
-1. Add skills to your project's `.cursor/skills/` directory or user skills folder
-2. In Chat/Composer, type `@skill-name` to invoke a skill
-3. The AI loads and follows the skill's instructions
+1. Skills are loaded from `.cursor/skills/` or user skills folder
+2. Core rules are loaded from `.cursorrules` in your project root
+3. In Chat/Composer, type `@skill-name` to invoke a skill
+4. The AI loads and follows the skill's instructions
 
 ### Platform Tool Mapping
 
@@ -704,17 +816,6 @@ skills/
 | Create/track tasks | `TaskCreate`, `TaskUpdate`, `TaskList` | `TodoWrite` |
 | Enter planning mode | `EnterPlanMode` tool | Switch to Plan Mode |
 | Invoke skill | `Skill` tool | `@skill-name` mention |
-
-### Adding from GitHub
-
-```
-https://github.com/adjordje-amd/radisha
-```
-
-Or link to specific skill:
-```
-https://github.com/adjordje-amd/radisha/blob/main/skills/planning/feature/SKILL.md
-```
 
 ## Contributing
 

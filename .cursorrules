@@ -1,0 +1,54 @@
+# Radisha
+
+AI-assisted development with structured workflows.
+
+## Quick Commands
+
+| Command | Description |
+|---------|-------------|
+| `/plan` | Start planning (asks which type) |
+| `/plan-feature` | Plan a new feature |
+| `/plan-bugfix` | Plan a bug fix |
+| `/plan-refactor` | Plan refactoring |
+| `/commit` | Create a commit |
+| `/pr` | Prepare a pull request |
+| `/review` | Review a pull request |
+| `/testplan` | Create test plan |
+| `/explore` | Explore unfamiliar code |
+| `/skills` | List all available skills |
+| `/update` | Update radisha |
+
+## Core Rules
+
+### Planning First
+Before starting ANY non-trivial task (more than 2 steps), invoke the appropriate planning skill (`planning/feature`, `planning/bugfix`, `planning/refactor`, or `planning/docs`).
+
+### Step-by-Step Validation
+After completing EACH implementation step:
+1. Run autonomous verification (tests, linter)
+2. Show summary of changes
+3. Ask user for validation before proceeding
+
+### English Output
+ALL output MUST be in English, regardless of input language.
+
+### Skill Invocation
+If there is even a 1% chance a skill might apply to your task, you MUST invoke it. Use `@skill-name` to invoke skills (e.g., `@planning/feature`).
+
+### Simplicity First
+Make every change as simple as possible. Only touch what's necessary. No over-engineering.
+
+## How to Find Skills
+
+Skills are located in `.cursor/skills/` (project) or `~/.cursor/skills/` (global).
+
+**Categories:**
+- `planning/` - Feature, bugfix, refactor, docs planning
+- `programming/` - Language-specific coding (cpp, python, cmake)
+- `testing/` - Test plans and test frameworks
+- `git/` - Pull requests and reviews
+- `exploration/` - Code exploration
+- `libraries/` - Library-specific knowledge (amd-smi)
+- `radisha/` - Radisha management (update, help, skills)
+
+**For full workflow reference:** Use `@radisha/help`.
