@@ -4,17 +4,19 @@ A comprehensive skills system for AI-assisted software development (C++, Python,
 
 ## Installation
 
-### One-liner Install
+### Quick Install (For public repos)
+
+**Note:** This repo is currently private. The one-liner won't work without authentication. Use manual installation below.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ROCm/rocprofiler-systems-skills/main/install.sh | bash
 ```
 
-### Manual Installation
+### Manual Installation (Recommended)
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/ROCm/rocprofiler-systems-skills.git ~/work/radisha
+   git clone git@github.com:ROCm/rocprofiler-systems-skills.git ~/work/radisha
    ```
 
 2. **Run the installer:**

@@ -8,7 +8,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILLS_DIR="$HOME/.claude/skills"
-REPO_URL="https://github.com/ROCm/rocprofiler-systems-skills.git"
+REPO_URL="git@github.com:ROCm/rocprofiler-systems-skills.git"
 
 # Colors for output
 RED='\033[0;31m'
