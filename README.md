@@ -326,9 +326,11 @@ Applied during implementation phase. For refactoring, ALL language-specific skil
 
 | Skill | Description |
 |-------|-------------|
+| `git/gh-client` | Core GitHub CLI operations - check availability, list/filter PRs, get details, check status (base skill) |
 | `git/commit` | Create meaningful commits with well-structured messages |
 | `git/prepare-pull-request` | Prepare PRs - size guidelines, splitting strategy, PR template |
 | `git/review-pull-request` | Review PRs - code quality, correctness, tests, actionable feedback |
+| `git/pull-request-status` | Check PR CI/CD status, explain failures, provide fix recommendations |
 
 ### Exploration Skills
 
@@ -721,6 +723,28 @@ The exploration document feeds into `planning/feature` or `planning/refactor` sk
 
 ### Git Skills
 
+#### `git/gh-client`
+Core GitHub CLI operations (base skill invoked by other git skills).
+
+**Purpose:**
+- ✅ Check if gh CLI is installed and authenticated
+- 🔍 Search and filter pull requests
+- 📋 Get PR details and metadata
+- ✅ Check PR status checks and CI/CD results
+- 📝 Create and manage pull requests
+
+**Key capabilities:**
+- Installation verification and setup instructions
+- PR search by author, label, date, status
+- Status check parsing (SUCCESS, FAILURE, PENDING, etc.)
+- Workflow run logs retrieval
+- GraphQL API access for complex queries
+
+**Invoked by:**
+- `git/prepare-pull-request` - Verify gh before creating PRs
+- `git/review-pull-request` - Access PR data for reviews
+- `git/pull-request-status` - Check CI/CD status and failures
+
 #### `git/commit`
 Create meaningful git commits with well-structured messages.
 
@@ -767,16 +791,49 @@ Guidelines for creating reviewable Pull Requests.
 Structured approach to reviewing Pull Requests.
 
 **Process:**
-1. Gather PR info (description, files, commits)
-2. Understand the change (goal, scope, type)
-3. Load relevant programming skills for the languages in the PR
-4. Review across dimensions (correctness, best practices, tests, security, design)
-5. Summarize with categorized issues
+1. Ask user what to review (GitHub PR or local changes)
+2. Invoke `git/gh-client` to verify gh availability (if GitHub PR selected)
+3. Gather PR info (description, files, commits)
+4. Understand the change (goal, scope, type)
+5. Load relevant programming skills for the languages in the PR
+6. Review across dimensions (correctness, best practices, tests, security, design)
+7. Summarize with categorized issues
+
+**Review options:**
+- **GitHub PR** - Review specific PR by number/URL (requires gh CLI)
+- **Local changes** - Review changes in current directory vs branch (git only)
 
 **Issue Categories:**
 - **Must Fix** - Blocking issues (bugs, security, missing tests)
 - **Should Fix** - Non-blocking improvements
 - **Nitpicks** - Optional suggestions
+
+#### `git/pull-request-status`
+Check pull request CI/CD status and explain failures with actionable fixes.
+
+**Process:**
+1. Invoke `git/gh-client` to verify gh availability
+2. Get PR number (from user or auto-detect current branch)
+3. Fetch all status checks (CI/CD, tests, linting)
+4. Analyze failures and errors
+5. Fetch detailed logs for failed checks
+6. Explain failures in plain English
+7. Provide fix recommendations
+
+**Status checks:**
+- ✅ **SUCCESS** - Check passed
+- ❌ **FAILURE** - Check failed (investigate required)
+- ⚠️ **ERROR** - Check encountered error
+- 🔄 **PENDING** - Check still running
+- ⏭️ **SKIPPED** - Check was skipped
+- ⏱️ **TIMED_OUT** - Check timed out
+
+**Report includes:**
+- Overall merge readiness
+- Summary of all checks (passed/failed/pending)
+- Detailed failure explanations with error messages
+- Recommended fixes for each failure
+- Review and merge conflict status
 
 ### Radisha Skills
 

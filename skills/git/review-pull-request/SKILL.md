@@ -20,12 +20,22 @@ This skill provides a structured approach to PR review that:
 - Python code → Invoke `programming/python`
 - CMake files → Invoke `programming/cmake-best-practices`
 
+**ALSO invoke `git/gh-client`** when reviewing GitHub PRs to verify gh CLI availability.
+
 These skills contain the standards against which code should be reviewed.
 </IMPORTANT>
 
 ## Review Process
 
 ```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Phase 0: Ask User                             │
+│          What do you want to review?                             │
+│    - GitHub PR (requires gh CLI)                                 │
+│    - Local changes vs branch                                     │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                   User provides PR to review                     │
 │              (URL, PR number, or local branch)                   │
@@ -73,9 +83,98 @@ These skills contain the standards against which code should be reviewed.
                     └───────────────────────┘
 ```
 
+## Phase 0: Determine Review Type
+
+**IMPORTANT: When this skill is invoked, ALWAYS start by asking the user what they want to review.**
+
+Use the `AskUserQuestion` tool to present these options:
+
+### Option 1: Review GitHub Pull Request
+- **Description**: Review a specific PR from GitHub (by PR number or URL)
+- **Requirements**: Requires `gh` CLI tool to be installed and authenticated
+- **Typical use**: When reviewing PRs from teammates or external contributors
+
+### Option 2: Review Local Changes
+- **Description**: Review uncommitted or committed changes in the current directory compared to a base branch (e.g., `develop`, `main`)
+- **Requirements**: Only requires git
+- **Typical use**: Self-review before creating a PR
+
+### Implementation
+
+Ask the user:
+```
+Question: "What would you like to review?"
+Options:
+  1. "GitHub Pull Request (requires gh CLI)"
+     → Proceed to ask for PR number/URL
+  2. "Local changes compared to a branch"
+     → Proceed to ask for base branch (default: develop)
+```
+
+### If GitHub PR is selected:
+
+1. **Check if `gh` CLI is available:**
+   ```bash
+   which gh
+   ```
+
+2. **If `gh` is not found**, inform the user:
+   ```
+   The GitHub CLI (`gh`) is required to review GitHub PRs.
+
+   Installation instructions:
+
+   **Linux (Debian/Ubuntu):**
+   ```bash
+   sudo apt install gh
+   gh auth login
+   ```
+
+   **Linux (Fedora/RHEL):**
+   ```bash
+   sudo dnf install gh
+   gh auth login
+   ```
+
+   **macOS:**
+   ```bash
+   brew install gh
+   gh auth login
+   ```
+
+   **Other platforms:**
+   Visit https://cli.github.com/manual/installation
+
+   After installation, authenticate with:
+   ```bash
+   gh auth login
+   ```
+
+   Then re-run this skill.
+   ```
+
+3. **If `gh` is available**, ask for PR number or URL
+
+### If Local Changes is selected:
+
+1. Ask which base branch to compare against (default: `develop`)
+2. Use git commands to gather changes:
+   ```bash
+   # Get list of changed files
+   git diff --name-only <base-branch>...HEAD
+
+   # Get the actual diff
+   git diff <base-branch>...HEAD
+
+   # Get commit messages
+   git log <base-branch>...HEAD --oneline
+   ```
+
 ## Phase 1: Gather Information
 
-### Get PR Details
+Based on the review type selected in Phase 0:
+
+### For GitHub PR Review
 
 ```bash
 # Get PR info
@@ -86,6 +185,22 @@ gh pr diff <PR_NUMBER>
 
 # Get commit messages
 gh pr view <PR_NUMBER> --json commits --jq '.commits[].messageHeadline'
+```
+
+### For Local Changes Review
+
+```bash
+# Get list of changed files
+git diff --name-only <base-branch>...HEAD
+
+# Get the full diff
+git diff <base-branch>...HEAD
+
+# Get commit messages for this branch
+git log <base-branch>...HEAD --oneline
+
+# Show summary of changes
+git diff --stat <base-branch>...HEAD
 ```
 
 ### Identify Languages

@@ -20,6 +20,8 @@ This skill includes a mandatory verification phase that:
 - C++ code → `programming/cpp`, `programming/cpp/design-patterns`, `programming/cpp/stl-algorithms`
 - Python code → `programming/python`
 - CMake files → `programming/cmake-best-practices`
+
+**ALSO invoke `git/gh-client`** to verify GitHub CLI is available for PR creation.
 </IMPORTANT>
 
 ## PR Preparation Process
@@ -28,6 +30,12 @@ This skill includes a mandatory verification phase that:
 ┌─────────────────────────────────────────────────────────────────┐
 │                   User asks to prepare PR                        │
 └─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+                    ┌───────────────────────┐
+                    │ Phase 0: Verify gh    │
+                    │ Invoke: git/gh-client │
+                    └───────────────────────┘
                                 │
                                 ▼
                     ┌───────────────────────┐
@@ -68,6 +76,13 @@ This skill includes a mandatory verification phase that:
                     │ - Push and submit     │
                     └───────────────────────┘
 ```
+
+## Phase 0: Verify GitHub CLI
+
+**FIRST ACTION: Invoke `git/gh-client` skill**
+
+This ensures gh CLI is installed and authenticated for PR creation.
+If not available, git/gh-client provides installation instructions.
 
 ## Phase 1: Gather Information
 
