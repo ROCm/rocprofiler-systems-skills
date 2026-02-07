@@ -186,7 +186,6 @@ from the /api/parse endpoint.
 Used for:
 - Issue references: `Fixes #123`, `Closes #456`
 - Breaking changes: `BREAKING CHANGE: API signature changed`
-- Co-authors: `Co-authored-by: Name <email>`
 
 ## Phase 4: Review and Commit
 
