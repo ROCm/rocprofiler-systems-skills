@@ -238,6 +238,11 @@ Fixes #234
 
 ### Execute Commit
 
+<IMPORTANT>
+**DO NOT include Co-Authored-By lines in commit messages.**
+The commit message should only contain the type, scope, subject, body, and footer (issue references/breaking changes).
+</IMPORTANT>
+
 ```bash
 git commit -m "$(cat <<'EOF'
 feat(gpu): add temperature monitoring for MI300 GPUs
