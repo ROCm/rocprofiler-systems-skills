@@ -74,7 +74,7 @@ Use these shortcuts for fast access to common skills:
 <IMPORTANT>
 When a user types a quick command (e.g., `/plan`, `/pr`), invoke the corresponding skill immediately.
 
-For `/plan` specifically: Present an interactive menu using `AskUserQuestion` to ask which planning type (feature/bugfix/refactor/docs), then invoke the selected skill.
+For `/plan` specifically: Present an interactive menu using `AskUserQuestion` to ask which planning type (feature/bugfix/refactor/docs/architecture), then invoke the selected skill.
 </IMPORTANT>
 
 ## How to Access Skills
@@ -124,6 +124,7 @@ This ensures plans persist in files and can be resumed later.
 - `planning-bugfix` - Bug fixes (asks about changelog)
 - `planning-refactor` - Improving existing code (best practices, testability, reduce duplication)
 - `planning-docs` - Documentation (no changelog)
+- `planning-architecture` - Architecture documentation (iterative, chapter-by-chapter, no code)
 
 **Debugging skills:**
 - `debugging-rocprof-sys` - Interactive debugging of rocprofiler-systems issues (logs, gdb, strace)
@@ -419,6 +420,8 @@ digraph skill_flow {
     "Determine task type" -> "planning-bugfix" [label="bug fix"];
     "Determine task type" -> "planning-refactor" [label="refactoring"];
     "Determine task type" -> "planning-docs" [label="documentation"];
+    "Determine task type" -> "planning-architecture" [label="architecture doc"];
+    "planning-architecture" -> "Respond";
     "planning-feature" -> "Create TodoWrite from plan";
     "planning-bugfix" -> "Create TodoWrite from plan";
     "planning-refactor" -> "Create TodoWrite from plan";

@@ -19,6 +19,7 @@ Skills are automatically loaded from `~/.claude/skills/` and applied when releva
 | Plan a new feature | `planning-feature` |
 | Plan a bug fix | `planning-bugfix` |
 | Plan refactoring | `planning-refactor` |
+| Document architecture | `planning-architecture` |
 | Create a commit | `git-commit` |
 | Prepare a pull request | `git-prepare-pull-request` |
 | Review a pull request | `git-review-pull-request` |
@@ -52,7 +53,7 @@ Make every change as simple as possible. Only touch what's necessary. No over-en
 Skills are located in `~/.claude/skills/` (global) or the project's `skills/` directory.
 
 **Prefixes:**
-- `planning-` - Feature, bugfix, refactor, docs planning
+- `planning-` - Feature, bugfix, refactor, docs, architecture planning
 - `programming-` - Language-specific coding (cpp, python, cmake)
 - `testing-` - Test plans and test frameworks
 - `git-` - Pull requests and reviews
