@@ -125,6 +125,9 @@ This ensures plans persist in files and can be resumed later.
 - `planning-refactor` - Improving existing code (best practices, testability, reduce duplication)
 - `planning-docs` - Documentation (no changelog)
 
+**Debugging skills:**
+- `debugging-rocprof-sys` - Interactive debugging of rocprofiler-systems issues (logs, gdb, strace)
+
 **Exploration skills (before planning):**
 - `exploration-explore-code` - Systematic exploration of unfamiliar code before extraction
 
