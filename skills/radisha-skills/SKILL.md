@@ -47,6 +47,7 @@ These shortcuts invoke common skills directly:
 | `planning-bugfix` | Plan bug fixes (root cause analysis) |
 | `planning-refactor` | Plan refactoring (best practices focus) |
 | `planning-docs` | Plan documentation (no changelog/tests) |
+| `planning-architecture` | Architecture documentation (iterative, chapter-by-chapter) |
 | `planning-base` | Shared rules - do not invoke directly |
 
 ### Programming

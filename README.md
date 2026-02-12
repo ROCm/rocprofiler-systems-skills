@@ -112,7 +112,8 @@ Planning Phase (phases 0-4)     Execution Phase
                                             ├── feature ──→ planning/feature
                                             ├── bugfix ───→ planning/bugfix
                                             ├── refactor ─→ planning/refactor
-                                            └── docs ─────→ planning/docs
+                                            ├── docs ─────→ planning/docs
+                                            └── architecture → planning/architecture
                                                     │
                                          ┌──────────┴──────────┐
                                          │     PLAN MODE       │
@@ -287,6 +288,7 @@ All planning skills extend `planning/base` which provides core planning phases.
 | `planning/bugfix` | Fix broken behavior | Asks user | Asks for regression test |
 | `planning/refactor` | Improve existing code | Asks user | Asks after completion |
 | `planning/docs` | Documentation | No | No |
+| `planning/architecture` | Architecture documentation | No | No |
 
 ### Programming Skills
 
@@ -443,7 +445,9 @@ skills/
 │   │   └── SKILL.md
 │   ├── refactor/               # Refactoring planning
 │   │   └── SKILL.md
-│   └── docs/                   # Documentation planning
+│   ├── docs/                   # Documentation planning
+│   │   └── SKILL.md
+│   └── architecture/           # Architecture documentation
 │       └── SKILL.md
 ├── programming/                # Implementation skills
 │   ├── cpp/                    # C++ programming
@@ -540,6 +544,19 @@ Plan file format: `planning/refactor-<name>.md`
 For documentation. No changelog, no tests.
 
 Plan file format: `planning/docs-<name>.md`
+
+#### `planning/architecture`
+For architecture documentation. Produces iterative, user-guided documents describing component behavior, interactions, hierarchy, expansion points, and weaknesses. No code snippets -- prose and tables only.
+
+**Process:**
+1. Silent codebase analysis
+2. Ask scope (single component / multiple components / whole system)
+3. Present discovered components, ask what to cover
+4. Propose chapter outline, ask user before generating
+5. Generate ONE chapter at a time with user approval between each
+6. Full document review after all chapters approved
+
+Output file: `planning/architecture-<scope-name>.md`
 
 ### Programming Skills
 
