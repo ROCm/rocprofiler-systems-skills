@@ -25,6 +25,7 @@ Do NOT use this skill if the user wants you to:
 - Implement features
 - Create documentation files
 - **Systematic code exploration** with structured output (use `exploration-explore-code` skill)
+- **Debugging rocprof-sys issues** - crashes, hangs, incorrect output (use `debugging-rocprof-sys` skill)
 
 If action is needed, use the appropriate planning skill instead.
 
@@ -33,6 +34,7 @@ If action is needed, use the appropriate planning skill instead.
 |--------------|--------------|
 | "How does auth work here?" (quick answer) | `ask` |
 | "Explore the auth system so I can extract it" (structured analysis) | `exploration-explore-code` |
+| "rocprof-sys crashes when profiling my MPI app" (debugging) | `debugging-rocprof-sys` |
 
 ## How to Respond
 
