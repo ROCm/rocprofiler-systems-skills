@@ -146,6 +146,53 @@ uint32_t busy_percent;
 amdsmi_get_gpu_busy_percent(processor, &busy_percent);
 ```
 
+### Process List with Resource Usage
+
+```cpp
+// Get processes running on GPU
+uint32_t num_processes = 0;
+amdsmi_get_gpu_process_list(processor, &num_processes, nullptr);  // Get count
+
+std::vector<amdsmi_proc_info_t> proc_list(num_processes);
+amdsmi_get_gpu_process_list(processor, &num_processes, proc_list.data());
+
+for (const auto& proc : proc_list) {
+    std::cout << "PID: " << proc.pid << " Name: " << proc.name << std::endl;
+    std::cout << "  Memory: " << proc.mem / 1024 << " KB" << std::endl;
+    std::cout << "  GTT: " << proc.memory_usage.gtt_mem / 1024 << " KB" << std::endl;
+    std::cout << "  VRAM: " << proc.memory_usage.vram_mem / 1024 << " KB" << std::endl;
+    std::cout << "  CPU: " << proc.memory_usage.cpu_mem / 1024 << " KB" << std::endl;
+    std::cout << "  GFX engine: " << proc.engine_usage.gfx << " ns" << std::endl;
+    std::cout << "  ENC engine: " << proc.engine_usage.enc << " ns" << std::endl;
+    std::cout << "  SDMA usage: " << proc.sdma_usage << " us" << std::endl;
+    std::cout << "  CU occupancy: " << proc.cu_occupancy << std::endl;
+    std::cout << "  Evicted time: " << proc.evicted_time << " ms" << std::endl;
+}
+```
+
+#### amdsmi_proc_info_t Structure
+
+```cpp
+typedef struct {
+    uint32_t pid;                          // Process ID
+    char name[AMDSMI_MAX_STRING_LENGTH];   // Process name
+    uint64_t mem;                          // Total memory (bytes)
+    struct {
+        uint64_t gtt_mem;                  // GTT memory usage (bytes)
+        uint64_t cpu_mem;                  // CPU memory usage (bytes)
+        uint64_t vram_mem;                 // VRAM memory usage (bytes)
+    } memory_usage;
+    struct {
+        uint64_t gfx;                      // GFX engine usage (nanoseconds)
+        uint64_t enc;                      // Encoder engine usage (nanoseconds)
+    } engine_usage;
+    char container_name[AMDSMI_MAX_STRING_LENGTH];
+    uint32_t cu_occupancy;                 // Number of CUs utilized
+    uint32_t evicted_time;                 // Queue eviction time (milliseconds)
+    uint64_t sdma_usage;                   // SDMA usage (microseconds)
+} amdsmi_proc_info_t;
+```
+
 ### Device Info
 
 ```cpp
