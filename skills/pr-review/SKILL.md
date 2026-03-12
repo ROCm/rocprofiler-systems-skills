@@ -35,6 +35,15 @@ Review Pull Requests or local changes with structured, thorough analysis.
                     │ - Commit history      │
                     │ - CI status (GitHub)  │
                     │ - Existing comments   │
+                    │ - Detect tools        │
+                    └───────────────────────┘
+                                │
+                                ▼
+                    ┌───────────────────────┐
+                    │ Phase 1.5: Run Tools  │
+                    │ - clang-tidy (C++)    │
+                    │ - IDE diagnostics     │
+                    │ - Other linters       │
                     └───────────────────────┘
                                 │
                                 ▼
@@ -60,7 +69,7 @@ Review Pull Requests or local changes with structured, thorough analysis.
                                 ▼
                     ┌───────────────────────┐
                     │ Phase 4: Review Code  │
-                    │ - Read context around │
+                    │ - Include tool output │
                     │ - Apply skill rules   │
                     │ - Score by severity   │
                     │ - Provide fix code    │
@@ -190,6 +199,146 @@ Scan changed files to determine which programming skills to invoke:
 | `.cpp`, `.hpp`, `.h`, `.cc` | `programming-cpp` |
 | `.py` | `programming-python` |
 | `CMakeLists.txt`, `.cmake` | `programming-cmake-best-practices` |
+
+## Phase 1.5: Run Static Analysis Tools
+
+**Before manual review, run available static analysis tools on changed files.**
+
+### Detect Available Tools
+
+```bash
+# Check for C++ tools
+which clang-tidy 2>/dev/null && echo "clang-tidy available"
+which cppcheck 2>/dev/null && echo "cppcheck available"
+
+# Check for Python tools
+which pylint 2>/dev/null && echo "pylint available"
+which mypy 2>/dev/null && echo "mypy available"
+which ruff 2>/dev/null && echo "ruff available"
+
+# Check for general tools
+which shellcheck 2>/dev/null && echo "shellcheck available"
+```
+
+### Run clang-tidy (C++)
+
+**If clang-tidy is available and project has compile_commands.json:**
+
+```bash
+# Check if compile_commands.json exists
+if [ -f "build/compile_commands.json" ] || [ -f "compile_commands.json" ]; then
+    # Run clang-tidy on changed C++ files
+    for file in $(git diff --name-only <base-branch>...HEAD | grep -E '\.(cpp|cc|cxx|hpp|h)$'); do
+        if [ -f "$file" ]; then
+            clang-tidy "$file" -p build/ 2>/dev/null
+        fi
+    done
+fi
+```
+
+**Common clang-tidy checks to look for:**
+
+| Check Category | Examples |
+|----------------|----------|
+| `bugprone-*` | use-after-move, dangling-handle, infinite-loop |
+| `performance-*` | unnecessary-copy, move-const-arg, inefficient-vector-operation |
+| `modernize-*` | use-auto, use-nullptr, loop-convert, use-override |
+| `readability-*` | identifier-naming, magic-numbers, redundant-string-cstr |
+| `cppcoreguidelines-*` | pro-bounds-pointer-arithmetic, owning-memory |
+| `clang-analyzer-*` | core.NullDereference, core.UndefinedBinaryOperatorResult |
+
+### Use IDE Diagnostics (if available)
+
+**If running in VS Code with MCP, use IDE diagnostics:**
+
+```
+Use mcp__ide__getDiagnostics to get compiler/linter warnings
+```
+
+This provides real-time diagnostics from:
+- Compiler errors/warnings
+- clangd analysis
+- Language server warnings
+
+### Run Other Linters
+
+**Get list of changed files first:**
+```bash
+# For PR review
+changed_files=$(git diff --name-only <base-branch>...HEAD)
+
+# For local changes (no PR)
+changed_files=$(git diff --name-only HEAD)
+```
+
+**For Python files:**
+```bash
+# Filter to Python files only
+py_files=$(echo "$changed_files" | grep -E '\.py$' | tr '\n' ' ')
+
+if [ -n "$py_files" ]; then
+    # ruff (fast, recommended)
+    ruff check $py_files
+
+    # or pylint
+    pylint $py_files
+
+    # or mypy for type checking
+    mypy $py_files
+fi
+```
+
+**For shell scripts:**
+```bash
+# Filter to shell files only
+sh_files=$(echo "$changed_files" | grep -E '\.(sh|bash)$' | tr '\n' ' ')
+
+if [ -n "$sh_files" ]; then
+    shellcheck $sh_files
+fi
+```
+
+**For CMake files:**
+```bash
+cmake_files=$(echo "$changed_files" | grep -E '(CMakeLists\.txt|\.cmake)$' | tr '\n' ' ')
+
+if [ -n "$cmake_files" ]; then
+    # cmake-lint if available
+    which cmake-lint >/dev/null 2>&1 && cmake-lint $cmake_files
+fi
+```
+
+### Include Tool Findings in Review
+
+**Incorporate static analysis findings into the review report:**
+
+```markdown
+## Static Analysis Results
+
+### clang-tidy (3 warnings)
+
+| File:Line | Check | Message |
+|-----------|-------|---------|
+| `parser.cpp:42` | bugprone-use-after-move | 'data' used after it was moved |
+| `handler.cpp:78` | performance-unnecessary-copy-initialization | Use const& to avoid copy |
+| `utils.cpp:15` | modernize-use-nullptr | Use nullptr instead of NULL |
+
+### IDE Diagnostics (1 error, 2 warnings)
+
+| File:Line | Severity | Message |
+|-----------|----------|---------|
+| `config.cpp:23` | Error | No matching function for call to 'process' |
+| `main.cpp:45` | Warning | Unused variable 'result' |
+```
+
+<IMPORTANT>
+**Static analysis issues should be included in the review report:**
+- `bugprone-*` and `clang-analyzer-*` → **Must Fix** (potential bugs)
+- `performance-*` → **Should Fix** (performance issues)
+- `modernize-*` and `readability-*` → **Nitpick** (style/modernization)
+
+Do not ignore tool findings. If a tool catches it, mention it.
+</IMPORTANT>
 
 ## Phase 2: Detect Scope and Type
 
