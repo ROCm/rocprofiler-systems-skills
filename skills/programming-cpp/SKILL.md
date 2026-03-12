@@ -729,6 +729,246 @@ constexpr int offset = 3; // Account for metadata bytes in packet header
 - Explaining standard language features or library calls
 - Commenting every line or block
 
+## Eliminating if/else Branching
+
+**Long if/else chains are a code smell.** Replace with these patterns:
+
+### When to Refactor
+
+| Smell | Threshold |
+|-------|-----------|
+| if/else chain | 3+ branches |
+| switch statement | 5+ cases |
+| Deep nesting | 3+ levels |
+| Type-based branching | Any `dynamic_cast` chain |
+
+### Pattern 1: Polymorphism (Strategy/State)
+
+**Use when:** Behavior varies by type, need extensibility.
+
+```cpp
+// BAD: if/else chain
+void process(int type, Data& data) {
+    if (type == 1) {
+        handleType1(data);
+    } else if (type == 2) {
+        handleType2(data);
+    } else if (type == 3) {
+        handleType3(data);
+    }
+}
+
+// GOOD: Polymorphism
+class Handler {
+public:
+    virtual ~Handler() = default;
+    virtual void process(Data& data) = 0;
+};
+
+class Type1Handler : public Handler {
+    void process(Data& data) override { /* handle type 1 */ }
+};
+
+// Usage - no if/else
+void process(Handler& handler, Data& data) {
+    handler.process(data);
+}
+```
+
+### Pattern 2: Lookup Table / Map
+
+**Use when:** Mapping values to values, simple dispatch.
+
+```cpp
+// BAD: if/else for value mapping
+std::string getStatusText(int code) {
+    if (code == 200) return "OK";
+    else if (code == 404) return "Not Found";
+    else if (code == 500) return "Server Error";
+    return "Unknown";
+}
+
+// GOOD: Lookup table
+const std::unordered_map<int, std::string> STATUS_TEXT = {
+    {200, "OK"},
+    {404, "Not Found"},
+    {500, "Server Error"}
+};
+
+std::string getStatusText(int code) {
+    auto it = STATUS_TEXT.find(code);
+    return it != STATUS_TEXT.end() ? it->second : "Unknown";
+}
+```
+
+### Pattern 3: Command Map (Function Dispatch)
+
+**Use when:** Different actions based on command/type.
+
+```cpp
+// BAD: if/else dispatch
+void execute(const std::string& cmd, Context& ctx) {
+    if (cmd == "start") start(ctx);
+    else if (cmd == "stop") stop(ctx);
+    else if (cmd == "pause") pause(ctx);
+    else if (cmd == "resume") resume(ctx);
+}
+
+// GOOD: Command map
+using CommandFn = std::function<void(Context&)>;
+const std::unordered_map<std::string, CommandFn> COMMANDS = {
+    {"start",  [](Context& ctx) { start(ctx); }},
+    {"stop",   [](Context& ctx) { stop(ctx); }},
+    {"pause",  [](Context& ctx) { pause(ctx); }},
+    {"resume", [](Context& ctx) { resume(ctx); }}
+};
+
+void execute(const std::string& cmd, Context& ctx) {
+    if (auto it = COMMANDS.find(cmd); it != COMMANDS.end()) {
+        it->second(ctx);
+    }
+}
+```
+
+### Pattern 4: std::variant + std::visit
+
+**Use when:** Type-safe union, different handling per type.
+
+```cpp
+// BAD: dynamic_cast chain
+double getArea(Shape* shape) {
+    if (auto* c = dynamic_cast<Circle*>(shape)) {
+        return 3.14159 * c->radius * c->radius;
+    } else if (auto* r = dynamic_cast<Rectangle*>(shape)) {
+        return r->width * r->height;
+    } else if (auto* t = dynamic_cast<Triangle*>(shape)) {
+        return 0.5 * t->base * t->height;
+    }
+    return 0;
+}
+
+// GOOD: std::variant + std::visit
+using Shape = std::variant<Circle, Rectangle, Triangle>;
+
+double getArea(const Shape& shape) {
+    return std::visit([](const auto& s) -> double {
+        using T = std::decay_t<decltype(s)>;
+        if constexpr (std::is_same_v<T, Circle>) {
+            return 3.14159 * s.radius * s.radius;
+        } else if constexpr (std::is_same_v<T, Rectangle>) {
+            return s.width * s.height;
+        } else {
+            return 0.5 * s.base * s.height;
+        }
+    }, shape);
+}
+```
+
+### Pattern 5: Early Return (Guard Clauses)
+
+**Use when:** Validation or precondition checks cause deep nesting.
+
+```cpp
+// BAD: Deep nesting
+Result process(Request* req) {
+    if (req != nullptr) {
+        if (req->isValid()) {
+            if (req->hasPermission()) {
+                if (req->data.size() > 0) {
+                    return doActualWork(req);
+                }
+            }
+        }
+    }
+    return Result::Error;
+}
+
+// GOOD: Early return (flat structure)
+Result process(Request* req) {
+    if (!req) return Result::Error;
+    if (!req->isValid()) return Result::InvalidRequest;
+    if (!req->hasPermission()) return Result::Forbidden;
+    if (req->data.empty()) return Result::EmptyData;
+
+    return doActualWork(req);
+}
+```
+
+### Pattern 6: Null Object
+
+**Use when:** Eliminating null checks throughout code.
+
+```cpp
+// BAD: Null checks everywhere
+void logMessage(Logger* logger, const std::string& msg) {
+    if (logger != nullptr) {
+        logger->log(msg);
+    }
+}
+
+// GOOD: Null Object pattern
+class NullLogger : public Logger {
+    void log(const std::string&) override { /* intentionally empty */ }
+};
+
+// Always have valid logger - no null checks needed
+Logger& getLogger() {
+    static NullLogger nullLogger;
+    return currentLogger ? *currentLogger : nullLogger;
+}
+
+void logMessage(Logger& logger, const std::string& msg) {
+    logger.log(msg);  // No null check needed
+}
+```
+
+### Pattern 7: Template + if constexpr
+
+**Use when:** Compile-time type-based branching.
+
+```cpp
+// BAD: Runtime type checking
+void serialize(const std::any& value, std::ostream& out) {
+    if (value.type() == typeid(int)) {
+        out << std::any_cast<int>(value);
+    } else if (value.type() == typeid(std::string)) {
+        out << std::any_cast<std::string>(value);
+    }
+}
+
+// GOOD: Compile-time branching (when types known)
+template<typename T>
+void serialize(const T& value, std::ostream& out) {
+    if constexpr (std::is_integral_v<T>) {
+        out << value;
+    } else if constexpr (std::is_same_v<T, std::string>) {
+        out << '"' << value << '"';
+    } else {
+        static_assert(always_false<T>, "Unsupported type");
+    }
+}
+```
+
+### Pattern Summary
+
+| Pattern | Best For | Overhead |
+|---------|----------|----------|
+| **Polymorphism** | Extensible behavior, OOP design | Virtual call |
+| **Lookup table** | Value mapping | Map lookup |
+| **Command map** | Action dispatch | Map + function call |
+| **std::variant** | Type-safe unions, closed set | Visit overhead |
+| **Early return** | Validation, preconditions | None |
+| **Null Object** | Eliminating null checks | None |
+| **if constexpr** | Compile-time branching | None (compile-time) |
+
+### When NOT to Refactor
+
+Keep simple if/else when:
+- Only 2 branches
+- Logic is truly simple and clear
+- Refactoring would add complexity without benefit
+- Performance-critical hot path where map lookup is slower than branch
+
 ## Code Style Checklist
 
 Before submitting C++ code:

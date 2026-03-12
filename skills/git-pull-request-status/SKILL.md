@@ -96,37 +96,13 @@ If found, ask user: "Found PR #123 for branch `feature-branch`. Check this PR?"
 
 ## Phase 2: Fetch PR Status Data
 
-### Get Comprehensive PR Status
+Use `git-gh-client` Phase 3 commands to fetch PR status:
+- `gh pr view <PR_NUMBER> --json statusCheckRollup,reviewDecision,mergeable,...`
+- `gh pr checks <PR_NUMBER> || true` (always handle exit code!)
 
-**Use a combination of commands for complete status information.**
+See `git-gh-client` for full command syntax and exit code handling.
 
-```bash
-# 1. Get PR metadata (avoid deprecated fields)
-# NOTE: Do NOT request deprecated fields (projectCards, projectItems)
-gh pr view <PR_NUMBER> --json \
-  number,title,state,isDraft,\
-  author,baseRefName,headRefName,\
-  statusCheckRollup,reviewDecision,\
-  mergeable,mergeStateStatus,\
-  createdAt,updatedAt
-
-# 2. Get check status (IMPORTANT: Handle exit code!)
-# Exit code 1 means checks failed, NOT command failed
-gh pr checks <PR_NUMBER> 2>&1 || true
-
-# Or capture for later analysis
-check_output=$(gh pr checks <PR_NUMBER> 2>&1 || true)
-check_exit_code=$?
-```
-
-**CRITICAL:** Always use `|| true` or handle exit code when using `gh pr checks`:
-- Exit code 0 = All checks passed
-- Exit code 1 = Some checks failed (this is NORMAL, not an error!)
-- The output is valid regardless of exit code
-
-### Parse Response
-
-The response contains:
+### Key Fields to Analyze
 
 | Field | Description |
 |-------|-------------|
@@ -134,43 +110,9 @@ The response contains:
 | `isDraft` | Is this a draft PR? |
 | `reviewDecision` | APPROVED, CHANGES_REQUESTED, REVIEW_REQUIRED |
 | `mergeable` | MERGEABLE, CONFLICTING, UNKNOWN |
-| `mergeStateStatus` | Overall merge status |
 | `statusCheckRollup` | Array of all status checks |
 
 ## Phase 3: Analyze Status Checks
-
-### Parse Status Check Rollup
-
-```bash
-gh pr view <PR_NUMBER> --json statusCheckRollup --jq '
-  .statusCheckRollup[] |
-  {
-    name: (.name // .context),
-    conclusion: .conclusion,
-    status: .status,
-    detailsUrl: .detailsUrl,
-    checkType: (if .workflowName then "GitHub Actions" else "External Check" end),
-    workflowName: .workflowName
-  }
-'
-```
-
-### Categorize Results
-
-Group checks by conclusion:
-
-```bash
-# Count by status
-gh pr view <PR_NUMBER> --json statusCheckRollup --jq '
-  .statusCheckRollup |
-  group_by(.conclusion) |
-  map({
-    conclusion: .[0].conclusion,
-    count: length,
-    checks: [.[].name]
-  })
-'
-```
 
 ### Check Conclusions
 
@@ -186,47 +128,13 @@ gh pr view <PR_NUMBER> --json statusCheckRollup --jq '
 
 ## Phase 4: Fetch Failure Details
 
-For each FAILURE or ERROR:
+For each FAILURE or ERROR, use `git-gh-client` commands to:
+1. Get check run details via `gh api repos/{owner}/{repo}/check-runs/...`
+2. Get workflow logs via `gh run view <RUN_ID> --log-failed`
 
-### Step 4.1: Get Check Run ID
+See `git-gh-client` Phase 3 for full API commands.
 
-```bash
-# Get check run ID for failed check
-gh api repos/{owner}/{repo}/commits/<HEAD_SHA>/check-runs \
-  --jq '.check_runs[] | select(.name == "<CHECK_NAME>") | {id, name, conclusion, html_url}'
-```
-
-### Step 4.2: Get Check Run Details
-
-```bash
-# Get detailed output for a check run
-gh api repos/{owner}/{repo}/check-runs/<CHECK_RUN_ID> --jq '
-  {
-    name: .name,
-    conclusion: .conclusion,
-    output: {
-      title: .output.title,
-      summary: .output.summary,
-      text: .output.text
-    },
-    html_url: .html_url
-  }
-'
-```
-
-### Step 4.3: Get Workflow Run Logs (GitHub Actions)
-
-If the check is a GitHub Actions workflow:
-
-```bash
-# Get workflow run ID from check
-gh api repos/{owner}/{repo}/check-runs/<CHECK_RUN_ID> --jq '.check_suite.id'
-
-# Get logs for failed jobs
-gh run view <RUN_ID> --log-failed
-```
-
-### Step 4.4: Extract Error Messages
+### Extract Error Messages
 
 Common error patterns to look for in logs:
 
@@ -243,47 +151,7 @@ Common error patterns to look for in logs:
 
 ## Phase 5: Explain and Recommend
 
-### Complete Example Workflow
-
-```bash
-# Complete workflow for checking PR status
-PR_NUMBER=<PR_NUMBER>
-
-echo "Checking PR #$PR_NUMBER status..."
-
-# 1. Get PR metadata
-pr_data=$(gh pr view $PR_NUMBER --json \
-  number,title,state,isDraft,author,\
-  statusCheckRollup,reviewDecision,mergeable)
-
-# 2. Get human-readable check output (HANDLE EXIT CODE!)
-echo -e "\n=== Check Status ==="
-gh pr checks $PR_NUMBER 2>&1 || true
-check_status=$?
-
-# 3. Analyze results
-if [ $check_status -eq 0 ]; then
-    echo -e "\n✅ All checks passed!"
-else
-    echo -e "\n⚠️  Some checks failed (see details above)"
-
-    # Get failed checks from JSON
-    echo -e "\nFailed checks:"
-    echo "$pr_data" | jq -r '.statusCheckRollup[] |
-      select(.conclusion == "FAILURE" or .conclusion == "ERROR") |
-      "- \(.name): \(.conclusion)"'
-fi
-
-# 4. Check review status
-review_status=$(echo "$pr_data" | jq -r '.reviewDecision // "REVIEW_REQUIRED"')
-echo -e "\n=== Review Status ==="
-echo "Status: $review_status"
-
-# 5. Check merge status
-mergeable=$(echo "$pr_data" | jq -r '.mergeable')
-echo -e "\n=== Merge Status ==="
-echo "Mergeable: $mergeable"
-```
+This is the unique value of this skill - interpreting results and providing actionable guidance.
 
 ### Generate Status Report
 
@@ -467,7 +335,7 @@ After creating a PR with `git-prepare-pull-request`:
 ### During PR Review (from review-pull-request)
 
 ```markdown
-While reviewing with `git-review-pull-request`:
+While reviewing with `pr-review`:
 → Invoke `git-pull-request-status` to verify checks before review
 → Ensure CI/CD passes before detailed code review
 → Check for merge conflicts
@@ -475,25 +343,9 @@ While reviewing with `git-review-pull-request`:
 
 ## Advanced: Custom Status Checks
 
-### Adding Required Status Checks
-
-Some repos require specific checks to pass. List them:
-
-```bash
-# Get required status checks for a branch
-gh api repos/{owner}/{repo}/branches/<BRANCH>/protection \
-  --jq '.required_status_checks.contexts'
-```
-
-### Re-running Failed Checks
-
-```bash
-# Re-run failed GitHub Actions workflow
-gh run rerun <RUN_ID> --failed
-
-# Re-run all checks
-gh run rerun <RUN_ID>
-```
+See `git-gh-client` for commands to:
+- Get required status checks for a branch
+- Re-run failed GitHub Actions workflows
 
 ## Error Handling
 
@@ -540,22 +392,7 @@ Would you like me to:
 
 ## Quick Reference
 
-```bash
-# Full status check workflow
-gh pr view <PR_NUMBER> --json statusCheckRollup,reviewDecision,mergeable
-
-# Get only failed checks
-gh pr view <PR_NUMBER> --json statusCheckRollup --jq '.statusCheckRollup[] | select(.conclusion == "FAILURE")'
-
-# Check if PR is ready to merge
-gh pr view <PR_NUMBER> --json mergeable,statusCheckRollup --jq '
-  if .mergeable == "MERGEABLE" and
-     (.statusCheckRollup | all(.conclusion == "SUCCESS"))
-  then "✅ Ready to merge"
-  else "❌ Not ready to merge"
-  end
-'
-```
+See `git-gh-client` for all gh command syntax. This skill focuses on interpreting results.
 
 ## References
 

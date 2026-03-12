@@ -29,7 +29,7 @@ This skill is used both **directly** (when user asks to list/filter PRs) and **i
 
 **Invoked by other skills:**
 - `git-prepare-pull-request` - Creating PRs
-- `git-review-pull-request` - Reviewing PRs
+- `pr-review` - Reviewing PRs
 - `git-pull-request-status` - Checking PR status and CI/CD
 
 ## Phase 1: Check gh CLI Availability

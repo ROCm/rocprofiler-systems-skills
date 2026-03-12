@@ -7,7 +7,7 @@ AI-assisted development with structured workflows.
 **In Claude Code CLI:** Just ask naturally in plain English:
 - "commit these changes" → uses `git-commit` skill
 - "plan this feature" → uses `planning-feature` skill
-- "review the PR" → uses `git-review-pull-request` skill
+- "review the PR" → uses `pr-review` skill
 - "create a test plan" → uses `testing-testplan` skill
 
 Skills are automatically loaded from `~/.claude/skills/` and applied when relevant.
@@ -22,7 +22,7 @@ Skills are automatically loaded from `~/.claude/skills/` and applied when releva
 | Document architecture | `planning-architecture` |
 | Create a commit | `git-commit` |
 | Prepare a pull request | `git-prepare-pull-request` |
-| Review a pull request | `git-review-pull-request` |
+| Review a pull request | `pr-review` |
 | Create test plan | `testing-testplan` |
 | Explore unfamiliar code | `exploration-explore-code` |
 | List all skills | `radisha-skills` |

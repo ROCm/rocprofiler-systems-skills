@@ -5,7 +5,7 @@ description: Prepare well-structured Pull Requests - verify code quality, check 
 
 # Prepare Pull Request Skill
 
-Use this skill when planning and preparing Pull Requests. For reviewing PRs, use `git-review-pull-request` instead.
+Use this skill when planning and preparing Pull Requests. For reviewing PRs, use `pr-review` instead.
 
 <IMPORTANT>
 **Before creating a PR, run comprehensive code verification.**

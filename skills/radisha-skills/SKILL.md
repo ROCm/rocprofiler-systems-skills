@@ -25,7 +25,7 @@ These shortcuts invoke common skills directly:
 | `/plan-refactor` | Plan refactoring | `planning-refactor` |
 | `/commit` | Create a commit | `git-commit` |
 | `/pr` | Prepare a pull request | `git-prepare-pull-request` |
-| `/review` | Review a pull request | `git-review-pull-request` |
+| `/review` | Review a pull request | `pr-review` |
 | `/testplan` | Create a test plan | `testing-testplan` |
 | `/explore` | Explore unfamiliar code | `exploration-explore-code` |
 | `/skills` | List all skills (this) | `radisha-skills` |
@@ -81,7 +81,7 @@ These shortcuts invoke common skills directly:
 |-------|-------------|
 | `git-commit` | Create meaningful commit messages |
 | `git-prepare-pull-request` | Prepare reviewable PRs |
-| `git-review-pull-request` | Structured PR review |
+| `pr-review` | Structured PR review |
 
 ### Exploration
 

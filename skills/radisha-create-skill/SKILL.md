@@ -352,6 +352,6 @@ Before completing, verify:
 | `testing-` | Testing approaches | testing-testplan, testing-gtest-gmock, testing-pytest |
 | `exploration-` | Code understanding | exploration-explore-code |
 | `libraries-` | Library-specific knowledge | libraries-amd-smi |
-| `git-` | Git workflows | git-prepare-pull-request, git-review-pull-request |
+| `git-` | Git workflows | git-prepare-pull-request, pr-review |
 | `radisha-` | Radisha management | radisha-update, radisha-create-skill |
 | `ask` | Quick explanations | (standalone) |
