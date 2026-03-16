@@ -137,6 +137,9 @@ This ensures plans persist in files and can be resumed later.
 - Python: `programming-python`
 - CMake: `programming-cmake-best-practices`
 
+**Code quality skills:**
+- `code-smells` - Detect anti-patterns and refactoring opportunities (used by `pr-review`)
+
 **Library-specific skills:**
 - AMD SMI: `libraries-amd-smi` - GPU/CPU monitoring and management
 

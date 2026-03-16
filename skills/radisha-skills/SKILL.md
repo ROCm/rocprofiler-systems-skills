@@ -30,6 +30,7 @@ These shortcuts invoke common skills directly:
 | `/explore` | Explore unfamiliar code | `exploration-explore-code` |
 | `/skills` | List all skills (this) | `radisha-skills` |
 | `/update` | Update radisha | `radisha-update` |
+| `/improve-skill` | Improve an existing skill | `radisha-improve-skill` |
 
 ## All Skills by Category
 
@@ -73,7 +74,15 @@ These shortcuts invoke common skills directly:
 
 | Skill | Description |
 |-------|-------------|
-| `libraries-amd-smi` | AMD SMI library for GPU/CPU monitoring |
+| `library-amd-smi` | AMD SMI library for GPU/CPU/NIC monitoring |
+
+### Projects
+
+| Skill | Description |
+|-------|-------------|
+| `rocprofsys` | ROCm Systems Profiler workflows (main entry point) |
+| `rocprofsys-configure` | Configure rocprofiler-systems build |
+| `rocprofsys-build` | Build and install rocprofiler-systems |
 
 ### Git
 
@@ -89,12 +98,22 @@ These shortcuts invoke common skills directly:
 |-------|-------------|
 | `exploration-explore-code` | Systematic codebase exploration |
 
+### Code Quality
+
+| Skill | Description |
+|-------|-------------|
+| `code-smells` | Detect code smells (refactoring.guru catalog) |
+| `refactoring-techniques` | Apply 60+ refactoring techniques (Extract Method, Move Field, etc.) |
+| `static-analysis` | Run linters and static analysis tools |
+| `architecture-analyze` | Analyze module boundaries, dependencies |
+
 ### Radisha Management
 
 | Skill | Description |
 |-------|-------------|
 | `radisha-update` | Update radisha to latest version |
 | `radisha-create-skill` | Create new skills with validation |
+| `radisha-improve-skill` | Improve existing skills when gaps found |
 | `radisha-skills` | List all skills (this skill) |
 
 ### Utility

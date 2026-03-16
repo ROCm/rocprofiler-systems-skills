@@ -324,6 +324,14 @@ Applied during implementation phase. For refactoring, ALL language-specific skil
 |-------|-------------|
 | `libraries/amd-smi` | AMD SMI C++ library for GPU/CPU monitoring and management |
 
+### Project Skills
+
+| Skill | Description |
+|-------|-------------|
+| `rocprofsys` | ROCm Systems Profiler workflows - main entry point for configure/build/test |
+| `rocprofsys-configure` | Configure rocprofiler-systems build with CMake presets |
+| `rocprofsys-build` | Build, test, and install rocprofiler-systems |
+
 ### Git Skills
 
 | Skill | Description |
@@ -348,6 +356,12 @@ Applied during implementation phase. For refactoring, ALL language-specific skil
 | `radisha/help` | Full workflow reference and detailed rules |
 | `radisha/create-skill` | Create new skills with validation and integration |
 | `radisha/skills` | List all available skills with aliases |
+
+### Code Quality Skills
+
+| Skill | Description |
+|-------|-------------|
+| `code-smells` | Detect anti-patterns and refactoring opportunities based on refactoring.guru catalog |
 
 ### Other Skills
 
@@ -436,6 +450,8 @@ Benefits:
 skills/
 ├── ask/                        # Questions without actions
 │   └── SKILL.md
+├── code-smells/                # Code smell detection catalog
+│   └── SKILL.md
 ├── planning/                   # Planning skills (run first)
 │   ├── base/                   # Shared planning rules (don't invoke directly)
 │   │   └── SKILL.md
@@ -472,6 +488,12 @@ skills/
 ├── libraries/                  # Library-specific skills
 │   └── amd-smi/                # AMD SMI library
 │       └── SKILL.md
+├── rocprofsys/                 # ROCm Systems Profiler project
+│   └── SKILL.md                # Main entry point
+├── rocprofsys-configure/       # Configure rocprofsys builds
+│   └── SKILL.md
+├── rocprofsys-build/           # Build rocprofsys project
+│   └── SKILL.md
 ├── exploration/                # Code exploration skills
 │   └── explore-code/           # Systematic codebase exploration
 │       └── SKILL.md
@@ -713,6 +735,65 @@ Covers:
 - Error handling patterns
 - Common pitfalls and best practices
 
+### Project Skills
+
+#### `rocprofsys`
+Main entry point for ROCm Systems Profiler (rocprofiler-systems) workflows.
+
+**Use when:**
+- User asks about rocprofiler-systems or rocprof-sys
+- User wants to configure, build, or work with the project
+- User needs guidance on project structure or workflows
+
+**Features:**
+- Project overview and structure
+- Workflow dispatcher (configure → build → test)
+- CMake presets reference
+- Common issues and troubleshooting
+- Routes to specialized sub-skills
+
+#### `rocprofsys-configure`
+Configure rocprofiler-systems build with CMake presets and custom options.
+
+**Use when:**
+- Setting up build for first time
+- Switching between debug/release builds
+- Changing CMake options or dependencies
+
+**Features:**
+- Dynamic project location detection (supports git worktrees)
+- CMake preset selection (ci, debug, release, debug-optimized)
+- Dependency management (Dyninst, TBB, Boost, elfutils)
+- Optional features (Python, MPI, PAPI)
+- Build directory configuration
+
+**Covers:**
+- Monorepo structure awareness
+- CMakePresets.json usage
+- Building dependencies from source vs system packages
+- Common configuration errors
+
+#### `rocprofsys-build`
+Build, test, and install rocprofiler-systems after configuration.
+
+**Use when:**
+- Project is already configured
+- User wants to compile rocprofsys
+- Running tests or installing
+
+**Features:**
+- Incremental and full builds
+- Parallel build job optimization
+- Test execution with CTest
+- Installation to prefix
+- Build error diagnosis
+
+**Covers:**
+- Memory-aware parallel builds
+- Build error handling (OOM, dependencies, linker errors)
+- Test result analysis
+- Installation and environment setup
+
 ### Exploration Skills
 
 #### `exploration/explore-code`
@@ -884,6 +965,37 @@ Update radisha to the latest version by pulling from the git repository.
 
 #### `radisha/skills`
 List all available skills with their descriptions and command aliases.
+
+### Code Quality Skills
+
+#### `code-smells`
+Comprehensive catalog of code smells for detecting anti-patterns and identifying refactoring opportunities. Based on the [Refactoring.Guru Code Smells Catalog](https://refactoring.guru/refactoring/smells).
+
+**Categories covered (22 smells total):**
+
+| Category | Smells |
+|----------|--------|
+| Bloaters | Long Method, Large Class, Primitive Obsession, Long Parameter List, Data Clumps |
+| Object-Orientation Abusers | Switch Statements, Temporary Field, Refused Bequest, Alternative Classes with Different Interfaces |
+| Change Preventers | Divergent Change, Shotgun Surgery, Parallel Inheritance Hierarchies |
+| Dispensables | Comments, Duplicate Code, Lazy Class, Data Class, Dead Code, Speculative Generality |
+| Couplers | Feature Envy, Inappropriate Intimacy, Message Chains, Middle Man, Incomplete Library Class |
+
+**Severity levels:**
+- Critical (100): Causes bugs, crashes, security issues
+- Must Fix (80): Significantly harms maintainability
+- Should Fix (50): Reduces code quality
+- Nitpick (20): Minor improvement opportunity
+
+**Key thresholds:**
+- Long Method: >50 lines (Should Fix), >100 lines (Must Fix)
+- Large Class: >500 lines (Should Fix), >1000 lines (Must Fix)
+- Long Parameter List: >4 params (Should Fix), >6 params (Must Fix)
+- Deep Nesting: >3 levels (Should Fix), >5 levels (Must Fix)
+
+**Used by:**
+- `pr-review` Agent 3 (Code Smells Agent)
+- `planning-refactor` for identifying improvement targets
 
 ## Contributing
 
