@@ -12,7 +12,9 @@ Use this skill when improving EXISTING code without changing its external behavi
 
 Follow all base planning rules, plus the refactoring-specific rules below.
 
-**Mandatory:** Invoke and apply ALL relevant programming skills during refactoring:
+**Mandatory:** Invoke and apply ALL relevant skills during refactoring:
+- `code-smells` - Identify WHAT to fix (smell detection)
+- `refactoring-techniques` - HOW to fix it (60+ techniques with examples)
 - `programming-cpp` - C++ best practices, performance, testability
 - `programming-cpp-design-patterns` - Suggest applicable patterns
 - `programming-cpp-stl-algorithms` - Replace loops with STL algorithms
