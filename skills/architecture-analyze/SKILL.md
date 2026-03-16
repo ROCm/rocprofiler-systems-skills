@@ -8,8 +8,12 @@ description: Analyze architectural changes - review module boundaries, dependenc
 Analyze proposed architectural changes or validate designs before implementation.
 
 <IMPORTANT>
-This skill spawns an **Explore agent** to understand the existing codebase before analyzing changes.
-Do not skip the exploration phase - architectural analysis requires context.
+This skill:
+1. **Reads memory first** - Check what you already know about this codebase's architecture
+2. **Spawns an Explore agent** - Only for areas not covered by memory
+3. **Updates memory after** - Persist new architectural knowledge for future reviews
+
+Memory location: `~/.claude/projects/<project>/memory/agents/architecture.md`
 </IMPORTANT>
 
 ## When to Use
@@ -38,8 +42,14 @@ Invoke this skill when PR/changes include:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                 Phase 1: Explore Existing Architecture           │
-│         Spawn Explore agent to understand codebase context       │
+│                 Phase 0: Read Architecture Memory                │
+│         Load existing knowledge about this codebase              │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                 Phase 1: Explore (if needed)                     │
+│         Spawn Explore agent only for unknown areas               │
 └─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
@@ -71,7 +81,32 @@ Invoke this skill when PR/changes include:
 │                 Phase 6: Generate Report                         │
 │         Findings, concerns, recommendations                      │
 └─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                 Phase 7: Update Architecture Memory              │
+│         Persist new knowledge for future reviews                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
+
+## Phase 0: Read Architecture Memory
+
+**Before exploring, check what you already know:**
+
+```bash
+# Memory file location
+~/.claude/projects/<project>/memory/agents/architecture.md
+```
+
+**If memory exists:**
+1. Read the memory file
+2. Check if relevant modules are already documented
+3. Only explore areas NOT covered by memory
+4. Use memory to provide context for new analysis
+
+**If memory doesn't exist:**
+1. Proceed to full exploration (Phase 1)
+2. Create memory file after analysis
 
 ## Phase 1: Explore Existing Architecture
 
@@ -385,6 +420,57 @@ For each abstraction/pattern, consider:
 - [Clarifying questions about design decisions]
 ```
 
+## Phase 7: Update Architecture Memory
+
+**After completing analysis, update your memory:**
+
+```markdown
+# Architecture Memory
+
+## Project: [project name]
+Last updated: [date]
+
+## Module Map
+<!-- List all discovered modules and their responsibilities -->
+
+| Module | Responsibility | Key Files |
+|--------|----------------|-----------|
+| src/core/ | Core business logic | core.cpp, engine.cpp |
+| src/api/ | External API layer | handler.cpp, router.cpp |
+
+## Key Interfaces
+<!-- Important abstractions that define boundaries -->
+
+- `IProcessor` - Main processing interface (src/core/processor.h)
+- `IStorage` - Storage abstraction (src/storage/storage.h)
+
+## Dependency Patterns
+<!-- How modules connect to each other -->
+
+```
+api/ → core/ → storage/
+     ↘ utils/
+```
+
+## Architectural Decisions
+<!-- Design choices and their rationale -->
+
+- **Why X instead of Y**: [reason]
+- **Pattern used for Z**: [pattern and why]
+
+## Known Issues
+<!-- Architectural debt or areas needing improvement -->
+
+- Circular dependency between X and Y
+- Core module is getting too large
+```
+
+**Memory update rules:**
+1. Only add confirmed patterns (not speculation)
+2. Update existing entries if they change
+3. Remove outdated information
+4. Keep memory concise and useful
+
 ## Integration with Other Skills
 
 ### From pr-review
@@ -394,6 +480,7 @@ pr-review detects architectural changes:
   → Invoke architecture-analyze
   → Include architecture report in PR review
   → Architectural issues become "Must Fix" items
+  → Memory is updated with new architectural knowledge
 ```
 
 ### From planning-feature
@@ -403,6 +490,7 @@ planning-feature validates design:
   → Invoke architecture-analyze with proposed design
   → Catch issues before coding starts
   → Adjust plan based on findings
+  → Memory helps understand existing architecture faster
 ```
 
 ## Quick Architecture Checklist
