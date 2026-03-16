@@ -29,55 +29,55 @@ Review Pull Requests or local changes with structured, thorough analysis.
 └─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
+┌─────────────────────────────────────────────────────────────────┐
+│        Phase 1: Gather Info + Read Files (ONCE)                 │
+│    - Get changed files, diff, commits                            │
+│    - Read each changed file's full content                       │
+│    - Identify languages (C++, Python, CMake)                     │
+│    - Package data for agents                                     │
+│    - Check CI status (GitHub PRs)                                │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│      Phase 1.5: Spawn 5 Parallel Analysis Agents                │
+│    All agents receive pre-loaded context from Phase 1            │
+│                                                                   │
+│    ┌──────────────────┐  ┌──────────────────┐                   │
+│    │ Agent 1: Static  │  │ Agent 2: Dead    │                   │
+│    │ Analysis (tools) │  │ Code Detection   │                   │
+│    └──────────────────┘  └──────────────────┘                   │
+│    ┌──────────────────┐  ┌──────────────────┐                   │
+│    │ Agent 3: Code    │  │ Agent 4: Language│                   │
+│    │ Smells           │  │ Rules (C++/Py)   │                   │
+│    └──────────────────┘  └──────────────────┘                   │
+│    ┌──────────────────┐                                          │
+│    │ Agent 5: Arch    │ (conditional - if architectural changes) │
+│    │ (via skill)      │                                          │
+│    └──────────────────┘                                          │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
                     ┌───────────────────────┐
-                    │ Phase 1: Gather Info  │
-                    │ - Changed files       │
-                    │ - Commit history      │
-                    │ - CI status (GitHub)  │
-                    │ - Existing comments   │
+                    │ Phase 2: Aggregate    │
+                    │ - Merge agent results │
+                    │ - Map to severity     │
+                    │ - Deduplicate issues  │
+                    │ - Sort by severity    │
                     └───────────────────────┘
                                 │
                                 ▼
                     ┌───────────────────────┐
-                    │ Phase 1.5: Static     │
-                    │ Analysis              │
-                    │ Invoke: static-       │
-                    │ analysis skill        │
+                    │ Phase 3: Manual       │
+                    │ - Review tests        │
+                    │ - Check coverage      │
                     └───────────────────────┘
                                 │
                                 ▼
                     ┌───────────────────────┐
-                    │ Phase 2: Detect Scope │
-                    │ - Architectural?      │
-                    │ - Which languages?    │
-                    │ - Change type?        │
-                    └───────────────────────┘
-                                │
-              ┌─────────────────┴─────────────────┐
-              │                                   │
-              ▼                                   ▼
-┌──────────────────────────┐        ┌───────────────────────┐
-│ Phase 3A: Architecture   │        │ Phase 3B: Load Skills │
-│ (if architectural)       │        │ Programming skills    │
-│ Invoke architecture-     │        │ for languages in PR   │
-│ analyze skill            │        │                       │
-└──────────────────────────┘        └───────────────────────┘
-              │                                   │
-              └─────────────────┬─────────────────┘
-                                │
-                                ▼
-                    ┌───────────────────────┐
-                    │ Phase 4: Review Code  │
-                    │ - Include tool output │
-                    │ - Apply skill rules   │
-                    │ - Score by severity   │
-                    │ - Provide fix code    │
-                    └───────────────────────┘
-                                │
-                                ▼
-                    ┌───────────────────────┐
-                    │ Phase 5: Summarize    │
+                    │ Phase 4: Summarize    │
                     │ - Severity-sorted     │
+                    │ - Agent sources cited │
                     │ - With code fixes     │
                     │ - Actionable feedback │
                     └───────────────────────┘
@@ -133,7 +133,9 @@ When user asks to "re-review" or "review again":
 3. Focus review on NEW changes only
 4. Note which previous issues were addressed
 
-## Phase 1: Gather Information
+## Phase 1: Gather Information + Read Files
+
+**Goal:** Collect all data ONCE and package for agents - minimize redundant file reads.
 
 Based on the review type selected in Phase 0:
 
@@ -189,69 +191,149 @@ git diff <base-branch>...HEAD
 git log <base-branch>...HEAD --oneline
 ```
 
-### Identify Languages
+### 1.3 Read Changed Files (ONCE)
 
-Scan changed files to determine which programming skills to invoke:
+**Read each changed file's full content now - agents will reuse this data:**
 
-| File Extension | Programming Skill |
-|----------------|-------------------|
-| `.cpp`, `.hpp`, `.h`, `.cc` | `programming-cpp` |
-| `.py` | `programming-python` |
-| `CMakeLists.txt`, `.cmake` | `programming-cmake-best-practices` |
-
-## Phase 1.5: Run Static Analysis
-
-**Invoke the `static-analysis` skill to run available tools on changed files.**
-
-```
-Invoke: static-analysis skill with scope=pr (or scope=all for local changes)
+```markdown
+For each file in changed files list:
+- Use Read tool to get full file content
+- Track file path, language, and content
+- Package into structured format for agents
 ```
 
-The `static-analysis` skill will:
-1. Detect available tools (clang-tidy, ruff, pylint, shellcheck, etc.)
-2. Run tools on changed files only
-3. Generate a structured report with severity levels
+**Why read now?**
+- Agents need file context to analyze
+- Reading once (here) vs 5 times (in each agent) = 5x token savings
+- Main context grows slightly, but net savings is significant
 
-### Include Static Analysis Report
+### 1.4 Identify Languages
 
-The report from `static-analysis` should be included in the review.
+Scan changed files to determine language breakdown:
 
-**Severity mapping from tools to review:**
+| File Extension | Language | Used By Agents |
+|----------------|----------|----------------|
+| `.cpp`, `.hpp`, `.h`, `.cc` | C++ | Language Rules Agent, Code Smells |
+| `.py` | Python | Language Rules Agent, Code Smells |
+| `CMakeLists.txt`, `.cmake` | CMake | Language Rules Agent |
 
-| Tool Severity | Review Category |
-|---------------|-----------------|
-| Critical (100) | **Must Fix** |
-| Must Fix (80) | **Must Fix** |
-| Should Fix (50) | **Should Fix** |
-| Nitpick (20) | **Nitpick** |
+### 1.5 Package Data for Agents
+
+**Create structured data package containing:**
+
+```markdown
+## Changed Files Data Package
+
+### Files Changed
+[List of file paths with language tags]
+
+### Full Diff
+[Complete git diff output]
+
+### File Contents
+For each changed file:
+---
+File: path/to/file.cpp
+Language: C++
+Lines: 1-150
+
+[Full file content from Read tool]
+---
+
+### Commit Messages
+[git log output]
+
+### PR Context (if GitHub)
+- Title: [PR title]
+- Description: [PR description]
+- Author: [author]
+- CI Status: [status]
+```
+
+**This package will be passed to all agents in Phase 1.5.**
+
+## Phase 1.5: Spawn Parallel Analysis Agents
+
+**Goal:** Launch 5 specialized agents in parallel to analyze the packaged data from Phase 1.
 
 <IMPORTANT>
-Do not ignore tool findings. If a tool catches an issue, include it in the review.
-Tool findings augment manual review - they don't replace it.
+**Use general-purpose agents** (not Explore agents) since they receive pre-loaded context.
+All agents run in parallel - invoke all 5 in a single tool call block.
+Each agent has a unique identity, loads its skill, and maintains memory.
 </IMPORTANT>
 
-## Phase 2: Detect Scope and Type
+### Agent Identity & Memory System
 
-Before reviewing code, understand and classify:
+Each agent has:
+- **Unique ID**: Used in Agent tool `description` field for identification
+- **Skill to Load**: Agent invokes this skill using the Skill tool before analysis
+- **Memory File**: Project-specific learnings persisted across reviews
 
-### 2.1 Understand the Goal
+| # | Agent ID | Skill to Load | Memory File |
+|---|----------|---------------|-------------|
+| 1 | `static-analysis-agent` | `static-analysis` | `agents/static-analysis.md` |
+| 2 | `dead-code-agent` | *(none)* | `agents/dead-code.md` |
+| 3 | `code-smells-agent` | `code-smells` | `agents/code-smells.md` |
+| 4 | `language-rules-agent` | `programming-cpp` or `programming-python` | `agents/language-rules.md` |
+| 5 | `architecture-agent` | `architecture-analyze` | `agents/architecture.md` |
 
-- Read PR description/motivation
-- Check linked issues
-- Identify affected subsystems
+**Memory location:** `~/.claude/projects/<project>/memory/agents/`
 
-### 2.2 Classify Change Type
+### What Agents Learn
 
-| Type | Description |
-|------|-------------|
-| Feature | New functionality |
-| Bugfix | Correcting behavior |
-| Refactor | Improving structure |
-| Docs | Documentation only |
+| Agent | Learns About |
+|-------|--------------|
+| Static Analysis | Tool configs, false positive patterns, suppression rules |
+| Dead Code | Intentionally unused code, debug scaffolding, reserved APIs |
+| Code Smells | Project-specific thresholds, acceptable patterns |
+| Language Rules | Project conventions, intentional deviations from standards |
+| Architecture | Module boundaries, key interfaces, dependency patterns, decisions |
 
-### 2.3 Detect Architectural Changes
+### The 5 Analysis Agents
 
-**Check if PR involves architectural changes:**
+| # | Agent Type | Purpose | Returns |
+|---|------------|---------|---------|
+| 1 | Static Analysis | Run linters/tools on changed files | Structured table of tool findings |
+| 2 | Dead Code Detection | Find unused code, comments, unreachable code | Table of dead code issues |
+| 3 | Code Smells Detection | Detect anti-patterns (long functions, deep nesting, etc.) | Table of code smell findings |
+| 4 | Language Rules Enforcement | Apply C++/Python/CMake best practices | Table of best practice violations |
+| 5 | Architecture Review | Analyze module boundaries, dependencies (if architectural changes detected) | Architecture assessment |
+
+### Agent Execution Pattern
+
+**Spawn all agents in parallel using the Agent tool:**
+
+```markdown
+Agent 1: Static Analysis Agent
+- description: "static-analysis-agent"
+- subagent_type: "general-purpose"
+- Prompt: [See template below] + Data Package from Phase 1
+
+Agent 2: Dead Code Detection Agent
+- description: "dead-code-agent"
+- subagent_type: "general-purpose"
+- Prompt: [See template below] + Data Package from Phase 1
+
+Agent 3: Code Smells Agent
+- description: "code-smells-agent"
+- subagent_type: "general-purpose"
+- Prompt: [See template below] + Data Package from Phase 1
+
+Agent 4: Language Rules Agent
+- description: "language-rules-agent"
+- subagent_type: "general-purpose"
+- Prompt: [See template below] + Data Package from Phase 1
+
+Agent 5: Architecture Agent (conditional)
+- description: "architecture-agent"
+- Only spawn if architectural changes detected (see criteria below)
+- subagent_type: "general-purpose"
+- Prompt: [See template below] + Data Package from Phase 1
+```
+
+### Conditional Architecture Analysis
+
+**Only run Architecture Agent if ANY of these signals present:**
 
 | Signal | Indicates Architecture |
 |--------|------------------------|
@@ -263,306 +345,93 @@ Before reviewing code, understand and classify:
 | New external dependencies | Integration points |
 | Changes to base/core classes | Foundation shifting |
 
-**If ANY architectural signal detected → Proceed to Phase 3A**
+If no architectural signals → Skip Agent 5, run only Agents 1-4.
 
-## Phase 3A: Architecture Analysis (if architectural)
+### Agent Prompt Templates
 
-<IMPORTANT>
-**If architectural changes detected, invoke `architecture-analyze` skill BEFORE code review.**
+See "Agent Prompt Templates" section below for detailed prompts to use for each agent.
 
-Architectural issues are harder to fix later - catch them early.
-</IMPORTANT>
+## Phase 2: Aggregate Agent Findings
 
-The `architecture-analyze` skill will:
-1. Spawn an Explore agent to understand existing architecture
-2. Analyze module boundaries
-3. Check dependency direction and cycles
-4. Assess testability
-5. Check for over-engineering
+**Goal:** Collect results from all agents, merge by severity, deduplicate, and prepare for final report.
 
-**Include architecture findings in final review report as "Must Fix" or "Should Fix" items.**
+### 2.1 Wait for All Agents
 
-## Phase 3B: Load Programming Skills
+Wait for all agents from Phase 1.5 to complete:
+- Agent 1: Static Analysis results
+- Agent 2: Dead Code Detection results
+- Agent 3: Code Smells results
+- Agent 4: Language Rules results
+- Agent 5: Architecture analysis (if ran)
 
-**MANDATORY: Invoke relevant programming skills before reviewing code.**
+### 2.2 Severity Mapping
 
-For each language in the PR:
-1. Invoke the programming skill
-2. **Use its rules as the source of truth** - not existing codebase patterns
-3. Apply its best practices strictly
+**Map agent findings to review severity levels:**
 
-Example for C++ PR:
-```
-Invoke: programming-cpp
-Invoke: programming-cpp-design-patterns (if architectural changes)
-Invoke: programming-cpp-stl-algorithms (if loops/algorithms present)
-Invoke: programming-cpp-naming-rules
-```
+| Agent Severity | Review Category | Score | Criteria |
+|----------------|-----------------|-------|----------|
+| Critical | **Critical** | 100 | Security vulnerability, data loss, crash, UB |
+| Must Fix | **Must Fix** | 80 | Incorrect behavior, logic bugs, resource leaks, tool errors |
+| Should Fix | **Should Fix** | 50 | Best practices, code smells, maintainability |
+| Nitpick | **Nitpick** | 20 | Style, minor improvements, suggestions |
 
-<IMPORTANT>
-**Programming skills define the standard, not existing code.**
+### 2.3 Merge Findings
 
-If existing codebase violates best practices, new code should still follow the skills.
-Do not propagate bad patterns just because "that's how it's done here."
-</IMPORTANT>
+**Combine findings from all agents:**
 
-## Phase 4: Review Code Changes
+1. **Collect all issues** from each agent's output
+2. **Group by severity**: Critical (100) → Must Fix (80) → Should Fix (50) → Nitpick (20)
+3. **Sort within each group**: By file path, then line number
+4. **Add agent source**: Tag each finding with which agent found it
 
-<IMPORTANT>
-**Systematic review: enumerate all changes, then review each one.**
-
-Do NOT skim. Go through every changed file and every hunk methodically.
-</IMPORTANT>
-
-### 4.1 Enumerate Changes
-
-First, create a list of all changes to review:
+**Example merged finding:**
 
 ```markdown
-## Changes to Review
+#### Issue: Null pointer dereference (Score: 80 - Must Fix)
+**Source:** Static Analysis Agent (clang-tidy)
+**File:** src/parser.cpp:42
 
-| # | File | Type | Lines | Status |
-|---|------|------|-------|--------|
-| 1 | `src/parser.cpp` | Modified | +45 -12 | Pending |
-| 2 | `src/parser.hpp` | Modified | +8 -2 | Pending |
-| 3 | `src/utils/helper.cpp` | New | +120 | Pending |
-| 4 | `tests/parser_test.cpp` | Modified | +35 -5 | Pending |
+[Issue details and fix code]
 ```
 
-### 4.2 Review Each Change
+### 2.4 Deduplicate Issues
 
-**For EACH file in the list, analyze systematically:**
+**If multiple agents flag the same issue:**
 
-#### Step 1: Read Context Around Changes
+| Scenario | Action |
+|----------|--------|
+| Same file:line, same issue | Keep highest severity, merge descriptions |
+| Same file:line, different issues | Keep both as separate findings |
+| Different agents, same general category | Keep both if specific issues differ |
 
-**Don't just read the diff - understand the context.**
+**Example deduplication:**
 
-```bash
-# Read the full file, not just changed lines
-# Use Read tool to see surrounding code
+```
+Agent 2 (Dead Code): "Line 45: Unused variable 'count'"
+Agent 4 (Language Rules): "Line 45: Variable 'count' declared but not used"
 
-# For each changed function, understand:
-# - What does this function do?
-# - What calls it?
-# - What does it call?
+→ Deduplicate to single finding with highest severity
 ```
 
-Understanding context helps catch:
-- Changes that break callers
-- Missing updates to related code
-- Inconsistencies with surrounding code
+### 2.5 Classify Change Type
 
-#### Step 2: Apply Language-Specific Rules
+Based on aggregated findings and changes, classify the PR:
 
-**Apply rules from programming skills strictly. These are the standard.**
+| Type | Description |
+|------|-------------|
+| Feature | New functionality |
+| Bugfix | Correcting behavior |
+| Refactor | Improving structure |
+| Docs | Documentation only |
 
-**For C++ files** (from `programming-cpp`, `programming-cpp-naming-rules` skills):
+## Phase 3: Review Tests (Manual Check)
 
-| Category | Check |
-|----------|-------|
-| **Naming** | Follows project conventions? Class/function/variable names clear? |
-| **const** | Parameters `const&` where appropriate? Member functions `const`? Variables `const` when not modified? |
-| **auto** | Used appropriately? Not hiding important types? Iterator/lambda OK, avoid for simple types in APIs |
-| **References** | `const&` for input params? `&` or `&&` for output? No dangling references? |
-| **Pointers** | Smart pointers used? No raw `new`/`delete`? Null checks where needed? |
-| **RAII** | Resources managed by objects? No manual cleanup needed? |
-| **Move semantics** | `std::move` for transferring ownership? No use-after-move? |
-| **noexcept** | Destructors, move ops, swap marked `noexcept`? |
-| **[[nodiscard]]** | Functions with important return values marked? |
-| **Error handling** | Exceptions or error codes used consistently? All error paths handled? |
-| **STL algorithms** | `std::find`, `std::transform` instead of raw loops where applicable? |
-| **Initialization** | All variables initialized? In-class member initializers used? |
+<IMPORTANT>
+Agents handle code analysis, but test review requires human judgment.
+Manually check test coverage and quality.
+</IMPORTANT>
 
-**For Python files** (from `programming-python` skill):
-
-| Category | Check |
-|----------|-------|
-| **Naming** | snake_case for functions/variables? PascalCase for classes? |
-| **Type hints** | All function parameters and returns typed? |
-| **Docstrings** | Public functions/classes documented? |
-| **Defaults** | No mutable default arguments (`def f(x=[])`)?  |
-| **Context managers** | `with` used for files, locks, connections? |
-| **Exceptions** | Specific exceptions caught? No bare `except:`? |
-| **F-strings** | Used instead of `.format()` or `%`? |
-| **Comprehensions** | Used where clearer than loops? Not overly complex? |
-
-**For CMake files** (from `programming-cmake-best-practices` skill):
-
-| Category | Check |
-|----------|-------|
-| **Targets** | `target_*` commands instead of global? |
-| **Visibility** | `PUBLIC`/`PRIVATE`/`INTERFACE` used correctly? |
-| **Modern CMake** | No deprecated commands (`include_directories`, `link_directories`)? |
-| **Variables** | Proper scoping? No pollution of parent scope? |
-
-#### Step 3: Check Code Quality (All Languages)
-
-| Smell | What to Look For |
-|-------|------------------|
-| **Long function** | >50 lines? Should be split? |
-| **Long parameter list** | >5 params? Use struct/object? |
-| **Deep nesting** | >3 levels? Refactor with early returns? |
-| **Magic numbers** | Unexplained literals? Should be named constants? |
-| **Dead code** | Unreachable code? Commented-out code? |
-| **Duplicate code** | Same logic repeated? Extract to function? |
-| **God class** | Class doing too much? Single responsibility? |
-| **Feature envy** | Method using other class's data excessively? |
-| **Primitive obsession** | Using primitives instead of small objects? |
-| **Inappropriate intimacy** | Classes too tightly coupled? |
-| **Long if/else chain** | 3+ branches? See refactoring patterns below |
-| **Type-based branching** | `dynamic_cast` or `typeid` chains? Use polymorphism |
-
-#### Step 3.1: Detect Bad if/else Patterns
-
-**Flag these patterns for refactoring:**
-
-| Pattern | Threshold | Suggested Fix |
-|---------|-----------|---------------|
-| if/else chain | 3+ branches | Lookup table, polymorphism, or command map |
-| switch statement | 5+ cases | Same as above |
-| Nested if/else | 3+ levels deep | Early return (guard clauses) |
-| `dynamic_cast` chain | Any | `std::variant` + `std::visit` or polymorphism |
-| Repeated null checks | Same var 3+ times | Null Object pattern |
-| Boolean flag parameters | `if (flag)` dispatch | Split into two functions or use strategy |
-
-**Example issue report:**
-
-```markdown
-#### Issue: Long if/else chain (Score: 50 - Should Fix)
-
-**Lines 45-78:**
-```cpp
-// Current: 6-branch if/else chain
-if (type == "json") {
-    parseJson(data);
-} else if (type == "xml") {
-    parseXml(data);
-} else if (type == "csv") {
-    parseCsv(data);
-} else if (type == "yaml") {
-    parseYaml(data);
-} else if (type == "toml") {
-    parseToml(data);
-} else {
-    throw std::runtime_error("Unknown type");
-}
-
-// Fixed: Command map
-const std::unordered_map<std::string, std::function<void(Data&)>> PARSERS = {
-    {"json", parseJson},
-    {"xml",  parseXml},
-    {"csv",  parseCsv},
-    {"yaml", parseYaml},
-    {"toml", parseToml}
-};
-
-auto it = PARSERS.find(type);
-if (it == PARSERS.end()) {
-    throw std::runtime_error("Unknown type: " + type);
-}
-it->second(data);
-```
-
-**Why:** Long if/else chains are hard to maintain and extend. Adding a new type requires modifying the function. With a map, just add an entry.
-
-**See:** `programming-cpp` skill → "Eliminating if/else Branching" for more patterns.
-```
-
-#### Step 4: Check Correctness
-
-| Check | Questions |
-|-------|-----------|
-| **Logic** | Does the code do what it claims? |
-| **Edge cases** | Empty input? Max values? Null? Zero? |
-| **Error handling** | All error paths covered? Resources cleaned up on error? |
-| **Concurrency** | Race conditions? Proper locking? Deadlock potential? |
-| **Overflow** | Integer overflow possible? Buffer bounds checked? |
-
-#### Step 5: Check Security
-
-| Check | Questions |
-|-------|-----------|
-| **Input validation** | User input validated/sanitized? |
-| **Injection** | SQL/command/path injection possible? |
-| **Secrets** | Hardcoded credentials? API keys in code? |
-| **Permissions** | Proper access control? Privilege escalation? |
-
-#### Step 6: Score and Record Findings
-
-**Assign severity scores to prioritize issues:**
-
-| Severity | Score | Criteria | Examples |
-|----------|-------|----------|----------|
-| **Critical** | 100 | Security vulnerability, data loss, crash | SQL injection, use-after-free, null deref |
-| **Must Fix** | 80 | Incorrect behavior, UB, resource leak | Logic bug, memory leak, race condition |
-| **Should Fix** | 50 | Best practice violation, maintainability | Missing const, raw loop, poor naming |
-| **Nitpick** | 20 | Style, minor improvements | Line length, comment wording |
-
-**For each issue, provide actual fix code:**
-
-```markdown
-### File: `src/parser.cpp`
-
-**Status:** Reviewed
-
----
-
-#### Issue 1: Missing null check (Score: 80 - Must Fix)
-
-**Line 42:**
-```cpp
-// Current code:
-auto result = ptr->getValue();
-
-// Fixed code:
-if (!ptr) {
-    return std::nullopt;
-}
-auto result = ptr->getValue();
-```
-
-**Why:** Dereferencing null pointer causes undefined behavior.
-
----
-
-#### Issue 2: Raw loop instead of algorithm (Score: 50 - Should Fix)
-
-**Lines 67-72:**
-```cpp
-// Current code:
-for (int i = 0; i < items.size(); i++) {
-    if (items[i].name == target) {
-        return i;
-    }
-}
-return -1;
-
-// Fixed code:
-auto it = std::find_if(items.begin(), items.end(),
-    [&target](const auto& item) { return item.name == target; });
-return it != items.end() ? std::distance(items.begin(), it) : -1;
-```
-
-**Why:** STL algorithms are more expressive and less error-prone.
-
----
-
-#### Issue 3: Unclear variable name (Score: 20 - Nitpick)
-
-**Line 89:**
-```cpp
-// Current: int x = 0;
-// Fixed:   int tokenIndex = 0;
-```
-
----
-
-**Good:**
-- Clean error handling with `std::expected`
-- Proper use of `const`
-```
-
-### 4.3 Review Tests
+### 4.1 Test Coverage Check
 
 | Check | Questions |
 |-------|-----------|
@@ -573,7 +442,7 @@ return it != items.end() ? std::distance(items.begin(), it) : -1;
 | **Independence** | Tests can run in isolation? No order dependency? |
 | **Assertions** | Clear, specific assertions? Good error messages? |
 
-#### Suggest Missing Tests
+### 4.2 Suggest Missing Tests
 
 **If new code lacks tests, suggest specific tests to add:**
 
@@ -605,16 +474,6 @@ TEST(ParserTest, ParseToken_MaxLengthToken_Succeeds) {
     EXPECT_TRUE(result.has_value());
 }
 ```
-
-#### 2. `Handler::process` needs tests for:
-
-```cpp
-// Test null input
-TEST(HandlerTest, Process_NullInput_ThrowsInvalidArgument) {
-    Handler handler;
-    EXPECT_THROW(handler.process(nullptr), std::invalid_argument);
-}
-```
 ```
 
 **Test suggestion checklist:**
@@ -624,28 +483,20 @@ TEST(HandlerTest, Process_NullInput_ThrowsInvalidArgument) {
 - [ ] Boundary values test
 - [ ] Error handling test
 
-### 4.4 Cross-File Analysis
+### 3.3 Cross-File Consistency (Optional)
 
-After reviewing individual files, check cross-cutting concerns:
+If agents missed cross-cutting concerns, manually check:
 
 | Check | Questions |
 |-------|-----------|
 | **Consistency** | Same patterns used across new files? |
-| **API coherence** | Public APIs follow programming skill guidelines? |
+| **API coherence** | Public APIs coherent and well-designed? |
 | **Dependencies** | New dependencies justified? Properly integrated? |
 | **Documentation** | README/docs updated if needed? |
 
-<IMPORTANT>
-**Do NOT follow existing codebase patterns blindly.**
+## Phase 4: Generate Final Report
 
-Existing code may be poorly written. Always apply rules from programming skills (`programming-cpp`, `programming-python`, etc.) even if existing code does it differently.
-
-If new code is better than existing patterns, that's good - don't "dumb it down" to match bad existing code.
-</IMPORTANT>
-
-## Phase 5: Summarize Review
-
-After reviewing all changes, compile the final report:
+**Compile aggregated findings from all phases into a comprehensive review:**
 
 ```markdown
 # PR Review: [PR Title]
@@ -661,6 +512,22 @@ After reviewing all changes, compile the final report:
 **Total issues:** X critical, Y must-fix, Z should-fix, W nitpicks
 
 **CI Status:** [Passed ✅ / Failed ❌ / Pending 🔄] (GitHub PRs only)
+
+---
+
+## Agent Analysis Summary
+
+**5 agents analyzed the changes in parallel:**
+
+| Agent | Purpose | Issues Found |
+|-------|---------|--------------|
+| Static Analysis | Linter/tool findings | X issues |
+| Dead Code Detection | Unused code, comments | Y issues |
+| Code Smells | Anti-patterns, long functions | Z issues |
+| Language Rules | C++/Python best practices | W issues |
+| Architecture | Module boundaries, dependencies | V issues (or N/A) |
+
+**All findings below are sourced from agent analysis.**
 
 ---
 
@@ -682,6 +549,7 @@ After reviewing all changes, compile the final report:
 ### Critical (Score: 100) - Security/Crash
 
 #### 1. SQL Injection in `handler.cpp:78`
+**Source:** Static Analysis Agent (Semgrep)
 
 ```cpp
 // Current code:
@@ -699,6 +567,7 @@ stmt.bind(1, userInput);
 ### Must Fix (Score: 80) - Incorrect Behavior
 
 #### 2. Null pointer dereference in `parser.cpp:42`
+**Source:** Static Analysis Agent (clang-tidy)
 
 ```cpp
 // Current code:
@@ -718,6 +587,7 @@ auto result = ptr->getValue();
 ### Should Fix (Score: 50) - Best Practices
 
 #### 3. Raw loop in `utils.cpp:23`
+**Source:** Language Rules Agent (C++ Best Practices)
 
 ```cpp
 // Current code:
@@ -734,14 +604,47 @@ std::for_each(items.begin(), items.end(), process);
 
 ---
 
+#### 4. Long function in `handler.cpp:processRequest()`
+**Source:** Code Smells Agent
+
+**Lines 120-195 (75 lines):** Function is too long and does too much.
+
+**Suggested refactoring:**
+```cpp
+// Split into smaller functions:
+- extractHeaders()
+- validateRequest()
+- routeToHandler()
+- buildResponse()
+```
+
+**Why:** Long functions are hard to understand, test, and maintain.
+
+---
+
 ### Nitpicks (Score: 20) - Style
 
-#### 4. Unclear variable name in `config.py:45`
+#### 5. Unused variable in `config.py:45`
+**Source:** Dead Code Detection Agent
 
 ```python
-# Current: x = 3
-# Fixed:   retry_count = 3
+# Current: x = 3  # Declared but never used
+# Fix: Remove this line
 ```
+
+---
+
+#### 6. Commented-out code in `parser.cpp:67-72`
+**Source:** Dead Code Detection Agent
+
+```cpp
+// Remove these commented lines:
+// auto old_parser = createParser();
+// old_parser.parse(input);
+// return old_parser.result();
+```
+
+**Why:** Commented code creates clutter. Use version control instead.
 
 ---
 
@@ -914,6 +817,361 @@ For fast reviews, at minimum check:
 - [ ] Tests exist for new code?
 - [ ] No security red flags?
 - [ ] Follows programming skill rules (not existing bad patterns)?
+
+## Agent Prompt Templates
+
+**Use these prompts when spawning the 5 analysis agents in Phase 1.5.**
+
+### Agent 1: Static Analysis Agent
+
+```markdown
+You are the **Static Analysis Agent** (ID: static-analysis-agent).
+
+## Step 1: Load Your Skill
+First, invoke the `static-analysis` skill using the Skill tool.
+
+## Step 2: Read Your Memory
+Read your memory file (if it exists): `~/.claude/projects/<project>/memory/agents/static-analysis.md`
+
+Apply any learned patterns:
+- Known false positives to skip
+- Project-specific tool configurations
+- Suppression rules that are intentional
+
+## Step 3: Analyze
+
+[Input: Data Package from Phase 1]
+
+1. **Identify available tools** based on file languages:
+   - C++: clang-tidy, cppcheck, clang-analyzer
+   - Python: ruff, pylint, mypy, bandit
+   - Shell: shellcheck
+   - CMake: cmake-lint
+
+2. **Run tools** on changed files only (not entire codebase)
+
+3. **Filter findings** using your memory (skip known false positives)
+
+4. **Map tool severity** to review categories:
+   - error/critical → Critical (100)
+   - warning/high → Must Fix (80)
+   - info/medium → Should Fix (50)
+   - style/low → Nitpick (20)
+
+## Step 4: Return Findings
+
+| File:Line | Tool | Severity | Issue | Fix (if available) |
+|-----------|------|----------|-------|-------------------|
+| parser.cpp:42 | clang-tidy | Must Fix (80) | Null pointer dereference | Add null check before use |
+
+## Step 5: Update Memory (if new learnings)
+
+If you discover patterns worth remembering (e.g., tool doesn't work well with this codebase),
+note them for memory update:
+
+**New Learnings:**
+- [Pattern discovered]
+```
+
+### Agent 2: Dead Code Detection Agent
+
+```markdown
+You are the **Dead Code Detection Agent** (ID: dead-code-agent).
+
+## Step 1: Read Your Memory
+Read your memory file (if it exists): `~/.claude/projects/<project>/memory/agents/dead-code.md`
+
+Apply any learned patterns:
+- Intentionally unused code (reserved APIs, deprecation paths)
+- Debug/test scaffolding that looks unused but is needed
+- False positive patterns specific to this project
+
+## Step 2: Analyze
+
+[Input: Data Package from Phase 1]
+
+Analyze changed files for:
+
+1. **Unused variables**: Declared but never used
+2. **Commented-out code**: Code in comments (not doc comments)
+3. **Unreachable code**: After return/throw/break
+4. **Unused imports/includes**: #include or import statements for unused libraries
+5. **Unused function parameters**: Parameters never referenced in function body
+6. **Unnecessary comments**: Comments that just restate the code
+
+**Skip** anything in your memory marked as intentionally unused.
+
+## Step 3: Return Format
+
+For each finding:
+
+| File:Line | Issue Type | Code Snippet | Severity | Fix |
+|-----------|------------|--------------|----------|-----|
+| parser.cpp:45 | Unused variable | `int count = 0;` | Nitpick (20) | Remove variable |
+| utils.py:12 | Commented code | `# old_func()` | Nitpick (20) | Remove comment |
+| handler.cpp:67 | Unreachable code | Code after `return` | Must Fix (80) | Remove or fix logic |
+
+Focus on changed lines only - don't report issues in unchanged code.
+
+## Step 4: Update Memory (if new learnings)
+
+If you discover code that looks unused but is intentional (confirmed by comments, patterns, or context),
+note it for memory update:
+
+**New Learnings:**
+- [Pattern to remember as intentionally unused]
+```
+
+### Agent 3: Code Smells Agent
+
+```markdown
+You are the **Code Smells Detection Agent** (ID: code-smells-agent).
+
+## Step 1: Load Your Skill
+First, invoke the `code-smells` skill using the Skill tool.
+This provides the comprehensive catalog of 22 code smells across 5 categories.
+
+## Step 2: Read Your Memory
+Read your memory file (if it exists): `~/.claude/projects/<project>/memory/agents/code-smells.md`
+
+Apply any learned patterns:
+- Project-specific thresholds (maybe 60 lines is OK for this project)
+- Patterns that look like smells but are intentional
+- Acceptable deviations documented in the project
+
+## Step 3: Analyze
+
+[Input: Data Package from Phase 1]
+
+**Your Tasks:**
+
+Detect code smells from these categories:
+
+**Bloaters:**
+- Long Method (>50 lines: Should Fix, >100 lines: Must Fix)
+- Large Class (>500 lines: Should Fix, >1000 lines: Must Fix)
+- Primitive Obsession (using primitives instead of domain objects)
+- Long Parameter List (>4 params: Should Fix, >6 params: Must Fix)
+- Data Clumps (same parameters appearing together)
+
+**Object-Orientation Abusers:**
+- Switch Statements (complex switch/if-else based on type)
+- Temporary Field (fields used only sometimes)
+- Refused Bequest (subclass ignoring parent methods)
+
+**Change Preventers:**
+- Divergent Change (class changes for multiple unrelated reasons)
+- Shotgun Surgery (single change touches 5+ classes: Must Fix)
+- Parallel Inheritance Hierarchies
+
+**Dispensables:**
+- Comments (explaining what instead of why)
+- Duplicate Code (>10 identical lines: Should Fix)
+- Lazy Class, Data Class, Dead Code, Speculative Generality
+
+**Couplers:**
+- Feature Envy (method uses >3 external getters)
+- Inappropriate Intimacy (classes accessing each other's internals: Must Fix)
+- Message Chains (>3 chained calls)
+- Middle Man (class only delegates)
+
+## Return Format
+
+| File:Line | Smell Type | Category | Severity | Suggested Refactoring |
+|-----------|------------|----------|----------|----------------------|
+| handler.cpp:120-195 | Long Method (75 lines) | Bloater | Should Fix (50) | Extract Method: split into extractHeaders, validateRequest, routeToHandler, buildResponse |
+| config.cpp:45 | Magic Number | Bloater | Should Fix (50) | Replace Magic Number: `const int MAX_RETRIES = 42;` |
+| parser.cpp:30 | Feature Envy | Coupler | Should Fix (50) | Move Method: move to class whose data it uses |
+
+Provide specific refactoring suggestions for each smell. See `code-smells` skill for detailed refactoring techniques.
+
+## Step 4: Update Memory (if new learnings)
+
+If you discover patterns that are acceptable in this project (confirmed by existing code or comments):
+
+**New Learnings:**
+- [Pattern that looks like a smell but is intentional]
+- [Project-specific threshold adjustments]
+```
+
+### Agent 4: Language Rules Enforcement Agent
+
+```markdown
+You are the **Language Rules Enforcement Agent** (ID: language-rules-agent).
+
+## Step 1: Load Your Skills
+Based on the languages in the changed files, invoke the appropriate skill(s) using the Skill tool:
+- C++ files → `programming-cpp` skill
+- Python files → `programming-python` skill
+- CMake files → `programming-cmake-best-practices` skill
+
+## Step 2: Read Your Memory
+Read your memory file (if it exists): `~/.claude/projects/<project>/memory/agents/language-rules.md`
+
+Apply any learned patterns:
+- Project conventions that deviate from standards
+- Intentional exceptions documented in the project
+- Style choices specific to this codebase
+
+## Step 3: Analyze
+
+[Input: Data Package from Phase 1]
+
+**Your Tasks:**
+
+**For C++ files**, check (from `programming-cpp` skill):
+
+| Rule | Check |
+|------|-------|
+| const correctness | Parameters const& where appropriate? Member functions const? |
+| Smart pointers | No raw new/delete? unique_ptr/shared_ptr used? |
+| RAII | Resources managed by objects? No manual cleanup? |
+| noexcept | Destructors, move ops, swap marked noexcept? |
+| [[nodiscard]] | Important return values marked? |
+| STL algorithms | std::find, std::transform instead of raw loops? |
+| Initialization | All variables initialized? |
+| Move semantics | std::move for ownership transfer? |
+
+**For Python files**, check (from `programming-python` skill):
+
+| Rule | Check |
+|------|-------|
+| Type hints | All function parameters and returns typed? |
+| Context managers | `with` used for files, locks, connections? |
+| F-strings | Used instead of .format() or %? |
+| No mutable defaults | def f(x=[]) is forbidden |
+| Specific exceptions | No bare `except:` |
+| Comprehensions | Used where clearer than loops? |
+
+**For CMake files**, check (from `programming-cmake-best-practices` skill):
+
+| Rule | Check |
+|------|-------|
+| Modern targets | target_* commands instead of global? |
+| Visibility | PUBLIC/PRIVATE/INTERFACE used correctly? |
+| No deprecated commands | No include_directories, link_directories? |
+
+## Return Format
+
+| File:Line | Rule Violated | Current Code | Fixed Code | Severity |
+|-----------|---------------|--------------|------------|----------|
+| parser.cpp:42 | Missing const& | `void foo(string s)` | `void foo(const string& s)` | Should Fix (50) |
+| utils.py:12 | Missing type hint | `def parse(data):` | `def parse(data: str) -> dict:` | Should Fix (50) |
+
+Apply best practices strictly - these are the standard, not existing codebase patterns.
+**Skip** rules that your memory indicates are intentionally ignored in this project.
+
+## Step 4: Update Memory (if new learnings)
+
+If you discover project-specific conventions (confirmed by existing code patterns or comments):
+
+**New Learnings:**
+- [Convention that differs from standard]
+- [Reason why this project does it differently]
+```
+
+### Agent 5: Architecture Review Agent (Conditional)
+
+```markdown
+You are the **Architecture Review Agent** (ID: architecture-agent).
+
+**Only spawn this agent if architectural changes are detected (see criteria below).**
+
+## Step 1: Load Your Skill
+First, invoke the `architecture-analyze` skill using the Skill tool.
+This provides the full architecture analysis methodology.
+
+## Step 2: Read Your Memory
+Read your memory file (if it exists): `~/.claude/projects/<project>/memory/agents/architecture.md`
+
+This is your most valuable memory - it contains:
+- Module boundaries and responsibilities learned from previous reviews
+- Key interfaces and abstractions in this codebase
+- Dependency patterns and architectural decisions
+- Common architectural issues in this project
+
+## Step 3: Analyze
+
+[Input: Data Package from Phase 1]
+
+**Your Tasks:**
+
+1. **Module boundaries**: Is new code in the right place?
+2. **Dependencies**: Are dependency directions correct? Any cycles?
+3. **Testability**: Can new code be unit tested in isolation?
+4. **Simplicity**: Is the design over-engineered?
+
+Use your memory to understand existing architecture before judging new code.
+
+## Step 4: Return Assessment
+
+```markdown
+### Architecture Assessment
+
+**Verdict:** [Appropriate / Needs Discussion / Major Concerns]
+
+**Module Placement:** [Correct / Suggest moving to X]
+
+**Dependencies:** [Clean / Issues found]
+
+**Testability:** [Good / Needs improvement]
+
+**Simplicity:** [Appropriate / Over-engineered / Under-engineered]
+
+**Findings:**
+| Location | Issue | Severity | Recommendation |
+|----------|-------|----------|----------------|
+| src/new_module/ | Wrong location | Should Fix (50) | Move to src/core/ |
+```
+
+## Step 5: Update Memory (IMPORTANT)
+
+**Always update your memory** with new architectural knowledge:
+
+**New Learnings:**
+- **Modules discovered:** [New modules and their responsibilities]
+- **Key interfaces:** [Important abstractions found]
+- **Dependency patterns:** [How modules connect]
+- **Architectural decisions:** [Design choices and rationale]
+```
+
+**Spawn Architecture Agent if ANY of these signals present:**
+
+| Signal | Indicates |
+|--------|-----------|
+| New directories created | New module/component |
+| New/modified interfaces or abstract classes | API boundaries changing |
+| Changes to factories, DI, object creation | Dependency structure changing |
+| New CMake targets (add_library, add_executable) | New build units |
+| Changes across 5+ files in different modules | Cross-cutting change |
+| New external dependencies | Integration points |
+| Changes to base/core classes | Foundation shifting |
+
+If no architectural signals → Skip Agent 5, run only Agents 1-4.
+
+## Agent Memory File Format
+
+Each agent's memory file follows this structure:
+
+```markdown
+# [Agent Name] Memory
+
+## Project: [auto-detected]
+Last updated: [date]
+
+## Learned Patterns
+<!-- Patterns confirmed across multiple reviews -->
+
+## False Positives
+<!-- Issues flagged that turned out to be intentional -->
+
+## Project-Specific Rules
+<!-- Deviations from defaults that are acceptable -->
+
+## Key Knowledge
+<!-- For Architecture Agent: module map, interfaces, dependencies -->
+<!-- For others: important context about this codebase -->
+```
 
 ## References
 
