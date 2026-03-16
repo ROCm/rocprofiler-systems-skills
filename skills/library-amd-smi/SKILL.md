@@ -1,6 +1,6 @@
 ---
 name: library-amd-smi
-description: AMD SMI C++ library for GPU/CPU/NIC monitoring and management. Use when working with AMD hardware monitoring, GPU temperature, power, memory, clocks, PCIe, XGMI, AINIC (AI NIC) network interfaces, or any amdsmi.h functions.
+description: AMD SMI C++ library for GPU/CPU/NIC monitoring and management. Use when working with AMD hardware monitoring, GPU temperature, power, memory, clocks, PCIe, XGMI, SDMA (System DMA), AINIC (AI NIC) network interfaces, or any amdsmi.h functions.
 ---
 
 # AMD SMI C++ Library
@@ -14,11 +14,17 @@ AMD System Management Interface library for monitoring and managing AMD GPUs, CP
 ```
 
 ```bash
-# Build
+# Build (GPU-only)
 g++ -I/opt/rocm/include source.cc -L/opt/rocm/lib -lamd_smi -o output
 
-# Or set LD_LIBRARY_PATH
+# Build with NIC/CPU support (enables amdsmi_get_processor_handles_by_type)
+g++ -DENABLE_ESMI_LIB -I/opt/rocm/include source.cc -L/opt/rocm/lib -lamd_smi -o output
+
+# Set LD_LIBRARY_PATH for runtime
 export LD_LIBRARY_PATH=/opt/rocm/lib:$LD_LIBRARY_PATH
+
+# Test with fake AINIC devices (for development without hardware)
+AMDSMI_FAKE_AINIC=1 ./output
 ```
 
 ## Initialization Pattern
@@ -67,15 +73,35 @@ amdsmi_get_socket_handles(&socket_count, nullptr);  // Get count
 std::vector<amdsmi_socket_handle> sockets(socket_count);
 amdsmi_get_socket_handles(&socket_count, sockets.data());
 
-// Get processor handles for a socket
+// Get processor handles for a socket (GPUs only - does NOT return NICs!)
 uint32_t device_count = 0;
 amdsmi_get_processor_handles(sockets[0], &device_count, nullptr);
 std::vector<amdsmi_processor_handle> processors(device_count);
 amdsmi_get_processor_handles(sockets[0], &device_count, processors.data());
 
-// Get processors by type
+// Get processors by type (supports ALL processor types including NICs)
 processor_type_t type = AMDSMI_PROCESSOR_TYPE_AMD_GPU;
 amdsmi_get_processor_handles_by_type(socket, type, nullptr, &count);
+```
+
+### Processor Handle Functions Comparison
+
+| Function | Returns | Use Case |
+|----------|---------|----------|
+| `amdsmi_get_processor_handles()` | **GPUs only** | Legacy GPU-only code |
+| `amdsmi_get_processor_handles_by_type()` | GPUs, NICs, CPUs, APUs | **Recommended** - supports all processor types |
+
+**CRITICAL**: `amdsmi_get_processor_handles()` only returns GPU processors. It will **NOT** return NICs, CPUs, or other processor types even if they exist in the system. For NICs, CPUs, or mixed workloads, you **MUST** use `amdsmi_get_processor_handles_by_type()` with the appropriate processor type constant.
+
+```cpp
+// WRONG - will miss NICs!
+auto handles = amdsmi_get_processor_handles(socket, &count, nullptr);
+
+// CORRECT - explicitly query for NICs
+amdsmi_get_processor_handles_by_type(socket, AMDSMI_PROCESSOR_TYPE_AMD_NIC, nullptr, &count);
+
+// CORRECT - explicitly query for GPUs (preferred over legacy function)
+amdsmi_get_processor_handles_by_type(socket, AMDSMI_PROCESSOR_TYPE_AMD_GPU, nullptr, &count);
 ```
 
 ### Processor Types
@@ -273,10 +299,22 @@ amdsmi_get_cpu_core_boostlimit(core_processor, &boost);
 
 ## AI NIC (Network Interface Card) Functions
 
+### Build Requirements for NIC Support
+
+```bash
+# NIC functions require -DENABLE_ESMI_LIB to access amdsmi_get_processor_handles_by_type
+g++ -DENABLE_ESMI_LIB -I/opt/rocm/include source.cc -L/opt/rocm/lib -lamd_smi -o output
+
+# Test without hardware using fake AINIC devices
+AMDSMI_FAKE_AINIC=1 ./output
+```
+
 ### NIC Discovery
 
+**IMPORTANT**: `amdsmi_get_processor_handles()` does NOT return NIC processors. You MUST use `amdsmi_get_processor_handles_by_type()` with `AMDSMI_PROCESSOR_TYPE_AMD_NIC`.
+
 ```cpp
-// Initialize with NIC support
+// Initialize with NIC support (or AMDSMI_INIT_ALL_PROCESSORS for mixed workloads)
 amdsmi_init(AMDSMI_INIT_AMD_NICS);
 
 // Get socket handles
@@ -285,7 +323,7 @@ amdsmi_get_socket_handles(&socket_count, nullptr);
 std::vector<amdsmi_socket_handle> sockets(socket_count);
 amdsmi_get_socket_handles(&socket_count, sockets.data());
 
-// Get NIC processor handles (two-call pattern)
+// Get NIC processor handles (two-call pattern) - MUST use _by_type for NICs!
 uint32_t nic_count = 0;
 amdsmi_get_processor_handles_by_type(sockets[0],
                                      AMDSMI_PROCESSOR_TYPE_AMD_NIC,
@@ -486,6 +524,197 @@ RDMA port statistics typically include:
 #define AMDSMI_MAX_NIC_FW           16   // Maximum firmware components
 #define AMDSMI_MAX_STRING_LENGTH    64   // String field length
 ```
+
+## Fake AINIC Mode (Testing Without Hardware)
+
+Enable fake/mock AINIC devices for testing and development when no real AINIC hardware is present.
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `AMDSMI_FAKE_AINIC` | Enable fake mode (`1`, `true`, `yes`) | disabled |
+| `AMDSMI_FAKE_AINIC_COUNT` | Number of fake NICs to create | 1 |
+| `AMDSMI_FAKE_AINIC_PORTS` | Number of ports per NIC | 2 |
+
+```bash
+# Enable fake mode with defaults (1 NIC, 2 ports)
+AMDSMI_FAKE_AINIC=1 ./your_program
+
+# Enable with 2 NICs, 4 ports each
+AMDSMI_FAKE_AINIC=1 AMDSMI_FAKE_AINIC_COUNT=2 AMDSMI_FAKE_AINIC_PORTS=4 ./your_program
+```
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           AMD SMI System                                 │
+│  src/amd_smi/amd_smi_system.cc                                          │
+│                                                                          │
+│  populate_amd_ainic_devices()                                           │
+│    └─> smi_nic_create_context()                                         │
+│    └─> smi_discover_nics()           ◄── Returns fake BDFs              │
+│    └─> populate_amd_ainic_device()   ◄── Calls smi_get_nic_* APIs       │
+│    └─> Creates AMDSmiAINICDevice                                        │
+│    └─> Adds to socket->ainic_processors_                                │
+└─────────────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         smi_nic Library                                  │
+│  src/nic/ai-nic/amdsmi_unified/                                         │
+│                                                                          │
+│  SmiNicSystem (smi_nic_system.cpp)                                      │
+│    └─> Checks AMDSMI_FAKE_AINIC env var                                 │
+│    └─> Registers SmiNicSubsystemFake OR SmiNicSubsystemPensando         │
+│                                                                          │
+│  SmiNicSubsystemFake (smi_nic_fake.cpp)                                 │
+│    └─> discover() creates SmiNicFake objects                            │
+│    └─> get_nics() returns fake NIC list                                 │
+│                                                                          │
+│  smi_nic_interface.cpp                                                  │
+│    └─> Each API checks is_fake_mode()                                   │
+│    └─> Returns fake data from SmiNicFake/SmiNicPortFake                 │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Key Implementation Files
+
+| File | Purpose |
+|------|---------|
+| `src/nic/ai-nic/amdsmi_unified/inc/smi_nic_fake.h` | Fake class declarations |
+| `src/nic/ai-nic/amdsmi_unified/src/smi_nic_fake.cpp` | Fake class implementations |
+| `src/nic/ai-nic/amdsmi_unified/src/smi_nic_system.cpp` | Subsystem registration |
+| `src/nic/ai-nic/amdsmi_unified/src/smi_nic_interface.cpp` | API fake mode handling |
+
+### Class Hierarchy
+
+```
+SmiNicSubsystem (base)
+    └─> SmiNicSubsystemFake
+            └─> owns vector<unique_ptr<SmiNic>> nics_
+                    └─> SmiNicFake : public SmiNic
+                            └─> owns vector<SmiNicPortFake> fake_ports_
+
+SmiNicPortFake (standalone)
+    └─> owns vector<SmiInfiniBandFake> infiniband_
+            └─> owns vector<SmiInfiniBandPortFake> ports_
+```
+
+### Implementation Pattern
+
+**1. Environment Variable Check:**
+```cpp
+// smi_nic_fake.cpp
+bool smi_nic_fake_mode_enabled() {
+    const char* env = std::getenv("AMDSMI_FAKE_AINIC");
+    if (!env) return false;
+    std::string value = to_lower(env);
+    return value == "1" || value == "true" || value == "yes";
+}
+```
+
+**2. Subsystem Registration:**
+```cpp
+// smi_nic_system.cpp - SmiNicSystem constructor
+if (smi_nic_fake_mode_enabled()) {
+    register_subsystem(std::make_unique<SmiNicSubsystemFake>());
+} else {
+    register_subsystem(std::make_unique<SmiNicSubsystemPensando>());
+}
+```
+
+**3. API Fake Mode Handling:**
+```cpp
+// smi_nic_interface.cpp
+static bool is_fake_mode() {
+    return smi_nic_fake_mode_enabled();
+}
+
+static const SmiNicFake* get_fake_nic(SmiNicSystem* nic_system, uint64_t device) {
+    if (!is_fake_mode() || !nic_system) return nullptr;
+    const SmiNic* nic = nic_system->get_nic_by_bdf(device);
+    if (!nic) return nullptr;
+    return reinterpret_cast<const SmiNicFake*>(nic);  // Safe in fake mode
+}
+
+smi_nic_status_t smi_get_nic_asic_info(smi_nic_ctx_t ctx, uint64_t device,
+                                        smi_nic_asic_info_t *info) {
+    // ... validation ...
+
+    // Handle fake NIC - MUST come before real sysfs access
+    if (const auto* fake_nic = get_fake_nic(nic_system, device)) {
+        *info = {};
+        info->vendor_id = fake_nic->fake_vendor_id().value_or(0);
+        // ... populate all fields ...
+        return SMI_NIC_STATUS_SUCCESS;
+    }
+
+    // Real hardware path follows...
+}
+```
+
+### Fake Data Constants
+
+```cpp
+static constexpr uint16_t FAKE_VENDOR_ID = 0x1dd8;     // AMD/Pensando
+static constexpr uint16_t FAKE_DEVICE_ID = 0x0008;
+static constexpr uint8_t FAKE_PCIE_WIDTH = 16;
+static constexpr uint32_t FAKE_PCIE_SPEED = 32;        // Gen5
+static constexpr uint32_t FAKE_LINK_SPEED = 200000;    // 200 Gbps
+static constexpr uint16_t FAKE_MTU = 9000;
+
+// BDF: 0000:eX:00.0 where X = nic_idx + 0xe0
+// MAC: 00:ae:cd:00:XX:YY
+// GUID: 0000:0000:00ae:cdXX
+```
+
+### Socket/Processor Storage
+
+```cpp
+// include/amd_smi/impl/amd_smi_socket.h
+AMDSmiSocket
+├── processors_          ← GPUs (returned by get_processors())
+├── cpu_processors_      ← CPUs
+├── ainic_processors_    ← AMD AIINCs ← Fake NICs go here
+├── nic_processors_      ← Broadcom NICs
+└── switch_processors_   ← Broadcom switches
+
+// CRITICAL: amdsmi_get_processor_handles() returns ONLY processors_ (GPUs)
+// Use amdsmi_get_processor_handles_by_type() for NICs!
+```
+
+### Common Implementation Mistakes
+
+| Mistake | Problem | Fix |
+|---------|---------|-----|
+| Using `dynamic_cast` | Project built with `-fno-rtti` | Use `reinterpret_cast` with `is_fake_mode()` guard |
+| Overriding non-virtual methods | `vendor_id()` etc. are not virtual | Create `fake_vendor_id()` methods |
+| Missing fake mode in API | API reads sysfs, fails | Add `if (get_fake_nic(...))` check first |
+| Using `amdsmi_get_processor_handles()` | Returns only GPUs | Use `amdsmi_get_processor_handles_by_type()` |
+| Early return when sysfs missing | `discover_nics()` exits early | Remove/modify early return for fake mode |
+
+### Implementation Checklist
+
+- [ ] Create `smi_nic_fake.h` with fake class declarations
+- [ ] Create `smi_nic_fake.cpp` with implementations
+- [ ] Modify `smi_nic_system.cpp` constructor to check env var
+- [ ] Modify `discover_nics()` to not early-return for fake mode
+- [ ] Update ALL `smi_nic_interface.cpp` functions for fake mode:
+  - [ ] `smi_get_nic_driver_info`
+  - [ ] `smi_get_nic_asic_info`
+  - [ ] `smi_get_nic_bus_info`
+  - [ ] `smi_get_nic_numa_info`
+  - [ ] `smi_get_nic_port_info`
+  - [ ] `smi_get_nic_rdma_dev_info`
+  - [ ] `smi_get_nic_port_statistics_count`
+  - [ ] `smi_get_nic_port_statistics_list`
+  - [ ] `smi_get_nic_vendor_statistics_count`
+  - [ ] `smi_get_nic_vendor_statistics_list`
+  - [ ] `smi_get_nic_rdma_port_statistics_count`
+  - [ ] `smi_get_nic_rdma_port_statistics_list`
+- [ ] Rebuild: `cmake -B build && cmake --build build`
 
 ### Complete NIC Example
 
@@ -767,6 +996,87 @@ uint32_t get_gfx_activity(const amdsmi_gpu_metrics_t& metrics,
 | `xgmi_link_width` | uint16_t | XGMI width (GB/s) |
 | `num_partition` | uint16_t | Number of active partitions |
 | `xcp_stats[]` | struct[8] | Per-partition metrics (v1.6+) |
+
+## SDMA (System Direct Memory Access)
+
+SDMA engines handle high-speed data transfers on AMD GPUs. AMD GPUs can have up to 8 SDMA engines (SDMA0-SDMA7) plus thread handlers for coordinating DMA operations.
+
+### SDMA Firmware IDs
+
+```cpp
+// Firmware block IDs for SDMA engines (in amdsmi_fw_block_t)
+AMDSMI_FW_ID_SDMA0,   // System Direct Memory Access 0 (high speed data transfers)
+AMDSMI_FW_ID_SDMA1,   // System Direct Memory Access 1 (high speed data transfers)
+AMDSMI_FW_ID_SDMA2,   // System Direct Memory Access 2 (high speed data transfers)
+AMDSMI_FW_ID_SDMA3,   // System Direct Memory Access 3 (high speed data transfers)
+AMDSMI_FW_ID_SDMA4,   // System Direct Memory Access 4 (high speed data transfers)
+AMDSMI_FW_ID_SDMA5,   // System Direct Memory Access 5 (high speed data transfers)
+AMDSMI_FW_ID_SDMA6,   // System Direct Memory Access 6 (high speed data transfers)
+AMDSMI_FW_ID_SDMA7,   // System Direct Memory Access 7 (high speed data transfers)
+AMDSMI_FW_ID_SDMA_TH0,  // System Direct Memory Access - Thread Handler 0
+AMDSMI_FW_ID_SDMA_TH1,  // System Direct Memory Access - Thread Handler 1
+```
+
+### SDMA GPU Block
+
+```cpp
+// GPU block identifier for RAS (Reliability, Availability, Serviceability)
+AMDSMI_GPU_BLOCK_SDMA = (1ULL << 1),  // SDMA block
+```
+
+### SDMA Per-Process Usage
+
+SDMA usage per process is available through `amdsmi_get_gpu_process_list()`:
+
+```cpp
+// Get processes and their SDMA usage
+uint32_t num_processes = 0;
+amdsmi_get_gpu_process_list(processor, &num_processes, nullptr);
+
+std::vector<amdsmi_proc_info_t> proc_list(num_processes);
+amdsmi_get_gpu_process_list(processor, &num_processes, proc_list.data());
+
+for (const auto& proc : proc_list) {
+    // SDMA usage is in microseconds
+    std::cout << "PID " << proc.pid << " SDMA usage: "
+              << proc.sdma_usage << " us" << std::endl;
+}
+```
+
+The `sdma_usage` field in `amdsmi_proc_info_t` tracks cumulative SDMA engine utilization per process in **microseconds**.
+
+### Getting SDMA Firmware Version
+
+```cpp
+amdsmi_fw_info_t fw_info;
+amdsmi_get_fw_info(processor, &fw_info);
+
+for (uint32_t i = 0; i < fw_info.num_fw_info; i++) {
+    switch (fw_info.fw_list[i].fw_id) {
+        case AMDSMI_FW_ID_SDMA0:
+        case AMDSMI_FW_ID_SDMA1:
+        case AMDSMI_FW_ID_SDMA2:
+        case AMDSMI_FW_ID_SDMA3:
+        case AMDSMI_FW_ID_SDMA4:
+        case AMDSMI_FW_ID_SDMA5:
+        case AMDSMI_FW_ID_SDMA6:
+        case AMDSMI_FW_ID_SDMA7:
+            std::cout << "SDMA" << (fw_info.fw_list[i].fw_id - AMDSMI_FW_ID_SDMA0)
+                      << " FW version: " << fw_info.fw_list[i].fw_version
+                      << std::endl;
+            break;
+        case AMDSMI_FW_ID_SDMA_TH0:
+        case AMDSMI_FW_ID_SDMA_TH1:
+            std::cout << "SDMA Thread Handler "
+                      << (fw_info.fw_list[i].fw_id - AMDSMI_FW_ID_SDMA_TH0)
+                      << " FW version: " << fw_info.fw_list[i].fw_version
+                      << std::endl;
+            break;
+        default:
+            break;
+    }
+}
+```
 
 ## Error Handling
 
