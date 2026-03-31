@@ -12,6 +12,8 @@ Review Pull Requests or local changes with structured, thorough analysis.
 - If user provides PR number or URL → Review that GitHub PR
 - If no PR specified → Review local changes vs main branch (no questions asked)
 
+**Persist the review:** When the final report is ready, save the full markdown to `.claude/pr-review-summaries/` (see Phase 4 for filename rules).
+
 **Invoke relevant programming skills during review:**
 - C++ code → `programming-cpp`, `programming-cpp-design-patterns`, `programming-cpp-stl-algorithms`
 - Python code → `programming-python`
@@ -80,6 +82,7 @@ Review Pull Requests or local changes with structured, thorough analysis.
                     │ - Agent sources cited │
                     │ - With code fixes     │
                     │ - Actionable feedback │
+                    │ - Save .md to disk    │
                     └───────────────────────┘
 ```
 
@@ -496,7 +499,33 @@ If agents missed cross-cutting concerns, manually check:
 
 ## Phase 4: Generate Final Report
 
-**Compile aggregated findings from all phases into a comprehensive review:**
+**Compile aggregated findings from all phases into a comprehensive review.**
+
+### Save review summary to disk (mandatory)
+
+After you produce the final markdown report (same content as shown to the user), **always persist it** under the **git repository root** of the project being reviewed:
+
+| Item | Rule |
+|------|------|
+| **Directory** | `.claude/pr-review-summaries/` (create with `mkdir -p` if it does not exist) |
+| **Full path** | `<repo-root>/.claude/pr-review-summaries/<filename>.md` |
+
+**Filename**
+
+- **GitHub PR review:** `<pr-number>-<pr-description-slug>.md`
+  - `pr-number`: the PR number (digits only, no `#`).
+  - `pr-description-slug`: slug derived from the PR **title** — lowercase, replace spaces and punctuation with single hyphens, strip leading/trailing hyphens, ASCII only; collapse repeated hyphens; **max 60 characters** so paths stay reasonable. If the title slug is empty, use `review`.
+- **Local review (no PR):** `local-<branch-slug>-<short-slug>.md`
+  - `branch-slug`: current branch name slugified the same way (max 40 chars), or `detached` if not on a branch.
+  - `short-slug`: from the first line of `git log -1 --pretty=%s` (slugified, max 40 chars), or `changes` if unavailable.
+
+**File contents:** Write the **entire** Phase 4 report (the full markdown document), not an excerpt. Use the Write tool or equivalent so the file is created or overwritten idempotently for that review run.
+
+**User message:** After saving, briefly state the path to the saved file (e.g. `.claude/pr-review-summaries/123-fix-parser-null-handling.md`).
+
+---
+
+**Report template (this is what you save and display):**
 
 ```markdown
 # PR Review: [PR Title]
