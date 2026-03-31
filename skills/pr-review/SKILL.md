@@ -501,7 +501,7 @@ If agents missed cross-cutting concerns, manually check:
 
 **Compile aggregated findings from all phases into a comprehensive review.**
 
-### Save review summary to disk (mandatory)
+### Save final report to disk (mandatory)
 
 After you produce the final markdown report (same content as shown to the user), **always persist it** under the **git repository root** of the project being reviewed:
 
@@ -512,9 +512,9 @@ After you produce the final markdown report (same content as shown to the user),
 
 **Filename**
 
-- **GitHub PR review:** `<pr-number>-<pr-description-slug>.md`
+- **GitHub PR review:** `<pr-number>-<pr-title-slug>.md`
   - `pr-number`: the PR number (digits only, no `#`).
-  - `pr-description-slug`: slug derived from the PR **title** — lowercase, replace spaces and punctuation with single hyphens, strip leading/trailing hyphens, ASCII only; collapse repeated hyphens; **max 60 characters** so paths stay reasonable. If the title slug is empty, use `review`.
+  - `pr-title-slug`: slug derived from the PR **title** — lowercase, replace spaces and punctuation with single hyphens, strip leading/trailing hyphens, ASCII only; collapse repeated hyphens; **max 60 characters** so paths stay reasonable. If the title slug is empty, use `review`.
 - **Local review (no PR):** `local-<branch-slug>-<short-slug>.md`
   - `branch-slug`: current branch name slugified the same way (max 40 chars), or `detached` if not on a branch.
   - `short-slug`: from the first line of `git log -1 --pretty=%s` (slugified, max 40 chars), or `changes` if unavailable.
