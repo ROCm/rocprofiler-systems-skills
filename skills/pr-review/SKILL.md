@@ -77,7 +77,8 @@ Review Pull Requests or local changes with structured, thorough analysis.
                                 │
                                 ▼
                     ┌───────────────────────┐
-                    │ Phase 4: Summarize    │
+                    │ Phase 4: Generate     │
+                    │ Final Report          │
                     │ - Severity-sorted     │
                     │ - Agent sources cited │
                     │ - With code fixes     │
@@ -503,11 +504,15 @@ If agents missed cross-cutting concerns, manually check:
 
 ### Save final report to disk (mandatory)
 
-After you produce the final markdown report (same content as shown to the user), **always persist it** under the **git repository root** of the project being reviewed:
+After you produce the final markdown report (same content as shown to the user), **always persist it** under the **git repository root** of the project being reviewed.
+
+**Finding `<repo-root>`:** Run `git rev-parse --show-toplevel` from the project you are reviewing (works when the current working directory is anywhere inside that clone). If the reviewed tree is not a git work tree, fall back to the workspace root you were given for that review.
+
+**Paths in the user message:** Prefer a path **relative to `<repo-root>`** (e.g. `.claude/pr-review-summaries/123-fix-bug.md`) so it is copy-paste friendly across machines. Use an absolute path only if the user context has no single repo root.
 
 | Item | Rule |
 |------|------|
-| **Directory** | `.claude/pr-review-summaries/` (create with `mkdir -p` if it does not exist) |
+| **Directory** | `<repo-root>/.claude/pr-review-summaries/` (create with `mkdir -p` if it does not exist) |
 | **Full path** | `<repo-root>/.claude/pr-review-summaries/<filename>.md` |
 
 **Filename**
@@ -846,6 +851,7 @@ For fast reviews, at minimum check:
 - [ ] Tests exist for new code?
 - [ ] No security red flags?
 - [ ] Follows programming skill rules (not existing bad patterns)?
+- [ ] Full Phase 4 report saved under `.claude/pr-review-summaries/` (see Phase 4)?
 
 ## Agent Prompt Templates
 
