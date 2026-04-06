@@ -12,7 +12,7 @@ Instead, use the appropriate specialized skill:
 - `planning-bugfix` - for bug fixes
 - `planning-refactor` - for refactoring
 - `planning-docs` - for documentation
-- `planning-architecture` - for architecture documentation
+- `review-architecture` - for architecture documentation
 </IMPORTANT>
 
 ## Core Principles

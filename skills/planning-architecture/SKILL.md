@@ -1,238 +1,298 @@
 ---
 name: planning-architecture
-description: Use when user wants architecture documentation covering component interactions, hierarchy, expansion points, or system weaknesses - for single components, integrations, or whole systems
+description: Plan new or redesigned system architecture - define components, boundaries, interactions, and technical decisions before implementation
 ---
 
-# Architecture Documentation
+# Architecture Planning
 
-Generate architecture documentation through iterative, user-guided chapter-by-chapter creation. The output describes component behavior, interactions, hierarchy, and expansion points -- never code.
+Use this skill when designing NEW architecture or planning REDESIGN of existing architecture.
 
-## Overview
+<IMPORTANT>
+**Prerequisites:** Invoke `planning-base` skill first if not already loaded. It provides the core planning phases (0-5).
 
-This skill produces architecture documents by first analyzing the codebase silently, then collaborating with the user to scope, outline, and iteratively write each chapter with approval between every one.
+Follow all base planning rules, plus the architecture-specific rules below.
 
-**Core principle:** The user controls what gets documented and approves every chapter. The agent never generates the full document at once.
+**Mandatory:** Invoke `programming-cpp-design-patterns` during Phase 4 (detailing the architecture). Consider which patterns apply to the component interactions and extension points being designed.
 
-## Process Flowchart
+**Key distinction:**
+- `planning-architecture` = design what WILL BE built (this skill)
+- `review-architecture` = document what already EXISTS
+</IMPORTANT>
 
-```dot
-digraph architecture_doc {
-    "User requests architecture doc" [shape=doublecircle];
+## When to Use
 
-    "Analyze codebase silently" [shape=box];
-    "Ask scope question" [shape=box];
-    "Present component list" [shape=box];
-    "Ask what to cover" [shape=box];
-    "Propose chapter outline" [shape=box];
-    "Ask what to do next" [shape=box];
-    "Generate ONE chapter" [shape=box];
-    "Present chapter to user" [shape=box];
-    "User approves chapter?" [shape=diamond];
-    "Revise chapter" [shape=box];
-    "More chapters?" [shape=diamond];
-    "Present full document" [shape=box];
-    "User approves document?" [shape=diamond];
-    "Revise flagged sections" [shape=box];
-    "Document complete" [shape=doublecircle];
+- Designing a new system, module, or component from scratch
+- Redesigning or migrating existing architecture
+- Making decisions that affect multiple components or modules
+- Choosing between architectural patterns or technologies
+- Defining system boundaries, APIs, or integration points
 
-    "User requests architecture doc" -> "Analyze codebase silently";
-    "Analyze codebase silently" -> "Ask scope question";
-    "Ask scope question" -> "Present component list";
-    "Present component list" -> "Ask what to cover";
-    "Ask what to cover" -> "Propose chapter outline";
-    "Propose chapter outline" -> "Ask what to do next";
-    "Ask what to do next" -> "Generate ONE chapter";
-    "Generate ONE chapter" -> "Present chapter to user";
-    "Present chapter to user" -> "User approves chapter?";
-    "User approves chapter?" -> "More chapters?" [label="yes"];
-    "User approves chapter?" -> "Revise chapter" [label="no / changes needed"];
-    "Revise chapter" -> "Present chapter to user";
-    "More chapters?" -> "Ask what to do next" [label="yes"];
-    "More chapters?" -> "Present full document" [label="no"];
-    "Present full document" -> "User approves document?";
-    "User approves document?" -> "Document complete" [label="yes"];
-    "User approves document?" -> "Revise flagged sections" [label="no / changes needed"];
-    "Revise flagged sections" -> "Present full document";
-}
-```
-
-## Phase 1: Analyze (Silent)
-
-Explore the codebase to build understanding BEFORE asking the user anything. Use `Task` with `subagent_type=Explore` or read files directly.
-
-**Goal:** Understand enough to present an informed component list to the user.
-
-Identify:
-- All major components, modules, subsystems
-- How they interact (calls, data flow, dependencies)
-- Component hierarchy (parent-child, inheritance, composition)
-- Expansion points (plugin interfaces, abstract classes, configuration)
-- Architectural weaknesses (coupling, missing abstractions, drift)
-
-**Do NOT output analysis results yet.** This phase is preparation for the user conversation.
-
-## Phase 2: Ask Scope
+## Phase 1: Determine Scope
 
 Use `AskUserQuestion` to ask:
 
-**"What is the scope of this architecture document?"**
-- Single component (one module, class, or subsystem)
-- Multiple components / integration (how 2+ components work together)
-- Whole system (end-to-end architecture)
+**"What kind of architecture work is this?"**
+- **Greenfield** - Design a new system or component from scratch
+- **Redesign** - Change the architecture of something that already exists
 
 Wait for answer before proceeding.
 
-## Phase 3: Present Components and Ask What to Cover
+### If Redesign: Understand Current State
 
-Present a list of ALL components you discovered during analysis. Format as a table:
+Before designing the new architecture, understand what exists:
+
+1. Invoke `review-architecture` or `exploration-explore-code` to analyze the current system
+2. Identify what works well (keep), what is broken (fix), and what is missing (add)
+3. Document the constraints: what cannot change (APIs, data formats, external dependencies)
+
+## Phase 2: Gather Requirements
+
+Identify and confirm with the user:
+
+| Category | Questions |
+|----------|-----------|
+| **Functional** | What must the system do? What are the core capabilities? |
+| **Non-functional** | Performance targets, scalability needs, reliability requirements |
+| **Performance** | Is this on a hot path? How frequently is it called? Is latency critical? |
+| **Constraints** | Technology stack, team expertise, timeline, budget, legacy compatibility |
+| **Integration** | What external systems must it connect to? What protocols/formats? |
+
+### Performance-Sensitive Design
+
+If the system is on a hot path or performance-critical, this changes the polymorphism strategy:
+
+| Technique | Overhead | When to Use |
+|-----------|----------|-------------|
+| **Virtual interfaces** | vtable indirection, heap allocation, cache-unfriendly | Rare calls, set of types unknown at compile time |
+| **std::variant + std::visit** | Zero indirection, stack-allocated, cache-friendly | Fixed set of known types (preferred for hot paths) |
+| **Templates / Policy-based design** | Zero overhead, resolved at compile time | Types known at compile time, maximum performance |
+| **CRTP** | Zero overhead, compile-time polymorphism | Static dispatch with base class behavior |
+
+<IMPORTANT>
+Always ask whether the code is on a hot path. If yes, prefer compile-time polymorphism (templates, std::variant, CRTP) over virtual interfaces. Virtual dispatch has vtable indirection and prevents inlining — avoid it in performance-critical code.
+</IMPORTANT>
+
+Present findings and ask: **"Are these requirements complete, or should I add/change anything?"**
+
+Wait for answer before proceeding.
+
+## Phase 3: Propose Alternatives
+
+<IMPORTANT>
+ALWAYS present at least 2 architectural alternatives. Never propose a single solution without showing what was considered and rejected.
+</IMPORTANT>
+
+For each alternative, describe:
+
+| Aspect | What to Cover |
+|--------|---------------|
+| **Overview** | High-level description of the approach |
+| **Components** | What modules/services/layers exist |
+| **Interactions** | How components communicate |
+| **Trade-offs** | Pros and cons relative to requirements |
+| **Risk** | What could go wrong, what is hard to change later |
+| **Effort** | Relative complexity of implementation |
+
+Present alternatives in a comparison table:
 
 ```markdown
-## Components Found
+## Architectural Alternatives
 
-| # | Component | Purpose | Key Interactions |
-|---|-----------|---------|-----------------|
-| 1 | ComponentA | Brief purpose | Interacts with B, C |
-| 2 | ComponentB | Brief purpose | Depends on A |
-| ...| ... | ... | ... |
+### Alternative A: [Name]
+[Description]
+
+### Alternative B: [Name]
+[Description]
+
+### Comparison
+
+| Criterion | Alternative A | Alternative B |
+|-----------|---------------|---------------|
+| Meets functional requirements | Yes/Partial/No | Yes/Partial/No |
+| Performance | [assessment] | [assessment] |
+| Complexity | [Low/Medium/High] | [Low/Medium/High] |
+| Extensibility | [assessment] | [assessment] |
+| Risk | [assessment] | [assessment] |
 ```
 
-Then ask: **"Which components should the document cover? Select by number or describe what to include/exclude."**
+Ask: **"Which direction do you prefer? Or should I explore a different approach?"**
 
 Wait for answer before proceeding.
 
-## Phase 4: Propose Chapter Outline
+## Phase 4: Detail the Chosen Architecture
 
-Based on scope and selected components, propose a chapter outline. Typical chapters:
+After the user picks a direction, flesh out the design. Cover these sections one at a time, getting user approval between each:
 
-1. System Overview (purpose, high-level description)
-2. Component Hierarchy (structure, ownership, layering)
-3. Component Interactions (data flow, call patterns, protocols)
-4. Expansion Points (where and how to extend)
-5. Weaknesses and Risks (architectural problems, improvement opportunities)
+### 4.1 Class Diagram
 
-Present the outline and ask: **"What should be done next? Should I adjust the outline, add/remove chapters, or start generating?"**
+Generate a Mermaid class diagram showing all components, their interfaces, relationships, and ownership. Present it for user approval before continuing.
 
-<IMPORTANT>
-You MUST wait for the user's response before generating ANY chapter content. Never start writing chapters without explicit user direction.
-</IMPORTANT>
+### 4.2 Component Breakdown
 
-Wait for answer before proceeding.
+Define each component:
+- Responsibility (what it does and does NOT do)
+- Public interface (what it exposes to other components)
+- Internal structure (sub-components if any)
+- Ownership boundaries (what data/state it owns)
 
-## Phase 5: Chapter-by-Chapter Generation
+### 4.3 Interactions and Data Flow
 
-Generate ONE chapter at a time. After writing each chapter, present it and ask for feedback.
+For each pair of interacting components:
+- Direction of communication (who calls whom)
+- Protocol or mechanism (function call, message queue, API, event)
+- Data exchanged (types, formats)
+- Error handling (what happens when communication fails)
 
-### For each chapter:
+### 4.4 Extension Points
 
-1. **Generate** the chapter content
-2. **Present** it to the user
-3. **Ask:** "What do you think about this chapter? Is it okay, or what should I change?"
-4. **Wait** for user response
-5. If changes requested: revise and present again (loop until approved)
-6. If approved: ask "What should be done next?" before proceeding to next chapter
+Where and how the system can be extended:
+- Plugin interfaces or abstract base classes
+- Configuration-driven behavior
+- Feature flags or conditional compilation
+- Module boundaries designed for future expansion
 
-<IMPORTANT>
-NEVER generate multiple chapters at once. NEVER proceed to the next chapter without explicit user approval of the current one. This is the most critical rule of this skill.
+### 4.5 Migration Plan (Redesign Only)
 
-**No exceptions:**
-- Not "the chapters are short, I'll batch them"
-- Not "the user seems to want the whole doc fast"
-- Not "these chapters are closely related, better together"
-- Not "I'll generate all and let them review at the end"
-
-ONE chapter. Present. Wait. Get approval. Then next.
-</IMPORTANT>
-
-### Content Rules
-
-**What to include in chapters:**
-- How components behave (responsibilities, lifecycle, state)
-- How components interact (which calls which, data flow direction, protocols)
-- Component hierarchy (parent-child, composition, layering)
-- Expansion points (where new components plug in, what interfaces to implement)
-- Weaknesses (tight coupling, missing abstractions, scalability concerns)
-
-**What to NEVER include:**
-
-| Forbidden | Why | Use Instead |
-|-----------|-----|-------------|
-| Code snippets | Document describes architecture, not implementation | Describe behavior in prose |
-| Inline code (`backtick code`) | Same as code snippets | Name functions/classes without backticks |
-| ASCII art diagrams | These are a form of code | Describe relationships in prose or tables |
-| File paths as structure trees | Code-like representation | Describe directory organization in prose |
-| Configuration examples | Implementation detail | Describe what is configurable |
-| Command examples | Implementation detail | Describe what operations are available |
+If redesigning existing architecture:
+- Incremental migration steps (never big-bang)
+- What can be changed independently
+- Backward compatibility during transition
+- Rollback strategy for each step
+- Data migration approach if applicable
 
 <IMPORTANT>
-NO CODE SNIPPETS means NO CODE SNIPPETS. Not "just a small one for clarity." Not "just showing the interface." Not "just the function signature." The document describes HOW components BEHAVE and INTERACT, using natural language and tables only.
-
-This includes:
-- No fenced code blocks (```)
-- No inline code (single backticks for code)
-- No pseudo-code
-- No directory trees with box-drawing characters
-- No ASCII architecture diagrams
-
-Use prose paragraphs and markdown tables to describe everything.
+Present each section (4.1-4.5) individually. Wait for user approval before moving to the next section. Revise if the user requests changes.
 </IMPORTANT>
 
-## Phase 6: Full Document Review
+## Phase 5: Risk Analysis
 
-After ALL chapters are approved individually, present the complete assembled document.
+Identify architectural risks:
 
-Ask: **"Here is the full document with all chapters. Please review it as a whole. Is anything missing, inconsistent, or needs adjustment?"**
+| Risk | Impact | Likelihood | Mitigation |
+|------|--------|------------|------------|
+| [risk description] | [High/Medium/Low] | [High/Medium/Low] | [how to address] |
 
-Loop until user confirms the full document is correct:
-1. User flags issues -> revise flagged sections -> present full document again
-2. User approves -> done
+Focus on:
+- Decisions that are hard to reverse later
+- Single points of failure
+- Scalability bottlenecks
+- Coupling that will make future changes expensive
+- Technology bets that may not pay off
 
-## Output
+## Phase 6: Create Implementation Roadmap
 
-Save the final approved document to: `planning/architecture-<scope-name>.md`
+Break the architecture into implementable work items:
 
-## Red Flags - STOP and Fix
+1. **Foundation first** - Core abstractions, interfaces, base components
+2. **Critical path next** - The most important or risky pieces
+3. **Incremental delivery** - Each step produces something usable or testable
+4. **Tests alongside** - Each component should be testable in isolation
 
-- **Generating without asking scope** - Go back to Phase 2
-- **Skipping component list** - Go back to Phase 3
-- **Writing multiple chapters at once** - Delete extra chapters, present one at a time
-- **Including code snippets** - Remove all code, rewrite in prose
-- **Proceeding without user approval** - Stop and ask for feedback
-- **"User is in a hurry"** - The iterative process IS the value. Follow it.
-- **"These chapters are related"** - Still one at a time. No batching.
-- **"I'll add just a small code example"** - No. Describe behavior in words.
+Map work items to PRs following `planning-base` PR size guidelines.
+
+## Plan File Format
+
+Save to `planning/architecture-<name>.md`:
+
+```markdown
+# Architecture: <System/Component Name>
+
+## Goal
+<What is being designed and why>
+
+## Type
+<Greenfield / Redesign>
+
+## Requirements
+### Functional
+- <Requirement 1>
+- <Requirement 2>
+
+### Non-Functional
+- <Requirement 1>
+
+### Constraints
+- <Constraint 1>
+
+## Alternatives Considered
+
+### Alternative A: <Name>
+<Summary and why chosen/rejected>
+
+### Alternative B: <Name>
+<Summary and why chosen/rejected>
+
+**Chosen:** Alternative <X> because <reason>
+
+## Architecture Design
+
+### Components
+| Component | Responsibility | Interface |
+|-----------|---------------|-----------|
+| <name> | <what it does> | <what it exposes> |
+
+### Interactions
+| From | To | Mechanism | Data |
+|------|----|-----------|------|
+| <component> | <component> | <how> | <what> |
+
+### Extension Points
+- <Where and how the system can be extended>
+
+## Migration Plan (if redesign)
+- [ ] Step 1: <description>
+- [ ] Step 2: <description>
+
+## Risks
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| <risk> | <level> | <how> |
+
+## Implementation Roadmap
+### PR 1: <Title>
+**Scope:** <What's included>
+- [ ] Task 1
+- [ ] Task 2
+
+### PR 2: <Title>
+**Scope:** <What's included>
+- [ ] Task 1
+- [ ] Task 2
+
+## Notes
+<Decisions, trade-offs, open questions>
+```
 
 ## Common Mistakes
 
 | Mistake | Fix |
 |---------|-----|
-| Generating entire document at once | ONE chapter at a time with approval between each |
-| Including code snippets "for clarity" | Describe behavior in prose and tables only |
-| Skipping scope question | Always ask scope FIRST (single/multi/whole) |
-| Deciding components without asking user | Present full list, let user choose |
-| Not asking "what next?" before generation | Always give user control of pacing |
-| Using ASCII diagrams | Describe structure in prose or tables |
-| Skipping final whole-document review | Always do a final review after all chapters |
+| Jumping to a single solution without alternatives | Always present at least 2 alternatives with trade-offs |
+| Designing without understanding requirements | Gather and confirm requirements first |
+| Big-bang migration plan | Break redesign into incremental steps with rollback |
+| Over-engineering for hypothetical future needs | Design for known requirements, add extension points only where likely |
+| Detailing all sections at once | Present one section at a time, get approval between each |
+| Skipping risk analysis | Hard-to-reverse decisions need explicit risk assessment |
+| Ignoring current state in redesign | Always analyze what exists before proposing changes |
 
 ## Rationalizations to Reject
 
 | Excuse | Reality |
 |--------|---------|
-| "User is in a hurry, I'll generate it all" | Iterating chapter-by-chapter prevents rework. Follow the process. |
-| "The scope is obvious from context" | Confirm anyway. "Architecture" could mean many things. |
-| "These chapters are small, I'll batch them" | Small chapters are fast to approve. One at a time. |
-| "Just one small code example helps" | Prose explains architecture better. No code means no code. |
-| "I'll show the directory tree for context" | Describe the directory organization in words. |
-| "ASCII diagram is not really code" | It is a code-like representation. Use prose or tables. |
-| "User already told me the components" | Present the full list anyway so they can discover components they missed. |
-| "I'll generate all and they can cherry-pick" | That inverts the process. One chapter, one approval. |
+| "The answer is obvious, no need for alternatives" | Even obvious choices benefit from documenting what was rejected and why |
+| "We'll figure out migration later" | Migration is the hardest part of redesign. Plan it upfront. |
+| "Requirements are clear from context" | Confirm anyway. Assumptions are the root of architectural drift. |
+| "It's a small system, no need for formal planning" | Small systems grow. Early decisions are the hardest to change later. |
 
 ## Integration with Other Skills
 
 | Before This Skill | Use |
 |-------------------|-----|
-| Exploring unfamiliar code | `exploration-explore-code` |
+| Understanding existing code | `exploration-explore-code` |
+| Documenting current architecture | `review-architecture` |
 
 | After This Skill | Use |
 |------------------|-----|
-| Planning new features based on architecture | `planning-feature` |
-| Refactoring based on weaknesses found | `planning-refactor` |
+| Implementing planned features | `planning-feature` |
+| Refactoring toward new architecture | `planning-refactor` |
+| Creating test plans | `testing-testplan` |

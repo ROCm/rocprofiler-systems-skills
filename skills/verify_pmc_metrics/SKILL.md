@@ -1,28 +1,19 @@
 ---
 name: verify_pmc_metrics
-description: Use when verifying GPU PMC (AMD SMI), SDMA, or AINIC NIC RDMA metrics across Perfetto and RocPD output formats
+description: Use when verifying GPU PMC (AMD SMI), SDMA, JPEG, VCN, XGMI, PCIe, or NIC RDMA metrics across Perfetto and RocPD output formats
 ---
 
 # PMC Verification
 
-Systematic verification of AMD SMI Performance Monitoring Counter (PMC) implementation across all output formats, covering GPU, SDMA, and NIC (AINIC) metrics.
+Per-metric verification of AMD SMI Performance Monitoring Counter (PMC) implementation across all output formats.
 
 <IMPORTANT>
-- Always test ALL THREE output formats: Perfetto (standard), Perfetto Legacy, and RocPD.
-- Use the rocprof-sys MCP tools to analyze traces - do not manually parse files.
+- Test each metric INDIVIDUALLY with its specific workload.
+- Always test ALL THREE output formats per metric: Perfetto Standard, Perfetto Legacy, and RocPD.
+- Use the rocprof-sys MCP tools to analyze Perfetto traces, sqlite3 for RocPD databases.
 - **Run tests automatically** - do NOT ask for user confirmation before running workloads.
 - Execute all profiling commands directly using the Bash tool.
 </IMPORTANT>
-
-## When to Use
-
-- After implementing or modifying AMD SMI/PMC collection code
-- After changes to `cache_policy`, `perfetto_policy`, or `perfetto_processor`
-- When debugging missing GPU metrics (including SDMA) in traces
-- Before submitting PRs that affect GPU metrics collection
-- After implementing or modifying SDMA or NIC collector code
-- After changes to `collectors/nic/cache_policy.hpp` or `collectors/nic/perfetto_policy.hpp`
-- When debugging missing NIC RDMA metrics in traces
 
 ## Output Formats
 
@@ -32,37 +23,46 @@ Systematic verification of AMD SMI Performance Monitoring Counter (PMC) implemen
 | 2 | **Perfetto Legacy** | `ROCPROFSYS_TRACE=1 ROCPROFSYS_TRACE_LEGACY=true` | Legacy direct Perfetto format |
 | 3 | **RocPD** | `ROCPROFSYS_USE_ROCPD=1` | SQLite database format |
 
-## Available Metrics
+## Metric Registry
 
-### GPU Basic Metrics
+Each metric has its own config value, workload, expected Perfetto track pattern, and RocPD column name.
 
-| Category | Config Value | Description |
-|----------|--------------|-------------|
-| Power | `power` | GPU power consumption (W) |
-| Memory | `mem_usage` | VRAM memory usage (MB) |
-| Temperature | `temp` | GPU temperature (C) |
-| Activity | `busy` | GFX/UMC/MM utilization (%) |
+### GPU Metrics
 
-### GPU Advanced Metrics
+| # | Metric | Config Value | Workload | Perfetto Track Pattern | RocPD Name | Notes |
+|---|--------|-------------|----------|----------------------|------------|-------|
+| 1 | Power | `power` | `./transpose` | `GPU [N] Current Power (S)` | `device_power` | Watts |
+| 2 | Temperature | `temp` | `./transpose` | `GPU [N] Temperature (S)` | `device_temp` | Celsius |
+| 3 | Memory Usage | `mem_usage` | `./transpose` | `GPU [N] Memory Usage (S)` | `device_memory_usage` | MB |
+| 4 | GFX Busy | `busy` | `./transpose` | `GPU [N] GFX Busy (S)` | `device_busy_gfx` | % |
+| 5 | UMC Busy | `busy` | `./transpose` | `GPU [N] UMC Busy (S)` | `device_busy_umc` | % |
+| 6 | MM Busy | `busy` | `./transpose` | `GPU [N] MM Busy (S)` | `device_busy_mm` | % |
+| 7 | SDMA Usage | `sdma_usage` | `./sdma_test` | `GPU [N] SDMA Usage (S)` | `device_sdma_usage` | % |
+| 8 | PCIe Link Speed | `pcie` | `./transpose` | `GPU [N] PCIe Link Speed (S)` | `device_pcie_link_speed` | GT/s |
+| 9 | PCIe Link Width | `pcie` | `./transpose` | `GPU [N] PCIe Link Width (S)` | `device_pcie_link_width` | lanes |
+| 10 | PCIe Bandwidth Acc | `pcie` | `./transpose` | `GPU [N] PCIe Bandwidth Acc (S)` | `device_pcie_bandwidth_acc` | bytes |
+| 11 | PCIe Bandwidth Inst | `pcie` | `./transpose` | `GPU [N] PCIe Bandwidth Inst (S)` | `device_pcie_bandwidth_inst` | bytes/s |
+| 12 | VCN Activity | `vcn_activity` | `./videodecode -i <video>` | `GPU [N] VCN Activity ... (S)` | `device_vcn_activity_*` | % |
+| 13 | JPEG Activity | `jpeg_busy,jpeg_activity` | `./jpegdecode -i <images>` | `GPU [N] JPEG Activity ... (S)` | `device_jpeg_activity_*` | %, Navi vs MI300 differs |
+| 14 | XGMI | `xgmi` | `./transpose` | `GPU [N] XGMI ... (S)` | `device_xgmi_*` | Skip if no XGMI links |
 
-| Category | Config Value | Description |
-|----------|--------------|-------------|
-| VCN | `vcn_activity` | Video decode engine activity |
-| JPEG | `jpeg_activity` | JPEG decode engine activity |
-| XGMI | `xgmi` | GPU-to-GPU interconnect metrics |
-| PCIe | `pcie` | PCIe bandwidth and link metrics |
-| SDMA | `sdma_usage` | System DMA engine utilization (%) |
+### NIC (AINIC) Metrics
 
-### NIC RDMA Metrics
+| # | Metric | Config Value | Workload | Perfetto Track Pattern | RocPD Name | Notes |
+|---|--------|-------------|----------|----------------------|------------|-------|
+| 15 | RX RDMA Bytes | `all` + NIC env | `./transpose` | `NIC [N] RX RDMA Bytes (S)` | `nic_rx_ucast_bytes` | Use `AMDSMI_FAKE_AINIC=1` |
+| 16 | TX RDMA Bytes | `all` + NIC env | `./transpose` | `NIC [N] TX RDMA Bytes (S)` | `nic_tx_ucast_bytes` | |
+| 17 | RX RDMA Packets | `all` + NIC env | `./transpose` | `NIC [N] RX RDMA Packets (S)` | `nic_rx_ucast_pkts` | |
+| 18 | TX RDMA Packets | `all` + NIC env | `./transpose` | `NIC [N] TX RDMA Packets (S)` | `nic_tx_ucast_pkts` | |
+| 19 | RX CNP Packets | `all` + NIC env | `./transpose` | `NIC [N] RX CNP Packets (S)` | `nic_rx_cnp_pkts` | |
+| 20 | TX CNP Packets | `all` + NIC env | `./transpose` | `NIC [N] TX CNP Packets (S)` | `nic_tx_cnp_pkts` | |
 
-| Category | Config Value | Description |
-|----------|--------------|-------------|
-| RX RDMA Bytes | `rx_rdma_ucast_bytes` | Received RDMA unicast bytes |
-| TX RDMA Bytes | `tx_rdma_ucast_bytes` | Transmitted RDMA unicast bytes |
-| RX RDMA Pkts | `rx_rdma_ucast_pkts` | Received RDMA unicast packets |
-| TX RDMA Pkts | `tx_rdma_ucast_pkts` | Transmitted RDMA unicast packets |
-| RX CNP Pkts | `rx_rdma_cnp_pkts` | Received congestion notification packets |
-| TX CNP Pkts | `tx_rdma_cnp_pkts` | Transmitted congestion notification packets |
+### Perfetto Legacy Track Name Differences
+
+Legacy format uses different track naming:
+- GPU: `GPU <Metric> [N] (S)` instead of `GPU [N] <Metric> (S)`
+- NIC: `NIC <device_name> <Metric> [N] (S)` instead of `NIC [N] <Metric> (S)`
+- NIC uses abbreviated forms: `Pkts` vs `Packets`
 
 ## Process
 
@@ -71,163 +71,109 @@ Execute all phases automatically without asking for user confirmation.
 Run profiling commands directly - the workloads are safe test applications.
 </IMPORTANT>
 
-### Phase 1: Setup and Run Tests
-
-**Automated execution** - run all test commands directly:
+### Phase 1: Setup
 
 1. Auto-discover build directory (`build/debug`, `build/release`, or `build/`)
-2. Source `setup-env.sh` and run workloads with each output format
-3. Use `/tmp/pmc-test-*` output paths to avoid polluting the project directory
-4. Run GPU, SDMA, and NIC tests in sequence (or parallel where appropriate)
+2. `cd` into build dir, source `share/rocprofiler-systems/setup-env.sh`
+3. Verify workload binaries exist: `transpose`, `sdma_test`, `jpegdecode`, `videodecode`
 
-**GPU Test Commands:**
+### Phase 2: Run Per-Metric Tests
+
+For each metric group, run 3 tests (one per output format). Use `/tmp/pmc-test-<metric>-<format>` output paths.
+
+**Template for each metric:**
 
 ```bash
-# Auto-discover and run (execute directly with Bash tool)
 source share/rocprofiler-systems/setup-env.sh
 
-# Perfetto (Standard)
-ROCPROFSYS_OUTPUT_PATH=pmc-test-perfetto \
+# Perfetto Standard
+ROCPROFSYS_OUTPUT_PATH=/tmp/pmc-test-<metric>-perfetto \
 ROCPROFSYS_TRACE=1 \
-ROCPROFSYS_AMD_SMI_METRICS="all" \
-bin/rocprof-sys-run -- ./transpose
+ROCPROFSYS_AMD_SMI_METRICS="<config_value>" \
+[EXTRA_ENV_VARS] \
+bin/rocprof-sys-run -- <workload>
 
 # Perfetto Legacy
-ROCPROFSYS_OUTPUT_PATH=pmc-test-legacy \
+ROCPROFSYS_OUTPUT_PATH=/tmp/pmc-test-<metric>-legacy \
 ROCPROFSYS_TRACE=1 \
 ROCPROFSYS_TRACE_LEGACY=true \
-ROCPROFSYS_AMD_SMI_METRICS="all" \
-bin/rocprof-sys-run -- ./transpose
+ROCPROFSYS_AMD_SMI_METRICS="<config_value>" \
+[EXTRA_ENV_VARS] \
+bin/rocprof-sys-run -- <workload>
 
 # RocPD
-ROCPROFSYS_OUTPUT_PATH=pmc-test-rocpd \
+ROCPROFSYS_OUTPUT_PATH=/tmp/pmc-test-<metric>-rocpd \
 ROCPROFSYS_USE_ROCPD=1 \
-ROCPROFSYS_AMD_SMI_METRICS="all" \
-bin/rocprof-sys-run -- ./transpose
+ROCPROFSYS_AMD_SMI_METRICS="<config_value>" \
+[EXTRA_ENV_VARS] \
+bin/rocprof-sys-run -- <workload>
 ```
 
-**SDMA Test Commands:**
+**Metric groups to test (can share workload runs):**
 
-Use `./sdma_test` to generate SDMA engine activity for verifying `sdma_usage` metrics.
+| Run | Config Value | Workload | Metrics Covered |
+|-----|-------------|----------|-----------------|
+| gpu-basic | `power,temp,mem_usage,busy` | `./transpose` | Power, Temp, Memory, GFX/UMC/MM Busy |
+| sdma | `sdma_usage` | `./sdma_test` | SDMA Usage |
+| pcie | `pcie` | `./transpose` | PCIe Link Speed/Width, Bandwidth Acc/Inst |
+| vcn | `vcn_activity` | `./videodecode -i <video>` | VCN Activity |
+| jpeg | `jpeg_busy,jpeg_activity` | `./jpegdecode -i <images>` | JPEG Activity/Busy |
+| xgmi | `xgmi` | `./transpose` | XGMI (skip if unavailable) |
+| nic | `all` + NIC env | `./transpose` | All 6 NIC RDMA metrics |
 
+**NIC-specific env vars:**
 ```bash
-# Perfetto (Standard)
-ROCPROFSYS_OUTPUT_PATH=pmc-test-sdma-perfetto \
-ROCPROFSYS_TRACE=1 \
-ROCPROFSYS_AMD_SMI_METRICS="sdma_usage" \
-bin/rocprof-sys-run -- ./sdma_test
-
-# Perfetto Legacy
-ROCPROFSYS_OUTPUT_PATH=pmc-test-sdma-legacy \
-ROCPROFSYS_TRACE=1 \
-ROCPROFSYS_TRACE_LEGACY=true \
-ROCPROFSYS_AMD_SMI_METRICS="sdma_usage" \
-bin/rocprof-sys-run -- ./sdma_test
-
-# RocPD
-ROCPROFSYS_OUTPUT_PATH=pmc-test-sdma-rocpd \
-ROCPROFSYS_USE_ROCPD=1 \
-ROCPROFSYS_AMD_SMI_METRICS="sdma_usage" \
-bin/rocprof-sys-run -- ./sdma_test
+AMDSMI_FAKE_AINIC=1
+ROCPROFSYS_SAMPLING_AINICS="all"
 ```
 
-**NIC (AINIC) Test Commands:**
+**Workload commands:**
 
-Use `AMDSMI_FAKE_AINIC=1` for development/testing without AINIC hardware.
+| Workload | Command | Default Runtime | Notes |
+|----------|---------|-----------------|-------|
+| transpose | `./transpose` | ~2.4 sec | No args needed, 9920x9920, 500 iter |
+| sdma_test | `./sdma_test` | ~5-10 sec | 512MB, 10 iter, 10 copies |
+| videodecode | `./videodecode -i /opt/rocm/share/rocdecode/video/AMD_driving_virtual_20-H264.264` | Varies | H264 decode |
+| jpegdecode | `./jpegdecode -i /opt/rocm/share/rocjpeg/images/` | <1 sec | JPEG decode, short workload |
 
-```bash
-# Perfetto (Standard) - with fake AINIC for dev
-AMDSMI_FAKE_AINIC=1 \
-ROCPROFSYS_OUTPUT_PATH=pmc-test-nic-perfetto \
-ROCPROFSYS_TRACE=1 \
-ROCPROFSYS_SAMPLING_AINICS="all" \
-ROCPROFSYS_AMD_SMI_METRICS="all" \
-bin/rocprof-sys-run -- ./transpose
+**IMPORTANT: Workload Runtimes**
 
-# Perfetto Legacy - with fake AINIC for dev
-AMDSMI_FAKE_AINIC=1 \
-ROCPROFSYS_OUTPUT_PATH=pmc-test-nic-legacy \
-ROCPROFSYS_TRACE=1 \
-ROCPROFSYS_TRACE_LEGACY=true \
-ROCPROFSYS_SAMPLING_AINICS="all" \
-ROCPROFSYS_AMD_SMI_METRICS="all" \
-bin/rocprof-sys-run -- ./transpose
+- `transpose` and `sdma_test` run long enough for PMC sampling (~2+ sec)
+- `jpegdecode` is very short (<0.5 sec) — may get few/no samples in Perfetto Legacy (known timing issue)
+- `videodecode` duration depends on video length — short videos may also have low sample counts
+- Always use default parameters (no explicit size/iteration arguments)
 
-# RocPD - with fake AINIC for dev
-AMDSMI_FAKE_AINIC=1 \
-ROCPROFSYS_OUTPUT_PATH=pmc-test-nic-rocpd \
-ROCPROFSYS_USE_ROCPD=1 \
-ROCPROFSYS_SAMPLING_AINICS="all" \
-ROCPROFSYS_AMD_SMI_METRICS="all" \
-bin/rocprof-sys-run -- ./transpose
+### Phase 3: Analyze Traces
+
+For each metric group, load and query all 3 traces.
+
+**Perfetto traces (Standard and Legacy):**
+
+```
+mcp__rocprof-sys__load_trace(path="<trace-file>", name="<metric>-<format>")
 ```
 
-Key NIC environment variables:
-- `ROCPROFSYS_SAMPLING_AINICS="all"` - enables NIC sampling (default is `"none"`)
-- `AMDSMI_FAKE_AINIC=1` - simulates AINIC devices when none present
-
-**IMPORTANT: Use Default Parameters**
-
-Always run workloads with their **default parameters** (no explicit size/iteration arguments). This ensures:
-1. Sufficient runtime for PMC sampling to complete (~2+ seconds)
-2. Counter tracks are properly flushed in all output formats
-3. Perfetto Legacy format has time to write counter data (timing-sensitive)
-
-**Workload Details:**
-
-| Workload | Default Runtime | Purpose | Metrics Verified |
-|----------|-----------------|---------|------------------|
-| `./transpose` | ~2.4 sec (9920x9920, 500 iter) | General GPU compute | Power, Temp, GFX/UMC Busy, Memory |
-| `./sdma_test` | ~5-10 sec (512MB, 10 iter, 10 copies) | H2D/D2D/D2H DMA transfers | SDMA Usage |
-| `./videodecode` | Varies by video | VCN engine | VCN Activity |
-| `./jpegdecode` | Varies by images | JPEG engine | JPEG Activity |
-
-**Known Issue**: Perfetto Legacy format has a timing bug where counter tracks are not captured for short workloads (<0.5 seconds). Using default parameters avoids this issue.
-
-### Phase 2: Analyze Traces
-
-Use MCP tools to analyze each trace:
-
-**Step 2.1: Load trace**
-```
-mcp__rocprof-sys__load_trace(path="<trace-file>", name="<test-name>")
-```
-
-**Step 2.2: List AMD SMI GPU counter tracks**
-```sql
-SELECT DISTINCT name FROM track
-WHERE name LIKE '%GPU%' AND name LIKE '%(S)%'
-ORDER BY name
-```
-
-**Step 2.3: Get GPU metric statistics**
+Query for GPU metric tracks:
 ```sql
 SELECT t.name,
        COUNT(*) as samples,
        MIN(c.value) as min_val,
        MAX(c.value) as max_val,
-       AVG(c.value) as avg_val
+       ROUND(AVG(c.value), 2) as avg_val
 FROM counter c
 JOIN counter_track t ON c.track_id = t.id
-WHERE t.name LIKE '%GPU%' AND t.name LIKE '%(S)%'
+WHERE t.name LIKE '%<PATTERN>%' AND t.name LIKE '%(S)%'
 GROUP BY t.name
 ORDER BY t.name
 ```
 
-**Step 2.4: List NIC counter tracks**
-```sql
-SELECT DISTINCT name FROM track
-WHERE name LIKE '%NIC%' AND name LIKE '%(S)%'
-ORDER BY name
-```
-
-**Step 2.5: Get NIC metric statistics**
+Query for NIC metric tracks:
 ```sql
 SELECT t.name,
        COUNT(*) as samples,
        MIN(c.value) as min_val,
        MAX(c.value) as max_val,
-       AVG(c.value) as avg_val
+       ROUND(AVG(c.value), 2) as avg_val
 FROM counter c
 JOIN counter_track t ON c.track_id = t.id
 WHERE t.name LIKE '%NIC%' AND t.name LIKE '%(S)%'
@@ -235,93 +181,74 @@ GROUP BY t.name
 ORDER BY t.name
 ```
 
-**Step 2.6: For RocPD, query SQLite directly**
+**RocPD databases:**
+
 ```bash
-# List GPU PMC metrics
-sqlite3 <db-file> "SELECT DISTINCT name FROM rocpd_info_pmc WHERE name LIKE 'device_%' ORDER BY name;"
+# List available PMC metrics
+sqlite3 <db-file> "SELECT DISTINCT name FROM rocpd_info_pmc WHERE name LIKE '<pattern>' ORDER BY name;"
 
-# List NIC PMC metrics
-sqlite3 <db-file> "SELECT DISTINCT name FROM rocpd_info_pmc WHERE name LIKE 'ainic%' ORDER BY name;"
-
-# Count samples
-sqlite3 <db-file> "SELECT COUNT(*) FROM rocpd_sample_*;"
+# Get metric stats
+sqlite3 <db-file> "SELECT p.name, COUNT(*) as samples, MIN(e.value) as min_val, MAX(e.value) as max_val, ROUND(AVG(e.value),2) as avg_val FROM rocpd_pmc_event e JOIN rocpd_info_pmc p ON e.pmc_id = p.id WHERE p.name LIKE '<pattern>' GROUP BY p.name ORDER BY p.name;"
 ```
 
-### Phase 3: Create Report
+### Phase 4: Generate Report
 
-Generate verification report with this structure:
+Generate a single summary table plus per-metric detail.
+
+**Report format:**
 
 ```markdown
 # PMC Verification Report
 
 **Date**: YYYY-MM-DD
 **Version**: rocprofiler-systems vX.Y.Z
-**Target**: <machine_name>:<project_path> (or "local")
-**Build Dir**: <discovered_build_dir>
+**Target**: local | <machine>:<path>
+**Build Dir**: <build_dir>
+**Branch**: <branch_name>
 
-## Summary
+## Summary Table
 
-| Output Type | GPU Status | SDMA Status | NIC Status | Notes |
-|-------------|------------|-------------|------------|-------|
-| Perfetto (Standard) | PASS/FAIL | PASS/FAIL | PASS/FAIL | |
-| Perfetto Legacy | PASS/FAIL | PASS/FAIL | PASS/FAIL | |
-| RocPD | PASS/FAIL | PASS/FAIL | PASS/FAIL | |
+| # | Metric | Config Value | Workload | Perfetto | Legacy | RocPD | Notes |
+|---|--------|-------------|----------|----------|--------|-------|-------|
+| 1 | Power | `power` | transpose | PASS (N samples) | PASS (N samples) | PASS (N samples) | |
+| 2 | Temperature | `temp` | transpose | PASS | PASS | PASS | |
+| ... | ... | ... | ... | ... | ... | ... | ... |
 
-## Test Results
+### Status Values
 
-### GPU Metrics
+- **PASS (N samples)**: Track present, N samples collected, values look reasonable
+- **PASS (0%)**: Track present and sampled, but values are all zero (hardware-dependent)
+- **FAIL (no tracks)**: Expected track not found in output
+- **FAIL (0 samples)**: Track present but no samples collected
+- **SKIP**: Metric not available on this hardware (e.g., XGMI without multi-GPU links)
+- **WARN**: Track present but unexpected values (e.g., sentinel values)
 
-#### Perfetto (Standard)
-- **Trace ID**: <id>
-- **Metrics Found**: [list]
-- **Sample Count**: N
+## Per-Metric Details
 
-| Metric | Samples | Min | Max | Avg |
-|--------|---------|-----|-----|-----|
+### <Metric Name>
+
+**Config**: `ROCPROFSYS_AMD_SMI_METRICS="<value>"`
+**Workload**: `<command>`
+
+#### Perfetto Standard
+| Track Name | Samples | Min | Max | Avg |
+|------------|---------|-----|-----|-----|
 | ... | ... | ... | ... | ... |
 
 #### Perfetto Legacy
-[Same structure]
-
-#### RocPD
-[Same structure]
-
-### SDMA Metrics
-
-#### Perfetto (Standard)
-- **Trace ID**: <id>
-- **Metrics Found**: [list]
-- **Sample Count**: N
-
-| Metric | Samples | Min | Max | Avg |
-|--------|---------|-----|-----|-----|
+| Track Name | Samples | Min | Max | Avg |
+|------------|---------|-----|-----|-----|
 | ... | ... | ... | ... | ... |
 
-#### Perfetto Legacy
-[Same structure]
-
 #### RocPD
-[Same structure]
-
-### NIC (AINIC) Metrics
-
-#### Perfetto (Standard)
-- **Trace ID**: <id>
-- **Metrics Found**: [list]
-- **Sample Count**: N
-
-| Metric | Samples | Min | Max | Avg |
-|--------|---------|-----|-----|-----|
+| PMC Name | Samples | Min | Max | Avg |
+|----------|---------|-----|-----|-----|
 | ... | ... | ... | ... | ... |
 
-#### Perfetto Legacy
-[Same structure]
-
-#### RocPD
-[Same structure]
+[Repeat for each metric]
 
 ## Issues Found
-[List any issues discovered]
+[List any issues with severity: HIGH/MEDIUM/LOW/INFO]
 
 ## Conclusion
 [Overall assessment]
@@ -331,111 +258,46 @@ Generate verification report with this structure:
 
 ## Verification Criteria
 
-For each output format, verify:
+For each metric in each output format:
 
 | Criterion | Check |
 |-----------|-------|
-| Track Presence | Expected metric tracks appear in output |
-| Non-Zero Values | Metrics show activity (not all zeros) during workload |
-| Valid Range | Values within expected range (0-100% for activity) |
-| No Sentinels | No 0xFFFF or max-value sentinels in output |
-| Sample Count | Reasonable number of samples collected |
-
-## Expected Metrics by Output
-
-### GPU Metrics
-
-#### Perfetto (Standard/Legacy)
-
-Counter tracks should include:
-- `GPU [N] Current Power (S)`
-- `GPU [N] GFX Busy (S)`
-- `GPU [N] UMC Busy (S)`
-- `GPU [N] MM Busy (S)`
-- `GPU [N] Temperature (S)`
-- `GPU [N] Memory Usage (S)`
-- `GPU [N] PCIe Link Width (S)`
-- `GPU [N] PCIe Link Speed (S)`
-- `GPU [N] SDMA Usage (S)`
-- `GPU [N] VCN Activity ...` (multiple tracks)
-
-#### RocPD
-
-PMC info names should include:
-- `device_busy_gfx`
-- `device_busy_umc`
-- `device_busy_mm`
-- `device_power`
-- `device_temp`
-- `device_memory_usage`
-- `device_pcie_*`
-- `device_sdma_usage`
-- `device_vcn_activity*`
-
-### NIC (AINIC) Metrics
-
-#### Perfetto Standard
-
-Counter tracks should include:
-- `NIC [N] RX RDMA Bytes (S)`
-- `NIC [N] TX RDMA Bytes (S)`
-- `NIC [N] RX RDMA Packets (S)`
-- `NIC [N] TX RDMA Packets (S)`
-- `NIC [N] RX CNP Packets (S)`
-- `NIC [N] TX CNP Packets (S)`
-
-#### Perfetto Legacy
-
-Counter tracks should include:
-- `NIC {device_name} RX RDMA Bytes [{N}] (S)`
-- `NIC {device_name} TX RDMA Bytes [{N}] (S)`
-- `NIC {device_name} RX RDMA Pkts [{N}] (S)`
-- `NIC {device_name} TX RDMA Pkts [{N}] (S)`
-- `NIC {device_name} RX CNP Pkts [{N}] (S)`
-- `NIC {device_name} TX CNP Pkts [{N}] (S)`
-
-#### RocPD
-
-PMC info names should include:
-- `ainic_rx_rdma_ucast_bytes`
-- `ainic_tx_rdma_ucast_bytes`
-- `ainic_rx_rdma_ucast_pkts`
-- `ainic_tx_rdma_ucast_pkts`
-- `ainic_rx_rdma_cnp_pkts`
-- `ainic_tx_rdma_cnp_pkts`
+| Track Presence | Expected track/column appears in output |
+| Sample Count | At least 1 sample; ideally 100+ for long workloads |
+| Non-Zero Values | Values show activity during workload (metric-dependent) |
+| Valid Range | Within expected range (0-100% for activity, >0 for power/temp) |
+| No Sentinels | No 0xFFFF or max-value sentinels |
 
 ## Common Issues
 
-### GPU Issues
+### Workload Issues
 
 | Issue | Symptom | Cause | Fix |
 |-------|---------|-------|-----|
-| Missing Perfetto metrics | No counter tracks in standard mode | `cache_policy` guard not checking `get_caching_perfetto()` | Update guard to use `get_use_cache_output()` |
-| Legacy: No counters (short workload) | Counter tracks = 0 for workloads <0.5 sec | Timing/sync issue in legacy path | Use default parameters (no size args) for >2 sec runtime |
-| Timestamp validation errors | "Invalid timestamp" warnings | Timestamp outside valid range | Check `thread_info::is_valid_time()` |
-| Excessive VCN tracks | 32 tracks on Radeon | MI300-style XCP output on non-XCP GPU | Check `vcn_activity` vs `vcn_busy` flag |
-| Missing samples | 0 samples in output | Metrics not being sampled | Check `ROCPROFSYS_AMD_SMI_METRICS` config |
-| SDMA not compiled | No SDMA track in output | `AMD_SMI_SDMA_SUPPORTED` not defined | Requires AMD SMI >= 26.3; rebuild with compatible version |
-| SDMA always 0% | SDMA Usage track shows 0 | No DMA transfers during workload | Use a workload that triggers HIP memcpy (e.g., `transpose`) |
-| SDMA first sample 0 | First SDMA sample is 0% | Delta computation needs previous sample | Expected behavior — first sample has no baseline |
+| Short workload | 0-1 samples | Workload < PMC sampling interval | Use longer workload or default params |
+| Legacy timing bug | No counter tracks for <0.5 sec workloads | Legacy path sync issue | Known issue; use default params for >2 sec |
+| Invalid timestamps | "Invalid timestamp" warnings in legacy | First sample timestamp invalid | Known; drops 1-2 samples |
+
+### GPU Metric Issues
+
+| Issue | Symptom | Cause | Fix |
+|-------|---------|-------|-----|
+| Missing Perfetto tracks | No counter tracks in standard mode | `cache_policy` not wired | Check cache_policy/perfetto_policy integration |
+| SDMA always 0% | Track present but 0% | Consumer GPU (RX) limitation | Normal on Navi; works on MI series |
+| JPEG no tracks in Perfetto | JPEG in RocPD but not Perfetto | Missing Perfetto policy for JPEG | Check perfetto_policy.hpp JPEG handling |
+| JPEG vs Navi/MI | `jpeg_activity` vs `jpeg_busy` | Different APIs per arch | Use both: `jpeg_busy,jpeg_activity` |
+| VCN 0% short video | VCN track 0% | Video too short | Use longer video file |
+| XGMI not available | No XGMI tracks | No multi-GPU XGMI links | Mark as SKIP |
+| Excessive VCN/JPEG tracks | Many zero-value XCP tracks | MI300-style output on non-XCP GPU | Expected on consumer GPUs |
 
 ### NIC Issues
 
 | Issue | Symptom | Cause | Fix |
 |-------|---------|-------|-----|
-| No NIC devices found | 0 NIC devices in log | `ROCPROFSYS_SAMPLING_AINICS` not set | Set `ROCPROFSYS_SAMPLING_AINICS="all"` |
-| NIC not supported (no RDMA) | "not supported" log | Device has no RDMA ports | Use `AMDSMI_FAKE_AINIC=1` for testing |
-| Wrong Perfetto category | Compile error about categories | Category string mismatch | Use registered names from `categories.hpp` (e.g., `nic_rx_ucast_bytes`) |
-
-### Remote Execution Issues
-
-| Issue | Symptom | Cause | Fix |
-|-------|---------|-------|-----|
-| SSH connection refused | `Connection refused` | SSH not configured or wrong hostname | Verify `ssh <machine>` works manually |
-| No build dir found | Auto-discover returns empty | Project not built on remote | Build remotely first: `ssh <machine> "cd <path>/build/debug && ninja"` |
-| Permission denied on traces | `scp` fails | Output dir not writable | Use `/tmp/` for output paths (already the default) |
-| setup-env.sh not found | `source` fails | Wrong build directory | Check auto-discover output, verify build path |
-| No GPU devices on remote | 0 GPU devices in log | GPU not accessible to user | Check `/dev/kfd` and `/dev/dri` permissions, user in `render` group |
+| No NIC devices | 0 NIC devices in log | `ROCPROFSYS_SAMPLING_AINICS` not set | Set to `"all"` |
+| NIC not supported | "not supported" log | No RDMA ports | Use `AMDSMI_FAKE_AINIC=1` |
+| Missing NIC in Standard | NIC in Legacy but not Standard | cache_policy not integrated | Check NIC cache_policy/perfetto_policy |
+| Missing NIC in RocPD | No nic_* in SQLite | RocPD path not handling NIC | Check rocpd_processor NIC handling |
 
 ## Integration with Other Skills
 
@@ -446,227 +308,31 @@ PMC info names should include:
 
 ## Quick Reference
 
-**GPU minimum verification command sequence:**
+**Per-metric verification (single metric):**
 ```bash
-# Build
-ninja rocprofiler-systems-shared-library
+source share/rocprofiler-systems/setup-env.sh
 
-# Test Perfetto Standard (use default parameters - no size args!)
-ROCPROFSYS_TRACE=1 ROCPROFSYS_AMD_SMI_METRICS="all" \
-  bin/rocprof-sys-run -- ./transpose
-
-# Load and query trace
-mcp__rocprof-sys__load_trace(path="<output>/perfetto-trace-*.proto")
-mcp__rocprof-sys__query_trace(sql="SELECT DISTINCT name FROM counter_track WHERE name LIKE '%GPU%'")
+# Test one metric across all 3 formats
+for fmt_name fmt_env in \
+  perfetto "ROCPROFSYS_TRACE=1" \
+  legacy "ROCPROFSYS_TRACE=1 ROCPROFSYS_TRACE_LEGACY=true" \
+  rocpd "ROCPROFSYS_USE_ROCPD=1"; do
+    eval "$fmt_env ROCPROFSYS_OUTPUT_PATH=/tmp/pmc-test-<metric>-$fmt_name \
+      ROCPROFSYS_AMD_SMI_METRICS='<config>' \
+      bin/rocprof-sys-run -- <workload>"
+done
 ```
 
-**SDMA minimum verification command sequence:**
-```bash
-# Build
-ninja rocprofiler-systems-shared-library
-
-# Test Perfetto Standard with sdma_test
-ROCPROFSYS_TRACE=1 ROCPROFSYS_AMD_SMI_METRICS="sdma_usage" \
-  bin/rocprof-sys-run -- ./sdma_test
-
-# Load and query trace
-mcp__rocprof-sys__load_trace(path="<output>/perfetto-trace-*.proto")
-mcp__rocprof-sys__query_trace(sql="SELECT DISTINCT name FROM counter_track WHERE name LIKE '%SDMA%'")
-```
-
-**NIC minimum verification command sequence:**
-```bash
-# Build
-ninja rocprofiler-systems-shared-library
-
-# Test Perfetto Standard with fake AINIC
-AMDSMI_FAKE_AINIC=1 ROCPROFSYS_TRACE=1 \
-  ROCPROFSYS_SAMPLING_AINICS="all" ROCPROFSYS_AMD_SMI_METRICS="all" \
-  bin/rocprof-sys-run -- ./transpose
-
-# Load and query trace
-mcp__rocprof-sys__load_trace(path="<output>/perfetto-trace-*.proto")
-mcp__rocprof-sys__query_trace(sql="SELECT DISTINCT name FROM counter_track WHERE name LIKE '%NIC%'")
-```
-
-**Critical**: Always run `./transpose` without parameters. Default runtime (~2.4 sec) ensures PMC counter tracks are captured in all formats, especially Perfetto Legacy which fails on short workloads.
+**Full verification (all metrics):**
+Run each metric group from the table above, then load all traces and generate the summary table.
 
 ## Remote Execution (SSH)
 
-Run PMC verification on a remote machine with actual GPU/NIC hardware. Traces are copied back for local MCP analysis.
+Same process as local but:
+1. SSH into remote, discover build dir
+2. Run workloads via SSH with `/tmp/pmc-remote-*` output paths
+3. `scp` traces back to local machine
+4. Analyze locally with MCP tools
+5. Cleanup remote `/tmp/pmc-remote-*`
 
-**Prerequisites:**
-- SSH key-based auth configured (no password prompts)
-- rocprofiler-systems already built on the remote machine
-
-### Input Format
-
-Provide a target in `machine_name:/path/to/project/root` format:
-- `gpu-server:/home/user/rocprofiler-systems`
-- `mi300x-node:/opt/builds/rocprofiler-systems`
-
-### Phase R1: Connect and Discover Build Directory
-
-SSH into the remote and auto-discover the build directory:
-
-```bash
-# Auto-discover build directory (checks build/debug, build/release, build/ in order)
-BUILD_DIR=$(ssh <machine> "cd <project_path> && \
-  for d in build/debug build/release build; do \
-    [ -f \"\$d/bin/rocprof-sys-run\" ] && echo \"\$d\" && break; \
-  done")
-```
-
-If `BUILD_DIR` is empty, report error and stop — the project is not built on the remote.
-
-### Phase R2: Run Workloads Remotely
-
-Run all test commands via SSH. Same env vars as local, but use `/tmp/pmc-remote-*` output paths to avoid polluting the project directory.
-
-**GPU Test Commands (Remote):**
-
-```bash
-# GPU Perfetto Standard
-ssh <machine> "cd <project_path>/<build_dir> && \
-  source share/rocprofiler-systems/setup-env.sh && \
-  ROCPROFSYS_OUTPUT_PATH=/tmp/pmc-remote-perfetto \
-  ROCPROFSYS_TRACE=1 \
-  ROCPROFSYS_AMD_SMI_METRICS='all' \
-  bin/rocprof-sys-run -- ./transpose"
-
-# GPU Perfetto Legacy
-ssh <machine> "cd <project_path>/<build_dir> && \
-  source share/rocprofiler-systems/setup-env.sh && \
-  ROCPROFSYS_OUTPUT_PATH=/tmp/pmc-remote-legacy \
-  ROCPROFSYS_TRACE=1 \
-  ROCPROFSYS_TRACE_LEGACY=true \
-  ROCPROFSYS_AMD_SMI_METRICS='all' \
-  bin/rocprof-sys-run -- ./transpose"
-
-# GPU RocPD
-ssh <machine> "cd <project_path>/<build_dir> && \
-  source share/rocprofiler-systems/setup-env.sh && \
-  ROCPROFSYS_OUTPUT_PATH=/tmp/pmc-remote-rocpd \
-  ROCPROFSYS_USE_ROCPD=1 \
-  ROCPROFSYS_AMD_SMI_METRICS='all' \
-  bin/rocprof-sys-run -- ./transpose"
-```
-
-**SDMA Test Commands (Remote):**
-
-```bash
-# SDMA Perfetto Standard
-ssh <machine> "cd <project_path>/<build_dir> && \
-  source share/rocprofiler-systems/setup-env.sh && \
-  ROCPROFSYS_OUTPUT_PATH=/tmp/pmc-remote-sdma-perfetto \
-  ROCPROFSYS_TRACE=1 \
-  ROCPROFSYS_AMD_SMI_METRICS='sdma_usage' \
-  bin/rocprof-sys-run -- ./sdma_test"
-
-# SDMA Perfetto Legacy
-ssh <machine> "cd <project_path>/<build_dir> && \
-  source share/rocprofiler-systems/setup-env.sh && \
-  ROCPROFSYS_OUTPUT_PATH=/tmp/pmc-remote-sdma-legacy \
-  ROCPROFSYS_TRACE=1 \
-  ROCPROFSYS_TRACE_LEGACY=true \
-  ROCPROFSYS_AMD_SMI_METRICS='sdma_usage' \
-  bin/rocprof-sys-run -- ./sdma_test"
-
-# SDMA RocPD
-ssh <machine> "cd <project_path>/<build_dir> && \
-  source share/rocprofiler-systems/setup-env.sh && \
-  ROCPROFSYS_OUTPUT_PATH=/tmp/pmc-remote-sdma-rocpd \
-  ROCPROFSYS_USE_ROCPD=1 \
-  ROCPROFSYS_AMD_SMI_METRICS='sdma_usage' \
-  bin/rocprof-sys-run -- ./sdma_test"
-```
-
-**NIC (AINIC) Test Commands (Remote):**
-
-```bash
-# NIC Perfetto Standard
-ssh <machine> "cd <project_path>/<build_dir> && \
-  source share/rocprofiler-systems/setup-env.sh && \
-  AMDSMI_FAKE_AINIC=1 \
-  ROCPROFSYS_OUTPUT_PATH=/tmp/pmc-remote-nic-perfetto \
-  ROCPROFSYS_TRACE=1 \
-  ROCPROFSYS_SAMPLING_AINICS='all' \
-  ROCPROFSYS_AMD_SMI_METRICS='all' \
-  bin/rocprof-sys-run -- ./transpose"
-
-# NIC Perfetto Legacy
-ssh <machine> "cd <project_path>/<build_dir> && \
-  source share/rocprofiler-systems/setup-env.sh && \
-  AMDSMI_FAKE_AINIC=1 \
-  ROCPROFSYS_OUTPUT_PATH=/tmp/pmc-remote-nic-legacy \
-  ROCPROFSYS_TRACE=1 \
-  ROCPROFSYS_TRACE_LEGACY=true \
-  ROCPROFSYS_SAMPLING_AINICS='all' \
-  ROCPROFSYS_AMD_SMI_METRICS='all' \
-  bin/rocprof-sys-run -- ./transpose"
-
-# NIC RocPD
-ssh <machine> "cd <project_path>/<build_dir> && \
-  source share/rocprofiler-systems/setup-env.sh && \
-  AMDSMI_FAKE_AINIC=1 \
-  ROCPROFSYS_OUTPUT_PATH=/tmp/pmc-remote-nic-rocpd \
-  ROCPROFSYS_USE_ROCPD=1 \
-  ROCPROFSYS_SAMPLING_AINICS='all' \
-  ROCPROFSYS_AMD_SMI_METRICS='all' \
-  bin/rocprof-sys-run -- ./transpose"
-```
-
-### Phase R3: Copy Traces Back
-
-```bash
-# Create local directory for remote traces
-mkdir -p pmc-remote-traces
-
-# Copy all trace outputs
-scp -r <machine>:/tmp/pmc-remote-* pmc-remote-traces/
-```
-
-### Phase R4: Analyze Locally
-
-Same as Phase 2 above — load traces with MCP tools and run SQL queries. The only difference is that local paths point to `pmc-remote-traces/` instead of local output directories.
-
-```
-mcp__rocprof-sys__load_trace(path="pmc-remote-traces/pmc-remote-perfetto/perfetto-trace-*.proto", name="remote-gpu-perfetto")
-mcp__rocprof-sys__query_trace(sql="SELECT DISTINCT name FROM counter_track WHERE name LIKE '%GPU%'")
-```
-
-### Phase R5: Cleanup Remote
-
-```bash
-ssh <machine> "rm -rf /tmp/pmc-remote-*"
-```
-
-### Remote Quick Reference
-
-```bash
-# Remote PMC verification (full sequence)
-# Input: gpu-server:/home/user/rocprofiler-systems
-
-# 1. Discover build dir
-BUILD_DIR=$(ssh gpu-server "cd /home/user/rocprofiler-systems && \
-  for d in build/debug build/release build; do \
-    [ -f \"\$d/bin/rocprof-sys-run\" ] && echo \"\$d\" && break; \
-  done")
-
-# 2. Run GPU test remotely
-ssh gpu-server "cd /home/user/rocprofiler-systems/$BUILD_DIR && \
-  source share/rocprofiler-systems/setup-env.sh && \
-  ROCPROFSYS_OUTPUT_PATH=/tmp/pmc-remote-perfetto \
-  ROCPROFSYS_TRACE=1 ROCPROFSYS_AMD_SMI_METRICS='all' \
-  bin/rocprof-sys-run -- ./transpose"
-
-# 3. Copy traces back
-scp -r gpu-server:/tmp/pmc-remote-perfetto ./pmc-remote-traces/
-
-# 4. Analyze locally with MCP
-mcp__rocprof-sys__load_trace(path="./pmc-remote-traces/pmc-remote-perfetto/perfetto-trace-*.proto")
-mcp__rocprof-sys__query_trace(sql="SELECT DISTINCT name FROM counter_track")
-
-# 5. Cleanup remote
-ssh gpu-server "rm -rf /tmp/pmc-remote-*"
-```
+See previous skill version for detailed remote execution commands.

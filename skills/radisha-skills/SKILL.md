@@ -48,7 +48,6 @@ These shortcuts invoke common skills directly:
 | `planning-bugfix` | Plan bug fixes (root cause analysis) |
 | `planning-refactor` | Plan refactoring (best practices focus) |
 | `planning-docs` | Plan documentation (no changelog/tests) |
-| `planning-architecture` | Architecture documentation (iterative, chapter-by-chapter) |
 | `planning-base` | Shared rules - do not invoke directly |
 
 ### Programming
@@ -105,6 +104,7 @@ These shortcuts invoke common skills directly:
 | `code-smells` | Detect code smells (refactoring.guru catalog) |
 | `refactoring-techniques` | Apply 60+ refactoring techniques (Extract Method, Move Field, etc.) |
 | `static-analysis` | Run linters and static analysis tools |
+| `review-architecture` | Architecture documentation (iterative, chapter-by-chapter) |
 | `architecture-analyze` | Analyze module boundaries, dependencies |
 
 ### Radisha Management

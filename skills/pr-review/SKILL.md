@@ -8,6 +8,12 @@ description: Review Pull Requests or local changes - check code quality, correct
 Review Pull Requests or local changes with structured, thorough analysis.
 
 <IMPORTANT>
+**BE THOROUGH AND PICKY:**
+- Review ENTIRE changed files, not just changed lines
+- Report ALL issues found - do not skip or filter anything
+- Apply programming skill rules strictly
+- Check every function, class, and code block in changed files
+
 **Determine review target automatically:**
 - If user provides PR number or URL → Review that GitHub PR
 - If no PR specified → Review local changes vs main branch (no questions asked)
@@ -40,7 +46,7 @@ Review Pull Requests or local changes with structured, thorough analysis.
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│      Phase 1.5: Spawn 5 Parallel Analysis Agents                │
+│      Phase 1.5: Spawn 6 Parallel Analysis Agents                │
 │    All agents receive pre-loaded context from Phase 1            │
 │                                                                   │
 │    ┌──────────────────┐  ┌──────────────────┐                   │
@@ -54,6 +60,10 @@ Review Pull Requests or local changes with structured, thorough analysis.
 │    ┌──────────────────┐                                          │
 │    │ Agent 5: Arch    │ (conditional - if architectural changes) │
 │    │ (via skill)      │                                          │
+│    └──────────────────┘                                          │
+│    ┌──────────────────┐                                          │
+│    │ Agent 6: Simplify│                                          │
+│    │ (reuse/reduce)   │                                          │
 │    └──────────────────┘                                          │
 └─────────────────────────────────────────────────────────────────┘
                                 │
@@ -258,7 +268,7 @@ Lines: 1-150
 
 <IMPORTANT>
 **Use general-purpose agents** (not Explore agents) since they receive pre-loaded context.
-All agents run in parallel - invoke all 5 in a single tool call block.
+All agents run in parallel - invoke all 6 in a single tool call block.
 Each agent has a unique identity, loads its skill, and maintains memory.
 </IMPORTANT>
 
@@ -276,6 +286,7 @@ Each agent has:
 | 3 | `code-smells-agent` | `code-smells` | `agents/code-smells.md` |
 | 4 | `language-rules-agent` | `programming-cpp` or `programming-python` | `agents/language-rules.md` |
 | 5 | `architecture-agent` | `architecture-analyze` | `agents/architecture.md` |
+| 6 | `simplify-agent` | `simplify` | `agents/simplify.md` |
 
 **Memory location:** `~/.claude/projects/<project>/memory/agents/`
 
@@ -288,6 +299,7 @@ Each agent has:
 | Code Smells | Project-specific thresholds, acceptable patterns |
 | Language Rules | Project conventions, intentional deviations from standards |
 | Architecture | Module boundaries, key interfaces, dependency patterns, decisions |
+| Simplify | Reuse opportunities, unnecessary complexity, verbose patterns |
 
 ### The 5 Analysis Agents
 
@@ -298,6 +310,7 @@ Each agent has:
 | 3 | Code Smells Detection | Detect anti-patterns (long functions, deep nesting, etc.) | Table of code smell findings |
 | 4 | Language Rules Enforcement | Apply C++/Python/CMake best practices | Table of best practice violations |
 | 5 | Architecture Review | Analyze module boundaries, dependencies (if architectural changes detected) | Architecture assessment |
+| 6 | Simplification | Find reuse opportunities, unnecessary complexity, verbose code | Table of simplification suggestions |
 
 ### Agent Execution Pattern
 
@@ -327,6 +340,11 @@ Agent 4: Language Rules Agent
 Agent 5: Architecture Agent (conditional)
 - description: "architecture-agent"
 - Only spawn if architectural changes detected (see criteria below)
+- subagent_type: "general-purpose"
+- Prompt: [See template below] + Data Package from Phase 1
+
+Agent 6: Simplification Agent
+- description: "simplify-agent"
 - subagent_type: "general-purpose"
 - Prompt: [See template below] + Data Package from Phase 1
 ```
@@ -363,6 +381,7 @@ Wait for all agents from Phase 1.5 to complete:
 - Agent 3: Code Smells results
 - Agent 4: Language Rules results
 - Agent 5: Architecture analysis (if ran)
+- Agent 6: Simplification suggestions
 
 ### 2.2 Severity Mapping
 
@@ -517,7 +536,7 @@ If agents missed cross-cutting concerns, manually check:
 
 ## Agent Analysis Summary
 
-**5 agents analyzed the changes in parallel:**
+**6 agents analyzed the changes in parallel:**
 
 | Agent | Purpose | Issues Found |
 |-------|---------|--------------|
@@ -526,6 +545,7 @@ If agents missed cross-cutting concerns, manually check:
 | Code Smells | Anti-patterns, long functions | Z issues |
 | Language Rules | C++/Python best practices | W issues |
 | Architecture | Module boundaries, dependencies | V issues (or N/A) |
+| Simplification | Reuse, complexity reduction | U issues |
 
 **All findings below are sourced from agent analysis.**
 
@@ -848,9 +868,9 @@ Apply any learned patterns:
    - Shell: shellcheck
    - CMake: cmake-lint
 
-2. **Run tools** on changed files only (not entire codebase)
+2. **Run tools** on all changed files (full file content, not just changed lines)
 
-3. **Filter findings** using your memory (skip known false positives)
+3. **Report ALL findings** - do not skip or filter out issues
 
 4. **Map tool severity** to review categories:
    - error/critical → Critical (100)
@@ -899,7 +919,7 @@ Analyze changed files for:
 5. **Unused function parameters**: Parameters never referenced in function body
 6. **Unnecessary comments**: Comments that just restate the code
 
-**Skip** anything in your memory marked as intentionally unused.
+Report ALL findings - be thorough and picky.
 
 ## Step 3: Return Format
 
@@ -911,7 +931,10 @@ For each finding:
 | utils.py:12 | Commented code | `# old_func()` | Nitpick (20) | Remove comment |
 | handler.cpp:67 | Unreachable code | Code after `return` | Must Fix (80) | Remove or fix logic |
 
-Focus on changed lines only - don't report issues in unchanged code.
+**Review the ENTIRE changed file, not just the changed lines.**
+
+Check the full context of all modified functions, classes, and modules.
+Report ALL issues found in changed files, even in unchanged lines that have problems.
 
 ## Step 4: Update Memory (if new learnings)
 
@@ -1059,7 +1082,7 @@ Apply any learned patterns:
 | utils.py:12 | Missing type hint | `def parse(data):` | `def parse(data: str) -> dict:` | Should Fix (50) |
 
 Apply best practices strictly - these are the standard, not existing codebase patterns.
-**Skip** rules that your memory indicates are intentionally ignored in this project.
+**Report ALL violations** - be thorough and picky about every rule from the programming skills.
 
 ## Step 4: Update Memory (if new learnings)
 
@@ -1133,6 +1156,79 @@ Use your memory to understand existing architecture before judging new code.
 - **Key interfaces:** [Important abstractions found]
 - **Dependency patterns:** [How modules connect]
 - **Architectural decisions:** [Design choices and rationale]
+```
+
+### Agent 6: Simplification Agent
+
+```markdown
+You are the **Simplification Agent** (ID: simplify-agent).
+
+## Step 1: Load Your Skill
+First, invoke the `simplify` skill using the Skill tool.
+
+## Step 2: Read Your Memory
+Read your memory file (if it exists): `~/.claude/projects/<project>/memory/agents/simplify.md`
+
+Apply any learned patterns:
+- Existing utility functions/helpers available in this codebase
+- Project-specific patterns that look verbose but are intentional
+- Libraries/frameworks already in use that provide relevant utilities
+
+## Step 3: Analyze
+
+[Input: Data Package from Phase 1]
+
+**Your Tasks:**
+
+Analyze changed files for simplification opportunities:
+
+1. **Reuse opportunities**: Code that reimplements existing functionality
+   - Utility functions already available in the codebase
+   - Standard library functions that replace manual implementations
+   - Framework/library helpers that are already dependencies
+
+2. **Unnecessary complexity**: Code that can be written more simply
+   - Overly complex conditionals that can be flattened
+   - Unnecessary wrapper functions or indirection layers
+   - Over-engineered abstractions for simple operations
+   - Verbose patterns where concise idioms exist
+
+3. **Redundant code**: Within the changed files
+   - Similar logic repeated that could share a common implementation
+   - Redundant checks or validations already guaranteed by callers
+   - Unnecessary type conversions or temporary variables
+
+4. **Verbose patterns**: Language-specific simplifications
+   - C++: Range-for instead of index loops, structured bindings, std::optional instead of sentinel values, algorithm calls instead of manual loops
+   - Python: Comprehensions instead of loops, unpacking, walrus operator, pathlib instead of os.path
+   - General: Early returns to reduce nesting, guard clauses
+
+**Do NOT flag:**
+- Intentional verbosity for clarity or debugging
+- Code that matches established project conventions
+- Simplifications that would hurt readability
+
+## Step 4: Return Findings
+
+| File:Line | Type | Current Pattern | Simplified Version | Severity |
+|-----------|------|-----------------|-------------------|----------|
+| utils.cpp:30-45 | Reuse | Manual string split implementation | Use `absl::StrSplit()` already in deps | Should Fix (50) |
+| handler.py:67 | Verbose | `if x is not None and x != ""` | `if x` (truthy check sufficient here) | Nitpick (20) |
+| parser.cpp:89-110 | Complexity | Nested if-else chain (4 levels) | Early returns reduce to 1 level | Should Fix (50) |
+| config.cpp:23 | Redundant | `std::string s = std::string(input)` | `std::string s{input}` | Nitpick (20) |
+
+**For each finding, provide:**
+- The current code snippet
+- The simplified version
+- Why the simplification is safe (no behavior change)
+
+## Step 5: Update Memory (if new learnings)
+
+If you discover reusable utilities or project conventions:
+
+**New Learnings:**
+- [Utility functions available for reuse]
+- [Patterns that look verbose but are intentional]
 ```
 
 **Spawn Architecture Agent if ANY of these signals present:**
