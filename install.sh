@@ -42,7 +42,8 @@ print_error() {
 
 # Check if running from radisha repo or downloading fresh
 is_local_install() {
-    [ -f "$SCRIPT_DIR/skills/radisha/help/SKILL.md" ]
+    [ -f "$SCRIPT_DIR/skills/radisha/help/SKILL.md" ] ||
+        [ -f "$SCRIPT_DIR/skills/radisha-help/SKILL.md" ]
 }
 
 install_skills() {
