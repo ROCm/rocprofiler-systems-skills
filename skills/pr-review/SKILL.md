@@ -215,7 +215,7 @@ Use commands from `git-gh-client` to fetch PR data:
 - `gh pr diff <PR_NUMBER>` for changes
 - See `git-gh-client` Phase 2 for full command reference
 
-#### 1.1 Check CI Status First
+#### Check CI Status First
 
 **Before reviewing code, check if CI passed:**
 
@@ -230,7 +230,7 @@ gh pr checks <PR_NUMBER> || true
 | Some failed | Note failures, still review code but mention CI issues |
 | All failed | Consider waiting for fixes before detailed review |
 
-#### 1.2 Fetch Existing Review Comments
+#### Fetch Existing Review Comments
 
 **Check what's already been discussed:**
 
@@ -260,7 +260,7 @@ git diff <base-branch>...HEAD
 git log <base-branch>...HEAD --oneline
 ```
 
-### 1.3 Read Changed Files (ONCE)
+### 1.1 Read Changed Files (ONCE)
 
 **Read each changed file's full content now - agents will reuse this data:**
 
@@ -276,7 +276,7 @@ For each file in changed files list:
 - Reading once (here) vs 5 times (in each agent) = 5x token savings
 - Main context grows slightly, but net savings is significant
 
-### 1.4 Identify Languages
+### 1.2 Identify Languages
 
 Scan changed files to determine language breakdown:
 
@@ -286,7 +286,7 @@ Scan changed files to determine language breakdown:
 | `.py` | Python | Language Rules Agent, Code Smells |
 | `CMakeLists.txt`, `.cmake` | CMake | Language Rules Agent |
 
-### 1.5 Package Data for Agents
+### 1.3 Package Data for Agents
 
 **Create structured data package containing:**
 
@@ -509,7 +509,7 @@ Agents handle code analysis, but test review requires human judgment.
 Manually check test coverage and quality.
 </IMPORTANT>
 
-### 4.1 Test Coverage Check
+### 3.1 Test Coverage Check
 
 | Check | Questions |
 |-------|-----------|
@@ -520,7 +520,7 @@ Manually check test coverage and quality.
 | **Independence** | Tests can run in isolation? No order dependency? |
 | **Assertions** | Clear, specific assertions? Good error messages? |
 
-### 4.2 Suggest Missing Tests
+### 3.2 Suggest Missing Tests
 
 **If new code lacks tests, suggest specific tests to add:**
 
