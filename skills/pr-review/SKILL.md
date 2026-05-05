@@ -331,6 +331,19 @@ All agents run in parallel - invoke all 6 in a single tool call block.
 Each agent has a unique identity, loads its skill, and maintains memory.
 </IMPORTANT>
 
+### Lite mode gate
+
+Before spawning all 5 agents, check the diff scope:
+
+- **Diff < 50 lines added/removed AND** no changes to logic (only docs,
+  comments, formatting, imports, or type aliases): spawn ONLY correctness
+  and tests agents. Skip security, performance, architecture.
+- **Diff < 200 lines AND** affects only one file: spawn correctness +
+  tests + style. Skip security and architecture.
+- **Otherwise**: full 5-agent fan-out as documented below.
+
+Document the chosen mode in the final report's Header section.
+
 ### Agent Identity & Memory System
 
 Each agent has:
