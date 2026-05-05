@@ -147,6 +147,9 @@ This ensures plans persist in files and can be resumed later.
 - `radisha-update` - Update radisha to latest version
 - `radisha-help` - Full workflow reference (this skill)
 
+**Async coordination skills:**
+- `watch` - Schedule a recurring poll of an external condition (PR merge, CI green, Jira state, background build); runs a follow-up action when met and self-stops
+
 **After implementation, create test plan:**
 - Invoke `testing-testplan` skill
 - Create `planning/testplan-<name>.md` with verification scenarios

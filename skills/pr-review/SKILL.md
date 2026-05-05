@@ -26,6 +26,61 @@ Review Pull Requests or local changes with structured, thorough analysis.
 - CMake files → `programming-cmake-best-practices`
 </IMPORTANT>
 
+> **Workspace-level overrides.** Workspaces may define additional
+> defaults in `<workspace>/workflows/pr-review.md`; that file
+> overrides anything in this skill (e.g. clone locations, project
+> routing, report destination paths).
+
+## Universal Hygiene Rules
+
+These rules apply to **every** invocation of this skill, regardless
+of workspace.
+
+### Default destination: local artifact only
+
+**Do NOT post to GitHub by default.** A review run produces a local
+written report (file or chat output) only. Post to the PR (review
+comment, line comment, or `gh pr review`) **only** if the user
+explicitly says "post", "submit", "comment on the PR", or
+equivalent. When in doubt, save locally and ask.
+
+### Fresh-eyes rule (sub-agent invocations)
+
+When this skill is invoked from inside a sub-agent (i.e. the agent
+was spawned specifically to review a PR), treat the brief as the
+**only** context:
+
+- Do **not** load project memory, prior feedback logs, or
+  conversation history about the PR.
+- Do **not** read previous review reports for this PR unless the
+  brief explicitly tells you to (e.g. re-review mode).
+- Form an independent opinion from the diff, files, and PR
+  description alone.
+
+This keeps sub-agent reviews unbiased by prior conclusions. The
+parent orchestrator can still cross-reference past reviews
+afterwards.
+
+### Local clone hygiene (when checking out a PR)
+
+If reviewing requires checking out the PR into a local clone:
+
+1. **Prefer a clean clone.** Pick a clone whose `git status` is
+   empty (no staged/unstaged changes, no untracked files that
+   matter). This avoids contaminating the user's working state.
+2. **If no clean clone exists**, use the available one but:
+   - Record the original branch: `orig_branch=$(git rev-parse --abbrev-ref HEAD)`
+   - `git stash push -u -m "pr-review-skill autostash"` and remember the stash ref.
+3. **Always record the starting branch** before any checkout:
+   `orig_branch=$(git rev-parse --abbrev-ref HEAD)`.
+4. **Mandatory restore on exit (success OR failure):**
+   - `git checkout "$orig_branch"`
+   - If you stashed in step 2: `git stash pop` (the matching stash)
+   - Verify `git status` matches the pre-review state.
+5. Use a `trap` (bash) or `try/finally` (Python) so the restore runs
+   even on error or interrupt. Never leave the user's clone on a
+   detached HEAD or PR branch.
+
 ## Review Process
 
 ```
@@ -549,22 +604,89 @@ After you produce the final markdown report (same content as shown to the user),
 
 ---
 
-**Report template (this is what you save and display):**
+### Mandatory report sections
+
+A written report (as opposed to inline chat feedback) MUST contain
+all of the following sections, in roughly this order. Omit a
+section's body only if it is genuinely N/A, and say so explicitly
+("No public API touched — N/A").
+
+1. **Header** — PR number, title, author, target branch, base SHA,
+   head SHA, files changed count, +/- line counts, commit count.
+2. **Intent vs implementation** — what the PR claims to do (from
+   description / commits) vs what the diff actually does. Flag
+   mismatches.
+3. **Per-file walkthrough** — one short paragraph per changed file
+   explaining what changed and why, in reviewer's own words.
+4. **Findings ranked by severity** — Critical → Must Fix → Should
+   Fix → Nitpick (already covered by agent aggregation).
+5. **Static analysis pass** — summary of linter/tool findings (from
+   Static Analysis Agent).
+6. **Security audit** — input validation, injection, auth, secrets,
+   unsafe deserialization, path traversal, crypto misuse.
+7. **Performance review** — algorithmic complexity, hot-path
+   allocations, unnecessary copies, lock contention, I/O patterns.
+8. **API/ABI compatibility** — does the PR change a public API or
+   ABI? If yes, is the change additive, deprecating, or breaking?
+   Migration notes?
+9. **Documentation review** — are README, doc comments, changelog,
+   man pages updated to match behavior changes?
+10. **Verdict** — one of `APPROVE`, `REQUEST CHANGES`, or
+    `NEEDS DISCUSSION` (use these exact labels).
+11. **Cleanup confirmation** — confirm the local clone was restored
+    to its starting branch, any stash was popped, and `git status`
+    matches the pre-review state. (See "Local clone hygiene" above.)
+
+### Report template
 
 ```markdown
 # PR Review: [PR Title]
 
+## Header
+
+| Field | Value |
+|-------|-------|
+| PR # | #123 |
+| Title | [PR title] |
+| Author | @username |
+| Target branch | main |
+| Base SHA | abc1234 |
+| Head SHA | def5678 |
+| Files changed | X |
+| Lines | +Y / -Z |
+| Commits | N |
+
 ## Summary
 
-**Verdict:** [Approve / Request Changes / Comment]
+**Verdict:** `APPROVE` / `REQUEST CHANGES` / `NEEDS DISCUSSION`
 
 **Overview:** [1-2 sentence summary]
-
-**Files reviewed:** X files, +Y/-Z lines
 
 **Total issues:** X critical, Y must-fix, Z should-fix, W nitpicks
 
 **CI Status:** [Passed ✅ / Failed ❌ / Pending 🔄] (GitHub PRs only)
+
+---
+
+## Intent vs Implementation
+
+**Stated intent (from PR description / commits):**
+[Summary]
+
+**What the diff actually does:**
+[Summary]
+
+**Mismatches / scope creep:** [None | List]
+
+---
+
+## Per-File Walkthrough
+
+### `path/to/file1.cpp`
+[1 short paragraph: what changed and why]
+
+### `path/to/file2.py`
+[1 short paragraph: what changed and why]
 
 ---
 
@@ -741,6 +863,68 @@ TEST(HandlerTest, Process_EmptyInput_ReturnsError) {
 | `src/parser.cpp` | ✅ | 0 critical, 1 must-fix, 0 should-fix |
 | `src/handler.cpp` | ✅ | 1 critical, 0 must-fix, 1 should-fix |
 | `tests/parser_test.cpp` | ✅ | Clean |
+
+---
+
+## Static Analysis Pass
+
+[Summary of Static Analysis Agent findings: tools run, totals,
+notable suppressions. "Clean" if nothing to report.]
+
+---
+
+## Security Audit
+
+| Area | Result |
+|------|--------|
+| Input validation | [OK / Issue at file:line] |
+| Injection (SQL/shell/etc.) | [OK / Issue] |
+| AuthN / AuthZ | [OK / N/A / Issue] |
+| Secrets / credentials | [OK / Issue] |
+| Unsafe deserialization | [OK / N/A / Issue] |
+| Path traversal | [OK / N/A / Issue] |
+| Crypto usage | [OK / N/A / Issue] |
+
+---
+
+## Performance Review
+
+| Aspect | Result |
+|--------|--------|
+| Algorithmic complexity | [OK / Concern at file:line] |
+| Hot-path allocations | [OK / Concern] |
+| Unnecessary copies | [OK / Concern] |
+| Lock contention / threading | [OK / N/A / Concern] |
+| I/O patterns | [OK / N/A / Concern] |
+
+---
+
+## API / ABI Compatibility
+
+**Public API touched?** [Yes / No]
+**ABI impact:** [None / Additive / Deprecating / Breaking]
+**Migration notes:** [N/A or details]
+
+---
+
+## Documentation Review
+
+| Doc Surface | Updated? |
+|-------------|----------|
+| README | [Yes / No / N/A] |
+| Doc comments / docstrings | [Yes / No / N/A] |
+| Changelog / release notes | [Yes / No / N/A] |
+| Man pages / API docs | [Yes / No / N/A] |
+
+---
+
+## Cleanup Confirmation
+
+- [ ] Local clone restored to original branch (`<orig_branch>`)
+- [ ] Stash popped (if one was created) — no leftover
+      `pr-review-skill autostash` entry in `git stash list`
+- [ ] `git status` matches pre-review state
+- [ ] No detached HEAD, no leftover PR branch checkout
 
 ---
 
