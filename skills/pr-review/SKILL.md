@@ -61,6 +61,39 @@ This keeps sub-agent reviews unbiased by prior conclusions. The
 parent orchestrator can still cross-reference past reviews
 afterwards.
 
+### Report content rules
+
+A written report (as opposed to inline chat feedback) MUST contain
+all of the following sections, in roughly this order. Omit a
+section's body only if it is genuinely N/A, and say so explicitly
+("No public API touched - N/A").
+
+1. **Header** - PR number, title, author, target branch, base SHA,
+   head SHA, files changed count, +/- line counts, commit count.
+2. **Intent vs implementation** - what the PR claims to do (from
+   description / commits) vs what the diff actually does. Flag
+   mismatches.
+3. **Per-file walkthrough** - one short paragraph per changed file
+   explaining what changed and why, in reviewer's own words.
+4. **Findings ranked by severity** - Critical -> Must Fix -> Should
+   Fix -> Nitpick (already covered by agent aggregation).
+5. **Static analysis pass** - summary of linter/tool findings (from
+   Static Analysis Agent).
+6. **Security audit** - input validation, injection, auth, secrets,
+   unsafe deserialization, path traversal, crypto misuse.
+7. **Performance review** - algorithmic complexity, hot-path
+   allocations, unnecessary copies, lock contention, I/O patterns.
+8. **API/ABI compatibility** - does the PR change a public API or
+   ABI? If yes, is the change additive, deprecating, or breaking?
+   Migration notes?
+9. **Documentation review** - are README, doc comments, changelog,
+   man pages updated to match behavior changes?
+10. **Verdict** - one of `APPROVE`, `REQUEST CHANGES`, or
+    `NEEDS DISCUSSION` (use these exact labels).
+11. **Cleanup confirmation** - confirm the local clone was restored
+    to its starting branch, any stash was popped, and `git status`
+    matches the pre-review state. (See "Local clone hygiene" below.)
+
 ### Local clone hygiene (when checking out a PR)
 
 If reviewing requires checking out the PR into a local clone:
@@ -617,38 +650,7 @@ After you produce the final markdown report (same content as shown to the user),
 
 ---
 
-### Mandatory report sections
-
-A written report (as opposed to inline chat feedback) MUST contain
-all of the following sections, in roughly this order. Omit a
-section's body only if it is genuinely N/A, and say so explicitly
-("No public API touched — N/A").
-
-1. **Header** — PR number, title, author, target branch, base SHA,
-   head SHA, files changed count, +/- line counts, commit count.
-2. **Intent vs implementation** — what the PR claims to do (from
-   description / commits) vs what the diff actually does. Flag
-   mismatches.
-3. **Per-file walkthrough** — one short paragraph per changed file
-   explaining what changed and why, in reviewer's own words.
-4. **Findings ranked by severity** — Critical → Must Fix → Should
-   Fix → Nitpick (already covered by agent aggregation).
-5. **Static analysis pass** — summary of linter/tool findings (from
-   Static Analysis Agent).
-6. **Security audit** — input validation, injection, auth, secrets,
-   unsafe deserialization, path traversal, crypto misuse.
-7. **Performance review** — algorithmic complexity, hot-path
-   allocations, unnecessary copies, lock contention, I/O patterns.
-8. **API/ABI compatibility** — does the PR change a public API or
-   ABI? If yes, is the change additive, deprecating, or breaking?
-   Migration notes?
-9. **Documentation review** — are README, doc comments, changelog,
-   man pages updated to match behavior changes?
-10. **Verdict** — one of `APPROVE`, `REQUEST CHANGES`, or
-    `NEEDS DISCUSSION` (use these exact labels).
-11. **Cleanup confirmation** — confirm the local clone was restored
-    to its starting branch, any stash was popped, and `git status`
-    matches the pre-review state. (See "Local clone hygiene" above.)
+Report must include the sections marked [REQUIRED] in REPORT_TEMPLATE.md. See Universal Hygiene Rules > Report content rules for the full list and rationale.
 
 ### Report template
 
