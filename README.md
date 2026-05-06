@@ -368,6 +368,7 @@ Applied during implementation phase. For refactoring, ALL language-specific skil
 | Skill | Description |
 |-------|-------------|
 | `ask` | Questions without actions - explanations, clarifications |
+| `watch` | Schedule a recurring poll of an external condition (PR merge, CI green, Jira state, background build); runs a follow-up action when met and self-stops |
 
 ## Key Concepts
 
@@ -449,6 +450,8 @@ Benefits:
 ```
 skills/
 ├── ask/                        # Questions without actions
+│   └── SKILL.md
+├── watch/                      # Recurring poll of an external condition; runs action on match and self-stops
 │   └── SKILL.md
 ├── code-smells/                # Code smell detection catalog
 │   └── SKILL.md
