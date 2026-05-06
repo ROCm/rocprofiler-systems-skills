@@ -18,7 +18,7 @@ Review Pull Requests or local changes with structured, thorough analysis.
 - If user provides PR number or URL → Review that GitHub PR
 - If no PR specified → Review local changes vs main branch (no questions asked)
 
-**Persist the review:** When the final report is ready, save the full markdown to `.claude/pr-review-summaries/` (see Phase 4 for filename rules).
+**Persist the review (opt-in):** Do NOT write a markdown file by default. The report goes to chat output. Save the full markdown to `.claude/pr-review-summaries/` ONLY when the user explicitly asks ("save the review", "write a summary file", "persist this", or equivalent). See Phase 4 for filename rules when saving.
 
 **Invoke relevant programming skills during review:**
 - C++ code → `programming-cpp`, `programming-cpp-design-patterns`, `programming-cpp-stl-algorithms`
@@ -622,9 +622,11 @@ If agents missed cross-cutting concerns, manually check:
 
 **Compile aggregated findings from all phases into a comprehensive review.**
 
-### Save final report to disk (mandatory)
+### Save final report to disk (opt-in)
 
-After you produce the final markdown report (same content as shown to the user), **always persist it** under the **git repository root** of the project being reviewed.
+Default behaviour: do NOT write a markdown file. The report is delivered as chat output. Saving to disk happens ONLY when the user explicitly asks ("save the review", "write a summary file to disk", "persist this report", "drop a markdown under the project", or equivalent).
+
+When the user has asked, persist the report under the **git repository root** of the project being reviewed.
 
 **Finding `<repo-root>`:** Run `git rev-parse --show-toplevel` from the project you are reviewing (works when the current working directory is anywhere inside that clone). If the reviewed tree is not a git work tree, fall back to the workspace root you were given for that review.
 
@@ -764,7 +766,7 @@ For fast reviews, at minimum check:
 - [ ] Tests exist for new code?
 - [ ] No security red flags?
 - [ ] Follows programming skill rules (not existing bad patterns)?
-- [ ] Full Phase 4 report saved under `.claude/pr-review-summaries/` (see Phase 4)?
+- [ ] If user asked to save the report: persisted under `.claude/pr-review-summaries/` (see Phase 4); otherwise chat-only delivery is the default.
 
 ## Agent Prompt Templates
 
