@@ -18,7 +18,7 @@ Review Pull Requests or local changes with structured, thorough analysis.
 - If user provides PR number or URL → Review that GitHub PR
 - If no PR specified → Review local changes vs main branch (no questions asked)
 
-**Persist the review:** When the final report is ready, save the full markdown to `.claude/pr-review-summaries/` (see Phase 4 for filename rules).
+**Persist the review (opt-in):** Do NOT write a markdown file by default. The report goes to chat output. Save the full markdown to `.claude/pr-review-summaries/` ONLY when the user explicitly asks ("save the review", "write a summary file", "persist this", or equivalent). See Phase 4 for filename rules when saving.
 
 **Invoke relevant programming skills during review:**
 - C++ code → `programming-cpp`, `programming-cpp-design-patterns`, `programming-cpp-stl-algorithms`
@@ -60,6 +60,39 @@ was spawned specifically to review a PR), treat the brief as the
 This keeps sub-agent reviews unbiased by prior conclusions. The
 parent orchestrator can still cross-reference past reviews
 afterwards.
+
+### Report content rules
+
+A written report (as opposed to inline chat feedback) MUST contain
+all of the following sections, in roughly this order. Omit a
+section's body only if it is genuinely N/A, and say so explicitly
+("No public API touched - N/A").
+
+1. **Header** - PR number, title, author, target branch, base SHA,
+   head SHA, files changed count, +/- line counts, commit count.
+2. **Intent vs implementation** - what the PR claims to do (from
+   description / commits) vs what the diff actually does. Flag
+   mismatches.
+3. **Per-file walkthrough** - one short paragraph per changed file
+   explaining what changed and why, in reviewer's own words.
+4. **Findings ranked by severity** - Critical -> Must Fix -> Should
+   Fix -> Nitpick (already covered by agent aggregation).
+5. **Static analysis pass** - summary of linter/tool findings (from
+   Static Analysis Agent).
+6. **Security audit** - input validation, injection, auth, secrets,
+   unsafe deserialization, path traversal, crypto misuse.
+7. **Performance review** - algorithmic complexity, hot-path
+   allocations, unnecessary copies, lock contention, I/O patterns.
+8. **API/ABI compatibility** - does the PR change a public API or
+   ABI? If yes, is the change additive, deprecating, or breaking?
+   Migration notes?
+9. **Documentation review** - are README, doc comments, changelog,
+   man pages updated to match behavior changes?
+10. **Verdict** - one of `APPROVE`, `REQUEST CHANGES`, or
+    `NEEDS DISCUSSION` (use these exact labels).
+11. **Cleanup confirmation** - confirm the local clone was restored
+    to its starting branch, any stash was popped, and `git status`
+    matches the pre-review state. (See "Local clone hygiene" below.)
 
 ### Local clone hygiene (when checking out a PR)
 
@@ -215,7 +248,7 @@ Use commands from `git-gh-client` to fetch PR data:
 - `gh pr diff <PR_NUMBER>` for changes
 - See `git-gh-client` Phase 2 for full command reference
 
-#### 1.1 Check CI Status First
+#### Check CI Status First
 
 **Before reviewing code, check if CI passed:**
 
@@ -230,7 +263,7 @@ gh pr checks <PR_NUMBER> || true
 | Some failed | Note failures, still review code but mention CI issues |
 | All failed | Consider waiting for fixes before detailed review |
 
-#### 1.2 Fetch Existing Review Comments
+#### Fetch Existing Review Comments
 
 **Check what's already been discussed:**
 
@@ -260,7 +293,7 @@ git diff <base-branch>...HEAD
 git log <base-branch>...HEAD --oneline
 ```
 
-### 1.3 Read Changed Files (ONCE)
+### 1.1 Read Changed Files (ONCE)
 
 **Read each changed file's full content now - agents will reuse this data:**
 
@@ -276,7 +309,7 @@ For each file in changed files list:
 - Reading once (here) vs 5 times (in each agent) = 5x token savings
 - Main context grows slightly, but net savings is significant
 
-### 1.4 Identify Languages
+### 1.2 Identify Languages
 
 Scan changed files to determine language breakdown:
 
@@ -286,7 +319,7 @@ Scan changed files to determine language breakdown:
 | `.py` | Python | Language Rules Agent, Code Smells |
 | `CMakeLists.txt`, `.cmake` | CMake | Language Rules Agent |
 
-### 1.5 Package Data for Agents
+### 1.3 Package Data for Agents
 
 **Create structured data package containing:**
 
@@ -330,6 +363,19 @@ Lines: 1-150
 All agents run in parallel - invoke all 6 in a single tool call block.
 Each agent has a unique identity, loads its skill, and maintains memory.
 </IMPORTANT>
+
+### Lite mode gate
+
+Before spawning all 5 agents, check the diff scope:
+
+- **Diff < 50 lines added/removed AND** no changes to logic (only docs,
+  comments, formatting, imports, or type aliases): spawn ONLY correctness
+  and tests agents. Skip security, performance, architecture.
+- **Diff < 200 lines AND** affects only one file: spawn correctness +
+  tests + style. Skip security and architecture.
+- **Otherwise**: full 5-agent fan-out as documented below.
+
+Document the chosen mode in the final report's Header section.
 
 ### Agent Identity & Memory System
 
@@ -509,7 +555,7 @@ Agents handle code analysis, but test review requires human judgment.
 Manually check test coverage and quality.
 </IMPORTANT>
 
-### 4.1 Test Coverage Check
+### 3.1 Test Coverage Check
 
 | Check | Questions |
 |-------|-----------|
@@ -520,7 +566,7 @@ Manually check test coverage and quality.
 | **Independence** | Tests can run in isolation? No order dependency? |
 | **Assertions** | Clear, specific assertions? Good error messages? |
 
-### 4.2 Suggest Missing Tests
+### 3.2 Suggest Missing Tests
 
 **If new code lacks tests, suggest specific tests to add:**
 
@@ -576,9 +622,11 @@ If agents missed cross-cutting concerns, manually check:
 
 **Compile aggregated findings from all phases into a comprehensive review.**
 
-### Save final report to disk (mandatory)
+### Save final report to disk (opt-in)
 
-After you produce the final markdown report (same content as shown to the user), **always persist it** under the **git repository root** of the project being reviewed.
+Default behaviour: do NOT write a markdown file. The report is delivered as chat output. Saving to disk happens ONLY when the user explicitly asks ("save the review", "write a summary file to disk", "persist this report", "drop a markdown under the project", or equivalent).
+
+When the user has asked, persist the report under the **git repository root** of the project being reviewed.
 
 **Finding `<repo-root>`:** Run `git rev-parse --show-toplevel` from the project you are reviewing (works when the current working directory is anywhere inside that clone). If the reviewed tree is not a git work tree, fall back to the workspace root you were given for that review.
 
@@ -604,355 +652,18 @@ After you produce the final markdown report (same content as shown to the user),
 
 ---
 
-### Mandatory report sections
-
-A written report (as opposed to inline chat feedback) MUST contain
-all of the following sections, in roughly this order. Omit a
-section's body only if it is genuinely N/A, and say so explicitly
-("No public API touched — N/A").
-
-1. **Header** — PR number, title, author, target branch, base SHA,
-   head SHA, files changed count, +/- line counts, commit count.
-2. **Intent vs implementation** — what the PR claims to do (from
-   description / commits) vs what the diff actually does. Flag
-   mismatches.
-3. **Per-file walkthrough** — one short paragraph per changed file
-   explaining what changed and why, in reviewer's own words.
-4. **Findings ranked by severity** — Critical → Must Fix → Should
-   Fix → Nitpick (already covered by agent aggregation).
-5. **Static analysis pass** — summary of linter/tool findings (from
-   Static Analysis Agent).
-6. **Security audit** — input validation, injection, auth, secrets,
-   unsafe deserialization, path traversal, crypto misuse.
-7. **Performance review** — algorithmic complexity, hot-path
-   allocations, unnecessary copies, lock contention, I/O patterns.
-8. **API/ABI compatibility** — does the PR change a public API or
-   ABI? If yes, is the change additive, deprecating, or breaking?
-   Migration notes?
-9. **Documentation review** — are README, doc comments, changelog,
-   man pages updated to match behavior changes?
-10. **Verdict** — one of `APPROVE`, `REQUEST CHANGES`, or
-    `NEEDS DISCUSSION` (use these exact labels).
-11. **Cleanup confirmation** — confirm the local clone was restored
-    to its starting branch, any stash was popped, and `git status`
-    matches the pre-review state. (See "Local clone hygiene" above.)
+Report must include the sections marked [REQUIRED] in REPORT_TEMPLATE.md. See Universal Hygiene Rules > Report content rules for the full list and rationale.
 
 ### Report template
 
-```markdown
-# PR Review: [PR Title]
-
-## Header
-
-| Field | Value |
-|-------|-------|
-| PR # | #123 |
-| Title | [PR title] |
-| Author | @username |
-| Target branch | main |
-| Base SHA | abc1234 |
-| Head SHA | def5678 |
-| Files changed | X |
-| Lines | +Y / -Z |
-| Commits | N |
-
-## Summary
-
-**Verdict:** `APPROVE` / `REQUEST CHANGES` / `NEEDS DISCUSSION`
-
-**Overview:** [1-2 sentence summary]
-
-**Total issues:** X critical, Y must-fix, Z should-fix, W nitpicks
-
-**CI Status:** [Passed ✅ / Failed ❌ / Pending 🔄] (GitHub PRs only)
-
----
-
-## Intent vs Implementation
-
-**Stated intent (from PR description / commits):**
-[Summary]
-
-**What the diff actually does:**
-[Summary]
-
-**Mismatches / scope creep:** [None | List]
-
----
-
-## Per-File Walkthrough
-
-### `path/to/file1.cpp`
-[1 short paragraph: what changed and why]
-
-### `path/to/file2.py`
-[1 short paragraph: what changed and why]
-
----
-
-## Agent Analysis Summary
-
-**6 agents analyzed the changes in parallel:**
-
-| Agent | Purpose | Issues Found |
-|-------|---------|--------------|
-| Static Analysis | Linter/tool findings | X issues |
-| Dead Code Detection | Unused code, comments | Y issues |
-| Code Smells | Anti-patterns, long functions | Z issues |
-| Language Rules | C++/Python best practices | W issues |
-| Architecture | Module boundaries, dependencies | V issues (or N/A) |
-| Simplification | Reuse, complexity reduction | U issues |
-
-**All findings below are sourced from agent analysis.**
-
----
-
-## Architecture (if applicable)
-
-[Summary from architecture-analyze, or "No architectural changes"]
-
----
-
-## What's Good
-
-- [Positive aspect 1]
-- [Positive aspect 2]
-
----
-
-## Issues Found (sorted by severity)
-
-### Critical (Score: 100) - Security/Crash
-
-#### 1. SQL Injection in `handler.cpp:78`
-**Source:** Static Analysis Agent (Semgrep)
-
-```cpp
-// Current code:
-std::string query = "SELECT * FROM users WHERE name = '" + userInput + "'";
-
-// Fixed code:
-auto stmt = db.prepare("SELECT * FROM users WHERE name = ?");
-stmt.bind(1, userInput);
-```
-
-**Why:** User input directly concatenated into SQL allows injection attacks.
-
----
-
-### Must Fix (Score: 80) - Incorrect Behavior
-
-#### 2. Null pointer dereference in `parser.cpp:42`
-**Source:** Static Analysis Agent (clang-tidy)
-
-```cpp
-// Current code:
-auto result = ptr->getValue();
-
-// Fixed code:
-if (!ptr) {
-    return std::nullopt;
-}
-auto result = ptr->getValue();
-```
-
-**Why:** Crashes if ptr is null.
-
----
-
-### Should Fix (Score: 50) - Best Practices
-
-#### 3. Raw loop in `utils.cpp:23`
-**Source:** Language Rules Agent (C++ Best Practices)
-
-```cpp
-// Current code:
-for (int i = 0; i < items.size(); i++) {
-    process(items[i]);
-}
-
-// Fixed code:
-std::for_each(items.begin(), items.end(), process);
-// Or: for (const auto& item : items) { process(item); }
-```
-
-**Why:** Range-for or algorithms are more expressive and less error-prone.
-
----
-
-#### 4. Long function in `handler.cpp:processRequest()`
-**Source:** Code Smells Agent
-
-**Lines 120-195 (75 lines):** Function is too long and does too much.
-
-**Suggested refactoring:**
-```cpp
-// Split into smaller functions:
-- extractHeaders()
-- validateRequest()
-- routeToHandler()
-- buildResponse()
-```
-
-**Why:** Long functions are hard to understand, test, and maintain.
-
----
-
-### Nitpicks (Score: 20) - Style
-
-#### 5. Unused variable in `config.py:45`
-**Source:** Dead Code Detection Agent
-
-```python
-# Current: x = 3  # Declared but never used
-# Fix: Remove this line
-```
-
----
-
-#### 6. Commented-out code in `parser.cpp:67-72`
-**Source:** Dead Code Detection Agent
-
-```cpp
-// Remove these commented lines:
-// auto old_parser = createParser();
-// old_parser.parse(input);
-// return old_parser.result();
-```
-
-**Why:** Commented code creates clutter. Use version control instead.
-
----
-
-## Test Coverage
-
-| New Code | Has Tests | Missing Tests |
-|----------|-----------|---------------|
-| `parser.cpp:parseToken()` | Yes | - |
-| `handler.cpp:process()` | **No** | See suggested tests below |
-
-### Suggested Tests for `handler.cpp:process()`
-
-```cpp
-TEST(HandlerTest, Process_ValidInput_ReturnsSuccess) {
-    Handler h;
-    auto result = h.process(validInput);
-    EXPECT_TRUE(result.ok());
-}
-
-TEST(HandlerTest, Process_NullInput_ReturnsError) {
-    Handler h;
-    auto result = h.process(nullptr);
-    EXPECT_FALSE(result.ok());
-    EXPECT_EQ(result.error(), Error::InvalidInput);
-}
-
-TEST(HandlerTest, Process_EmptyInput_ReturnsError) {
-    Handler h;
-    auto result = h.process("");
-    EXPECT_FALSE(result.ok());
-}
-```
-
----
-
-## Files Reviewed
-
-| File | Status | Issues (by severity) |
-|------|--------|----------------------|
-| `src/parser.cpp` | ✅ | 0 critical, 1 must-fix, 0 should-fix |
-| `src/handler.cpp` | ✅ | 1 critical, 0 must-fix, 1 should-fix |
-| `tests/parser_test.cpp` | ✅ | Clean |
-
----
-
-## Static Analysis Pass
-
-[Summary of Static Analysis Agent findings: tools run, totals,
-notable suppressions. "Clean" if nothing to report.]
-
----
-
-## Security Audit
-
-| Area | Result |
-|------|--------|
-| Input validation | [OK / Issue at file:line] |
-| Injection (SQL/shell/etc.) | [OK / Issue] |
-| AuthN / AuthZ | [OK / N/A / Issue] |
-| Secrets / credentials | [OK / Issue] |
-| Unsafe deserialization | [OK / N/A / Issue] |
-| Path traversal | [OK / N/A / Issue] |
-| Crypto usage | [OK / N/A / Issue] |
-
----
-
-## Performance Review
-
-| Aspect | Result |
-|--------|--------|
-| Algorithmic complexity | [OK / Concern at file:line] |
-| Hot-path allocations | [OK / Concern] |
-| Unnecessary copies | [OK / Concern] |
-| Lock contention / threading | [OK / N/A / Concern] |
-| I/O patterns | [OK / N/A / Concern] |
-
----
-
-## API / ABI Compatibility
-
-**Public API touched?** [Yes / No]
-**ABI impact:** [None / Additive / Deprecating / Breaking]
-**Migration notes:** [N/A or details]
-
----
-
-## Documentation Review
-
-| Doc Surface | Updated? |
-|-------------|----------|
-| README | [Yes / No / N/A] |
-| Doc comments / docstrings | [Yes / No / N/A] |
-| Changelog / release notes | [Yes / No / N/A] |
-| Man pages / API docs | [Yes / No / N/A] |
-
----
-
-## Cleanup Confirmation
-
-- [ ] Local clone restored to original branch (`<orig_branch>`)
-- [ ] Stash popped (if one was created) — no leftover
-      `pr-review-skill autostash` entry in `git stash list`
-- [ ] `git status` matches pre-review state
-- [ ] No detached HEAD, no leftover PR branch checkout
-
----
-
-## Previous Review Comments (GitHub PRs)
-
-| Status | Comment | Author |
-|--------|---------|--------|
-| ✅ Resolved | "Add null check in parser" | @reviewer1 |
-| ⏳ Open | "Consider using std::optional" | @reviewer2 |
-
----
-
-## Checklist
-
-- [x] All files reviewed
-- [ ] Correctness verified - **1 issue found**
-- [ ] Language-specific best practices checked - **2 issues found**
-- [ ] Code quality/smells checked
-- [x] Tests adequate - **1 function missing tests**
-- [ ] No security issues - **1 critical issue found**
-- [x] Architecture sound
-
----
-
-## Questions for Author
-
-- [Clarifying questions if any]
-```
+See `REPORT_TEMPLATE.md` in this skill directory for the full report
+structure. The template covers Header, Summary, Intent vs Implementation,
+Per-File Walkthrough, Agent Analysis, Architecture, Issues by Severity,
+Test Coverage, Static Analysis, Security, Performance, API/ABI, Docs,
+Cleanup, Previous Comments, Checklist, Questions.
+
+When generating a review, copy the template structure and fill in
+evidence per section.
 
 ## Issue Categories
 
@@ -1055,7 +766,7 @@ For fast reviews, at minimum check:
 - [ ] Tests exist for new code?
 - [ ] No security red flags?
 - [ ] Follows programming skill rules (not existing bad patterns)?
-- [ ] Full Phase 4 report saved under `.claude/pr-review-summaries/` (see Phase 4)?
+- [ ] If user asked to save the report: persisted under `.claude/pr-review-summaries/` (see Phase 4); otherwise chat-only delivery is the default.
 
 ## Agent Prompt Templates
 
