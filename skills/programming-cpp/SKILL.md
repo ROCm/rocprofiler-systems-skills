@@ -671,63 +671,113 @@ public:
 | `@deprecated` | Mark as deprecated |
 | `@code` / `@endcode` | Code example block |
 
-### When NOT to Document
+### Documentation vs. inline comments
 
-Don't add Doxygen comments for:
-- Trivial getters/setters (self-explanatory)
-- Private implementation details
-- Obvious code (let the code speak)
+Two distinct things:
+
+| Kind | Purpose | Form | Lives |
+|------|---------|------|-------|
+| Documentation | Tells callers how to use this API | Doxygen block, javadoc style (`/** @param @return @throws */`) | Above public APIs |
+| Inline comment | Explains a non-obvious line | `// short why` | Beside the line, same indentation |
+
+Code that needs neither is the goal. Reach for them only when the code by itself does not answer a question a competent reader will have.
+
+### When to write Doxygen documentation
+
+Add a `/** */` block when ANY of these is true and the answer is not in the function name + signature:
+
+- The function is part of a public API (header consumed by other modules / packages).
+- Units, ownership, or threading are non-obvious (e.g. "nanoseconds, monotonic", "caller takes ownership", "callable from any thread").
+- The function can fail in ways the type does not advertise (`@throws`, "returns std::nullopt on FOO").
+- Pre/post-conditions exist beyond the type system (e.g. "input must be sorted").
+
+Use exactly the javadoc-style tags already documented above (`@param`, `@return`, `@throws`, `@note`, `@warning`, `@see`, `@deprecated`).
+
+### When to write an inline comment
+
+Add a `// ...` line ONLY when ALL of these hold:
+
+1. The reader cannot infer intent from the code itself.
+2. The information has long-term value (still true a year from now, after refactors).
+3. The information is not already in the commit message, the PR description, the bug tracker, or another file.
+
+If any one fails, drop the comment.
+
+### Good comments
 
 ```cpp
-// ❌ UNNECESSARY - obvious getter
-/**
- * Gets the name.
- * @return The name.
- */
-const std::string& get_name() const { return m_name; }
-
-// ✅ GOOD - just the code, it's self-explanatory
-const std::string& get_name() const { return m_name; }
-```
-
-### Inline Comments
-
-**IMPORTANT: Avoid meaningless comments.** Only add inline comments when the code's intent is not self-evident. Most code should be self-documenting through clear naming and structure.
-
-```cpp
-// ❌ BAD - restates the obvious
-i++; // Increment i
-int sum = a + b; // Add a and b
-std::vector<int> numbers; // Vector of numbers
-result.clear(); // Clear the result
-
-// ❌ BAD - obvious operations
-for (auto& item : items) { // Loop through items
-    process(item); // Process each item
+i++;                                    // skip header row
+timeout *= 2;                           // exponential backoff
+buffer.reserve(1024);                   // avoid reallocations in hot path
+result |= 0x80;                         // protocol spec sets MSB on negative flag
+{                                       // caller holds m_mutex
+    state.value = compute(...);
 }
-
-// ✅ GOOD - explains why, not what
-i++; // Skip the header row
-timeout *= 2; // Exponential backoff
-buffer.reserve(1024); // Avoid reallocations in hot path
-
-// ✅ GOOD - explains non-obvious behavior
-result |= 0x80; // Set MSB for negative flag per protocol spec
-constexpr int offset = 3; // Account for metadata bytes in packet header
+// workaround for FOO-1234; remove once bar.so >= 2.5 ships
+auto handle = legacy_open(path, /*safe=*/true);
 ```
 
-**When to add comments:**
-- Explaining **why**, not what (design decisions, workarounds, non-obvious algorithms)
-- Clarifying complex business logic or domain-specific requirements
-- Documenting assumptions or preconditions
-- Explaining performance optimizations
-- Noting TODOs or FIXMEs (sparingly)
+Each one carries information the code does not: a hidden invariant, a non-obvious algorithm choice, a workaround tagged to a ticket, a domain quirk.
 
-**When NOT to add comments:**
-- Describing what the code obviously does
-- Repeating variable or function names
-- Explaining standard language features or library calls
-- Commenting every line or block
+### Bad comments
+
+```cpp
+i++;                                    // increment i
+int sum = a + b;                        // add a and b
+std::vector<int> numbers;               // vector of numbers
+result.clear();                         // clear the result
+for (auto& item : items) {              // loop through items
+    process(item);                      // process each item
+}
+m_count = 0;                            // initialize count to zero
+```
+
+Each one restates what the code already says. Delete.
+
+### Obvious things - no comment needed
+
+These need neither documentation nor inline comments:
+
+- Trivial getters / setters: `int size() const { return m_size; }`
+- Self-descriptive predicates: `bool is_empty() const`, `bool has_value()`
+- Standard idioms the language defines: `std::move(x)`, `std::make_unique<T>()`
+- Operators with the conventional meaning (`operator==`, `operator+`)
+- Constructors / destructors that do exactly what RAII implies
+- Internal helpers used in one place with a name that already says what they do
+- Unit-test functions: the `TEST(suite, name)` already names the case
+
+```cpp
+// ❌ NOISE - getter is self-explanatory
+/**
+ * Returns the size.
+ * @return The size.
+ */
+size_t size() const { return m_size; }
+
+// ✅ GOOD - just the code
+size_t size() const { return m_size; }
+```
+
+### Long-form blocks: when to delete
+
+Multi-line `// ...` blocks at the top of files, above test cases, or between helpers tend to re-tell story already in the diff, the test name, the PR description, or the commit message. Strip them by default.
+
+Delete:
+
+- "Background. ..." / "Test strategy. ..." preambles in test files. Test name + 1-line note above the suite is enough.
+- "Site 1 / Site 2 / Site 3" banners separating helpers whose names already say which site they mirror.
+- Comments that cite `file:line` in another file. The line numbers rot; the PR description owns cross-file context.
+- "This used to be broken because X" comments above the fix. The commit message owns that.
+- Decorative section banners like `// === Helpers ===`.
+
+Keep:
+
+- Hidden invariants ("caller holds m_mutex", "must be called once at startup").
+- Workarounds with a ticket reference and a sunset condition.
+- Unit / ownership / threading notes that the type system does not enforce.
+- Doxygen blocks on public APIs.
+
+Rule of thumb: if removing the comment would not confuse a competent reader a year from now, it is noise.
 
 ## Eliminating if/else Branching
 
