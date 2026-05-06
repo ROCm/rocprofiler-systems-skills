@@ -5,233 +5,125 @@ description: Send a push notification to the user's phone via ntfy.sh when a con
 
 # Notify Me Skill
 
-Wraps the built-in `watch` skill so the action is "POST a message to my ntfy.sh topic". The user gets a push on their phone when the condition is met.
+Compose a recurring cron whose action is `curl POST https://ntfy.sh/<topic>` so the user gets a phone push when a condition is met. Use only when the user has asked for one.
 
-## When to Use
+## How it works
 
-Use `notify-me` when the user asks any of:
+The whole mechanism is one HTTP POST. ntfy.sh delivers the request body as a push notification to every device subscribed to the topic.
 
-- "Notify me when PR #X merges"
-- "Ping my phone when CI goes green / red"
-- "Tell me when the build finishes"
-- "Send me a notification when Jira ticket Y moves to In Review"
-- "Push to my phone when this background agent completes"
-
-## When to Send
-
-Send a notification only when the user has asked for one. If the user has not asked, do not send.
-
-That is the whole rule. Ignore intuitions about "they would probably want to know" - if it was not requested, skip.
-
-## When NOT to Use
-
-| Situation | Use Instead | Why |
-|---|---|---|
-| User wants only an in-terminal alert (bell, log line) | `watch` directly with a `printf '\a'` action | No phone push needed |
-| One-shot reminder ("ping me at 3pm") | `CronCreate` with `recurring: false` + curl ntfy action | No condition to poll |
-| User wants persistent notifications without a condition | Direct curl in a /loop or cron | `notify-me` is condition-driven |
-
-## ntfy.sh Background
-
-ntfy.sh is a simple HTTP push service. Anyone who knows the topic name can publish; anyone subscribed receives. The user installs the ntfy app on their phone, subscribes to a topic name, and any HTTP POST to `https://ntfy.sh/<topic>` becomes a push notification.
-
-- Free, no auth required for public topics.
-- Topic names should be **long, random, hard to guess** since they're publicly addressable. Treat them as a shared secret.
-- Self-hosted ntfy works the same way with a different base URL.
-
-## Workflow
-
-```
-┌────────────────────────────────────────────────────────────┐
-│ Phase 1: Resolve ntfy topic                                │
-│   - Read ~/.claude/notify-me-config (one-line: topic name) │
-│   - If missing, ask user for topic + persist               │
-│   - If user has self-hosted ntfy, also read base URL       │
-└────────────────────────────────────────────────────────────┘
-                             │
-                             ▼
-┌────────────────────────────────────────────────────────────┐
-│ Phase 2: Clarify the condition + message                   │
-│   - What event triggers the notification?                  │
-│   - What should the push message say?                      │
-│   - What polling cadence (defer to watch skill table)      │
-└────────────────────────────────────────────────────────────┘
-                             │
-                             ▼
-┌────────────────────────────────────────────────────────────┐
-│ Phase 3: Compose watch invocation                          │
-│   - Build the check command                                │
-│   - Build the action command:                              │
-│       curl -d "<msg>" -H "Title: <title>" \                │
-│            -H "Priority: <p>" <base>/<topic>               │
-│   - Hand off to the `watch` skill (or call CronCreate      │
-│     directly using watch's pattern)                        │
-└────────────────────────────────────────────────────────────┘
-                             │
-                             ▼
-┌────────────────────────────────────────────────────────────┐
-│ Phase 4: Confirm + report job ID, topic, cadence           │
-└────────────────────────────────────────────────────────────┘
+```bash
+curl -s -d "your message body" \
+     -H "Title: short header" \
+     -H "Priority: 1-5" \
+     -H "Tags: white_check_mark" \
+     "https://ntfy.sh/<topic>"
 ```
 
-## Phase 1: Resolve the Topic
+The skill wraps that call in a `watch`-style cron: poll a condition, and only fire the curl when the condition is met. Self-hosted ntfy works the same way - swap `https://ntfy.sh` for the user's `base_url`.
 
-Config file: `~/.claude/notify-me-config`
+## Configure (one-time)
 
-Format (two lines, second optional):
+Persist the topic in `~/.claude/notify-me-config`:
 
 ```
-topic=<topic-name>
+topic=<long-random-name>
 base_url=https://ntfy.sh
 ```
 
-Steps:
+If the file is missing, ask once via `AskUserQuestion`:
 
-1. `cat ~/.claude/notify-me-config` (or equivalent Read).
-2. If missing or empty, ask the user via `AskUserQuestion`:
-   - "What ntfy topic should I publish to? (Pick something long and random - it's publicly addressable. Subscribe on your phone with the same name.)"
-   - Optionally ask if they want a custom base URL (default `https://ntfy.sh`).
-3. Persist as the file above. Mention the topic is treated as a shared secret.
+> "What ntfy topic should I publish to? Pick a long random string - it is publicly addressable, treat it as a shared secret. Subscribe on your phone with the same name."
 
-The user need only do this once. Subsequent invocations read silently.
+`base_url` is optional (default `https://ntfy.sh`); set only for self-hosted ntfy. Subsequent invocations read silently.
 
-## Phase 2: Clarify
+User-side: install the ntfy app on the phone, subscribe to the same topic.
 
-Ask the user (use `AskUserQuestion` if anything is genuinely ambiguous - don't quiz them about every detail):
+## Use
 
-- **Condition**: what to watch (PR merge, CI conclusion, Jira state, background task completion, file appearance, etc.). If the user already stated this clearly, skip.
-- **Message**: short text the push will show. Default: derive from condition (e.g. "PR #5334 merged", "CI failed on branch X").
-- **Title** (optional): bold header for the push. Default: "Claude Code".
-- **Priority** (optional): 1 (min) - 5 (max). Default: 3.
-- **Cadence**: defer to the cron-interval table in the `watch` skill. Don't reinvent.
+When the user asks "notify me when X":
 
-## Phase 3: Compose
-
-The cron prompt has the same skeleton as a `watch` cron, but the action step is:
-
-```bash
-curl -s -d "<message>" \
-     -H "Title: <title>" \
-     -H "Priority: <p>" \
-     -H "Tags: <emoji-tag>" \
-     "<base_url>/<topic>"
-```
-
-Useful tags (ntfy renders as emoji):
-
-- PR merged / success: `white_check_mark`
-- CI failure / build broken: `x`
-- Jira state change: `eyes`
-- Background task done: `bell`
-
-Then **always include the watch self-cleanup step** (CronList → CronDelete by tag) so the watch stops after the first hit. This is a hard requirement of `watch`.
-
-### Template Cron Prompt
+1. Read the topic from the config (ask once if missing).
+2. Decide a unique tag for the cron, e.g. `notify-pr-5757-merge`.
+3. Build a check command for the condition (gh, jq, TaskOutput, etc.).
+4. `CronCreate` with this prompt:
 
 ```
 Tag: notify-<short-uuid>
 
-Check <CONDITION>. Use <CHECK COMMAND>.
+Check <CONDITION> with <CHECK COMMAND>.
 
-If condition MET:
-  1. Send notification:
-     curl -s -d "<MESSAGE>" \
-          -H "Title: <TITLE>" \
-          -H "Priority: <PRIORITY>" \
-          -H "Tags: <TAGS>" \
-          "<BASE_URL>/<TOPIC>"
-  2. CronList → find job with tag "notify-<short-uuid>" → CronDelete it.
-  3. Tell the user the watch fired and what was pushed.
-
-If NOT met: exit silently.
-```
-
-## Phase 4: Report Back
-
-After `CronCreate` returns:
-
-```
-Watching <CONDITION> every <INTERVAL>; will push to ntfy topic "<TOPIC>".
-Job ID: <returned-id>
-Tag: notify-<uuid>
-Cancel anytime with CronDelete or `/loop` controls.
-```
-
-## Common Recipes
-
-### Notify when a PR merges
-
-```
-Tag: notify-pr-5757-merge
-
-Check `gh pr view 5757 --repo ROCm/rocm-systems --json state -q .state`.
-
-If output is "MERGED":
-  1. curl -s -d "PR #5757 merged" -H "Title: GitHub" -H "Tags: white_check_mark" "https://ntfy.sh/<TOPIC>"
-  2. CronList → find tag "notify-pr-5757-merge" → CronDelete.
+If MET:
+  curl -s -d "<MSG>" \
+       -H "Title: <T>" \
+       -H "Priority: <1-5>" \
+       -H "Tags: <emoji>" \
+       "<base_url>/<topic>"
+  CronList -> find tag "notify-<short-uuid>" -> CronDelete it.
 
 Else: exit silently.
 ```
 
+5. Tell the user the cron job ID + the tag so they can cancel later.
+
+Cadence: defer to the `watch` skill's interval table. Pick a non-zero, non-`30` minute (avoids load spikes). Long-running PR/CI watches: `durable: true` so the cron survives session restarts.
+
+Tag emojis: `white_check_mark` (success), `x` (failure), `bell` (generic done), `eyes` (state change).
+
+The `CronDelete` self-cleanup is mandatory - without it the cron fires forever.
+
+## Recipes
+
+### PR merged
+
+```
+Tag: notify-pr-N-merge
+
+Check `gh pr view N --repo <repo> --json state -q .state`.
+
+If "MERGED":
+  curl -s -d "PR #N merged" -H "Title: GitHub" -H "Tags: white_check_mark" "https://ntfy.sh/<TOPIC>"
+  CronList -> CronDelete tag "notify-pr-N-merge".
+
+Else: silent.
+```
 Schedule: `7-59/5 * * * *`, durable: true.
 
-### Notify when CI finishes (green or red)
+### CI finishes (green or red)
 
 ```
-Tag: notify-ci-5757
+Tag: notify-ci-N
 
-Check `gh pr checks 5757 --repo ROCm/rocm-systems --watch=false --json conclusion,name`.
+Check `gh pr checks N --repo <repo> --watch=false --json conclusion,name`.
 
 If every check has a non-empty conclusion:
-  1. If all SUCCESS:
-       curl -s -d "CI green on PR #5757" -H "Title: GitHub" -H "Tags: white_check_mark" "https://ntfy.sh/<TOPIC>"
-  2. Else (any FAILURE):
-       curl -s -d "CI failed on PR #5757 (N failed)" -H "Title: GitHub" -H "Priority: 5" -H "Tags: x" "https://ntfy.sh/<TOPIC>"
-  3. CronList → find tag "notify-ci-5757" → CronDelete.
+  All SUCCESS:
+    curl -s -d "CI green on PR #N" -H "Title: GitHub" -H "Tags: white_check_mark" "https://ntfy.sh/<TOPIC>"
+  Any FAILURE:
+    curl -s -d "CI failed on PR #N (M failed)" -H "Title: GitHub" -H "Priority: 5" -H "Tags: x" "https://ntfy.sh/<TOPIC>"
+  CronList -> CronDelete tag.
 
-If any check still pending: exit silently.
+Else: silent.
 ```
-
 Schedule: `2-59/5 * * * *`.
 
-### Notify when a background bash task completes
+### Background bash task done
 
 ```
-Tag: notify-build-bdexslltb
+Tag: notify-build-<id>
 
-Use TaskOutput with task_id "bdexslltb", block: false.
+Use TaskOutput with task_id "<id>", block: false.
 
 If status == "completed":
-  1. exit_code 0:
-       curl -s -d "Build done (exit 0)" -H "Title: Local" -H "Tags: bell" "https://ntfy.sh/<TOPIC>"
-     non-zero:
-       curl -s -d "Build failed (exit <N>)" -H "Title: Local" -H "Priority: 5" -H "Tags: x" "https://ntfy.sh/<TOPIC>"
-  2. CronList → find tag "notify-build-bdexslltb" → CronDelete.
+  exit 0  -> curl -s -d "Build done" -H "Tags: bell" "https://ntfy.sh/<TOPIC>"
+  non-zero -> curl -s -d "Build failed (exit N)" -H "Priority: 5" -H "Tags: x" "https://ntfy.sh/<TOPIC>"
+  CronList -> CronDelete tag.
 
-If status == "running": exit silently.
+Else: silent.
 ```
+Schedule: `*/2 * * * *`.
 
-Schedule: `*/2 * * * *` (local task, fast cadence).
+## Reminders
 
-## Common Mistakes
-
-| Mistake | Fix |
-|---|---|
-| Hardcoding `ntfy.sh/test` topic | Use the user's persisted topic. Public topics with guessable names get spam. |
-| Forgetting `CronDelete` in the recurring prompt | Inherits the same problem as `watch` - notification fires forever. Always include self-cleanup. |
-| Picking minute `0` or `30` for the schedule | Adds load to ntfy + upstream APIs at the same instant as everyone else. Pick an off minute. |
-| Sending plaintext credentials in the message | Topic is publicly addressable. Don't echo PR bodies, secrets, or paths in the push. |
-| Storing the topic in the prompt every time | Persist in `~/.claude/notify-me-config` once. Future invocations read silently. |
-
-## Integration with Other Skills
-
-| Trigger | Compose with |
-|---|---|
-| PR / CI condition | `git-pull-request-status` for the check, then notify |
-| Watch a Jira state | `mcp__mcp-atlassian__jira_get_issue`, then notify |
-| Local background task | `TaskOutput` with `block: false` in the check |
-| Multiple conditions | One `notify-me` per condition; don't bundle |
-
-## No Planning Required
-
-Like `watch`, `notify-me` is a one-step setup. Don't open `planning-feature` for it - configure, fire, report.
+- Topic is publicly addressable: don't echo PR bodies, secrets, or paths in the push.
+- Always include the `CronDelete` self-cleanup.
+- One cron per condition; don't bundle multiple watches in one prompt.
