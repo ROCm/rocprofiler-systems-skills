@@ -1131,12 +1131,65 @@ Apply any learned patterns:
 
 Analyze changed files for:
 
-1. **Unused variables**: Declared but never used
-2. **Commented-out code**: Code in comments (not doc comments)
-3. **Unreachable code**: After return/throw/break
-4. **Unused imports/includes**: #include or import statements for unused libraries
-5. **Unused function parameters**: Parameters never referenced in function body
-6. **Unnecessary comments**: Comments that just restate the code
+1. **Unused variables**: declared but never used.
+2. **Commented-out code**: code in comments (not doc comments).
+3. **Unreachable code**: after `return` / `throw` / `break`.
+4. **Unused imports / includes**: `#include` or `import` statements for unused libraries.
+5. **Unused function parameters**: parameters never referenced in body.
+
+#### 6. Comment hygiene
+
+Apply these checks to every comment in the diff. The full rule set lives in `programming-cpp` skill (Documentation & Comments). Severity is **Nitpick** unless the comment is misleading (then **Should Fix**).
+
+**Restating comments**: comment paraphrases code on the same or next line. Always flag.
+
+```cpp
+i++;                       // increment i           BAD
+m_count = 0;               // initialize count      BAD
+result.clear();            // clear the result      BAD
+return value;              // return value          BAD
+```
+
+**Meaningless / decorative comments**: banners, separators, file headers re-stating the filename, "TODO" without a ticket or owner.
+
+```cpp
+// =================== Helpers ===================   BAD: decoration only
+// foo.cpp                                           BAD: filename echo
+// TODO: fix this                                    BAD: no ticket, no owner, no date
+```
+
+**Doxygen blocks paraphrasing the signature**: Doxygen body = function name + parameter names retold in prose. Flag - delete the block.
+
+```cpp
+/**
+ * Returns true if value is positive.        BAD: signature already says it
+ * @param value The value to check.
+ * @return True if positive.
+ */
+bool is_positive(int value);
+```
+
+**Long-form preambles without long-term value**: multi-line `// ...` blocks above tests / helpers / files that re-tell story already in the diff, the test name, the PR description, the commit message, or the bug tracker. Flag - delete or compress to one line.
+
+```cpp
+// Background. Three sites construct ...    BAD: 30+ line preamble
+// Site 1: ...                              BAD: banner above helper
+// Site 2: ...                              BAD: banner above helper
+// See foo.cpp:123-145 for context          BAD: line refs rot
+// This was broken because X; now does Y    BAD: commit message owns it
+```
+
+**Missing Doxygen on non-obvious public API**: public function or class where the name + signature alone do NOT tell a caller how to use it (units, ownership, throws, nullopt semantics, threading, pre/post-conditions). Flag - suggest a javadoc-style `/** @param @return @throws */` block.
+
+**Do NOT flag** these (good comments worth keeping):
+
+- Hidden invariants: `// caller holds m_mutex`
+- Workarounds with ticket + sunset: `// workaround for FOO-1234; remove when bar.so >= 2.5`
+- Non-obvious unit / ownership notes: `// nanoseconds, monotonic`, `// caller takes ownership`
+- Domain quirks: `// protocol spec sets MSB on negative flag`
+- Doxygen on public APIs that documents what the type system cannot
+
+**Rule of thumb for the agent**: ask "would removing this comment confuse a competent reader of this codebase a year from now?" If no, it is noise - flag it.
 
 Report ALL findings - be thorough and picky.
 
