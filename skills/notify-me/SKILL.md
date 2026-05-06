@@ -9,6 +9,37 @@ Compose a recurring cron whose action is `curl POST https://ntfy.sh/<topic>` so 
 
 ## How it works
 
+```
+┌────────────────────────────────────────────────────────────┐
+│ Phase 1: Resolve ntfy topic                                │
+│   - Read ~/.claude/notify-me-config (topic + base_url)     │
+│   - If missing, ask user once and persist                  │
+└────────────────────────────────────────────────────────────┘
+                             │
+                             ▼
+┌────────────────────────────────────────────────────────────┐
+│ Phase 2: Clarify the condition + message                   │
+│   - What event triggers the notification?                  │
+│   - What should the push say (title / body / priority)?    │
+│   - What polling cadence (defer to watch skill table)      │
+└────────────────────────────────────────────────────────────┘
+                             │
+                             ▼
+┌────────────────────────────────────────────────────────────┐
+│ Phase 3: Compose watch invocation                          │
+│   - Build the check command                                │
+│   - Build the action command:                              │
+│       curl -d "<msg>" -H "Title: <t>" \                    │
+│            -H "Priority: <p>" <base>/<topic>               │
+│   - CronCreate with self-cleanup (CronDelete by tag)       │
+└────────────────────────────────────────────────────────────┘
+                             │
+                             ▼
+┌────────────────────────────────────────────────────────────┐
+│ Phase 4: Confirm + report job ID, topic, cadence           │
+└────────────────────────────────────────────────────────────┘
+```
+
 The whole mechanism is one HTTP POST. ntfy.sh delivers the request body as a push notification to every device subscribed to the topic.
 
 ```bash
