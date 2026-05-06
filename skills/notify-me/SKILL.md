@@ -17,41 +17,13 @@ Use `notify-me` when the user asks any of:
 - "Send me a notification when Jira ticket Y moves to In Review"
 - "Push to my phone when this background agent completes"
 
-## Discipline: When to Send vs When to Skip
+## When to Send
 
-**Default: OFF.** Do NOT send a push for routine task completions. The user already sees chat output and the dashboard inline; a phone push for every "task done" is noise and trains the user to ignore the notifier.
+Send a notification only when the user has asked for one. If the user has not asked, do not send.
 
-The discipline is independent of the mechanism. Even when a `notify-me` cron is wired up correctly, ask "would the user want a buzz right now?" before composing the curl.
-
-### Send only when
-
-| Trigger | Why it earns a push |
-|---|---|
-| Long-running background subagent finishes and the user is likely AFK | They are not watching the terminal; the push is the only signal |
-| A task pauses for user input or hits a blocker | The user needs to come back and unblock it |
-| An explicit user-scheduled reminder fires (e.g. cron set for "tomorrow 10am") | The user asked for the reminder by definition |
-| The user said "notify me when X" | Same - explicit request is its own justification |
-
-### Do NOT send for
-
-| Trigger | Why to skip |
-|---|---|
-| Every `TaskUpdate` to completed | Routine completions show inline; phone push is duplicate noise |
-| Every commit pushed | Local action with immediate terminal feedback |
-| Every PR opened from a foreground exchange | The PR URL is right there in chat |
-| Every successful build / test step | Success is the expected case; only deviations need a push |
-
-### Briefing background subagents
-
-When you spawn a background subagent that may use `notify-me`, include this rule in its brief:
-
-> ntfy only on PAUSE or BLOCKER, not on success - unless the success is the user-asked-for reason this agent ran.
-
-That preserves the AFK-completion case (the user spawned the agent precisely so they could walk away and be pinged on done) while suppressing notifications for incidental sub-steps.
+That is the whole rule. Ignore intuitions about "they would probably want to know" - if it was not requested, skip.
 
 ## When NOT to Use
-
-The discipline section above governs WHEN to send. The table below covers WHICH TOOL to reach for instead of `notify-me`:
 
 | Situation | Use Instead | Why |
 |---|---|---|
