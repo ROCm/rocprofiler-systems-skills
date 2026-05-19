@@ -139,6 +139,8 @@ This ensures plans persist in files and can be resumed later.
 
 **Code quality skills:**
 - `code-smells` - Detect anti-patterns and refactoring opportunities (used by `pr-review`)
+- `pr-review` - Review PRs or local changes; produces structured report
+- `pr-review-interactive` - Walk through PR review findings one by one, accumulate inline comments in a PENDING review, submit at end
 
 **Library-specific skills:**
 - AMD SMI: `libraries-amd-smi` - GPU/CPU monitoring and management

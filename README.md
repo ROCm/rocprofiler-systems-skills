@@ -340,6 +340,7 @@ Applied during implementation phase. For refactoring, ALL language-specific skil
 | `git/commit` | Create meaningful commits with well-structured messages |
 | `git/prepare-pull-request` | Prepare PRs - size guidelines, splitting strategy, PR template |
 | `git/review-pull-request` | Review PRs - code quality, correctness, tests, actionable feedback |
+| `pr-review-interactive` | Walk through PR review findings one by one, accumulate inline comments in a PENDING review, submit at end |
 | `git/pull-request-status` | Check PR CI/CD status, explain failures, provide fix recommendations |
 
 ### Exploration Skills
@@ -507,6 +508,8 @@ skills/
 │   │   └── SKILL.md
 │   └── review-pull-request/    # PR review guidelines
 │       └── SKILL.md
+├── pr-review-interactive/      # Walk PR review findings one by one, accumulate in PENDING review
+│   └── SKILL.md
 └── radisha/                    # Radisha management skills
     ├── update/                 # Update radisha to latest version
     │   └── SKILL.md
@@ -908,6 +911,27 @@ Structured approach to reviewing Pull Requests.
 - **Must Fix** - Blocking issues (bugs, security, missing tests)
 - **Should Fix** - Non-blocking improvements
 - **Nitpicks** - Optional suggestions
+
+#### `pr-review-interactive`
+Walk through PR review findings one by one with the user before any comment lands on GitHub.
+
+**Process:**
+1. Resolve PR (URL or owner/repo#N), fetch head SHA
+2. Generate report via `pr-review` skill (or reuse existing)
+3. Parse findings into ordered list (Must-Fix -> Should-Fix -> Nits)
+4. Create empty PENDING review on PR
+5. For each finding: show location + analysis + proposed short inline comment; user picks accept / edit / skip / quit
+6. Append accepted comments to the PENDING review (one batch)
+7. Wrap-up: user picks COMMENT / REQUEST_CHANGES / APPROVE / keep pending / discard
+8. Submit (or hold) review with chosen event
+
+**Key rules:**
+- Never auto-submit (review stays PENDING until explicit user confirmation)
+- Never use `gh pr comment` (silently drops body on Projects-classic orgs)
+- Comments are 1-3 sentences, root cause first, fix snippet only when non-obvious
+- State persisted under `$CLAUDE_JOB_DIR/pr-review-interactive/` for resume
+
+**State files:** `head-sha.txt`, `review-id.txt`, `findings.json`, `diff-lines.json`, `accepted.json`, `skipped.json`
 
 #### `git/pull-request-status`
 Check pull request CI/CD status and explain failures with actionable fixes.
