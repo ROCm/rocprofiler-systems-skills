@@ -1,6 +1,6 @@
 ---
 name: pr-review
-description: Review Pull Requests or local changes - check code quality, correctness, tests, and provide actionable feedback
+description: Reviews Pull Requests or local diffs with a 7-agent fan-out covering static analysis, dead code, code smells + quality (naming, complexity, single-responsibility, magic numbers), language rules (C++/Python/CMake), architecture, simplification, and performance (hot-path classification, allocations, locks, I/O). Use when the user asks to "review this PR", "review the diff", "audit this branch", "/pr-review", or when staging changes before push.
 ---
 
 # PR Review Skill
@@ -33,157 +33,23 @@ Review Pull Requests or local changes with structured, thorough analysis.
 
 ## Universal Hygiene Rules
 
-These rules apply to **every** invocation of this skill, regardless
-of workspace.
+Apply to every invocation of this skill. Full text in [HYGIENE.md](HYGIENE.md). Summary:
 
-### Default destination: local artifact only
-
-**Do NOT post to GitHub by default.** A review run produces a local
-written report (file or chat output) only. Post to the PR (review
-comment, line comment, or `gh pr review`) **only** if the user
-explicitly says "post", "submit", "comment on the PR", or
-equivalent. When in doubt, save locally and ask.
-
-### Fresh-eyes rule (sub-agent invocations)
-
-When this skill is invoked from inside a sub-agent (i.e. the agent
-was spawned specifically to review a PR), treat the brief as the
-**only** context:
-
-- Do **not** load project memory, prior feedback logs, or
-  conversation history about the PR.
-- Do **not** read previous review reports for this PR unless the
-  brief explicitly tells you to (e.g. re-review mode).
-- Form an independent opinion from the diff, files, and PR
-  description alone.
-
-This keeps sub-agent reviews unbiased by prior conclusions. The
-parent orchestrator can still cross-reference past reviews
-afterwards.
-
-### Report content rules
-
-A written report (as opposed to inline chat feedback) MUST contain
-all of the following sections, in roughly this order. Omit a
-section's body only if it is genuinely N/A, and say so explicitly
-("No public API touched - N/A").
-
-1. **Header** - PR number, title, author, target branch, base SHA,
-   head SHA, files changed count, +/- line counts, commit count.
-2. **Intent vs implementation** - what the PR claims to do (from
-   description / commits) vs what the diff actually does. Flag
-   mismatches.
-3. **Per-file walkthrough** - one short paragraph per changed file
-   explaining what changed and why, in reviewer's own words.
-4. **Findings ranked by severity** - Critical -> Must Fix -> Should
-   Fix -> Nitpick (already covered by agent aggregation).
-5. **Static analysis pass** - summary of linter/tool findings (from
-   Static Analysis Agent).
-6. **Security audit** - input validation, injection, auth, secrets,
-   unsafe deserialization, path traversal, crypto misuse.
-7. **Performance review** - algorithmic complexity, hot-path
-   allocations, unnecessary copies, lock contention, I/O patterns.
-8. **API/ABI compatibility** - does the PR change a public API or
-   ABI? If yes, is the change additive, deprecating, or breaking?
-   Migration notes?
-9. **Documentation review** - are README, doc comments, changelog,
-   man pages updated to match behavior changes?
-10. **Verdict** - one of `APPROVE`, `REQUEST CHANGES`, or
-    `NEEDS DISCUSSION` (use these exact labels).
-11. **Cleanup confirmation** - confirm the local clone was restored
-    to its starting branch, any stash was popped, and `git status`
-    matches the pre-review state. (See "Local clone hygiene" below.)
-
-### Local clone hygiene (when checking out a PR)
-
-If reviewing requires checking out the PR into a local clone:
-
-1. **Prefer a clean clone.** Pick a clone whose `git status` is
-   empty (no staged/unstaged changes, no untracked files that
-   matter). This avoids contaminating the user's working state.
-2. **If no clean clone exists**, use the available one but:
-   - Record the original branch: `orig_branch=$(git rev-parse --abbrev-ref HEAD)`
-   - `git stash push -u -m "pr-review-skill autostash"` and remember the stash ref.
-3. **Always record the starting branch** before any checkout:
-   `orig_branch=$(git rev-parse --abbrev-ref HEAD)`.
-4. **Mandatory restore on exit (success OR failure):**
-   - `git checkout "$orig_branch"`
-   - If you stashed in step 2: `git stash pop` (the matching stash)
-   - Verify `git status` matches the pre-review state.
-5. Use a `trap` (bash) or `try/finally` (Python) so the restore runs
-   even on error or interrupt. Never leave the user's clone on a
-   detached HEAD or PR branch.
+- **Local-only by default**: do NOT post to GitHub unless the user explicitly says "post" / "submit" / "comment on the PR".
+- **Fresh-eyes rule**: when this skill runs inside a sub-agent, the brief is the only context - no project memory, no prior reviews, no conversation history.
+- **Required report sections**: Header, Intent vs Implementation, Per-File Walkthrough, Findings by Severity, Static Analysis, Security Audit, Performance, API/ABI Compatibility, Documentation, Verdict (`APPROVE` / `REQUEST CHANGES` / `NEEDS DISCUSSION`), Cleanup Confirmation. Full layout in `REPORT_TEMPLATE.md`.
+- **Local clone hygiene**: record starting branch, stash if dirty, restore on exit via trap/finally - never leave the clone on a detached HEAD or PR branch.
 
 ## Review Process
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│              Phase 0: Determine Review Target                    │
-│    - PR number/URL provided? → Review GitHub PR                  │
-│    - Nothing provided? → Review local changes vs main            │
-│    - Re-review? → Show only changes since last review            │
-└─────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│        Phase 1: Gather Info + Read Files (ONCE)                 │
-│    - Get changed files, diff, commits                            │
-│    - Read each changed file's full content                       │
-│    - Identify languages (C++, Python, CMake)                     │
-│    - Package data for agents                                     │
-│    - Check CI status (GitHub PRs)                                │
-└─────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│      Phase 1.5: Spawn 6 Parallel Analysis Agents                │
-│    All agents receive pre-loaded context from Phase 1            │
-│                                                                   │
-│    ┌──────────────────┐  ┌──────────────────┐                   │
-│    │ Agent 1: Static  │  │ Agent 2: Dead    │                   │
-│    │ Analysis (tools) │  │ Code Detection   │                   │
-│    └──────────────────┘  └──────────────────┘                   │
-│    ┌──────────────────┐  ┌──────────────────┐                   │
-│    │ Agent 3: Code    │  │ Agent 4: Language│                   │
-│    │ Smells           │  │ Rules (C++/Py)   │                   │
-│    └──────────────────┘  └──────────────────┘                   │
-│    ┌──────────────────┐                                          │
-│    │ Agent 5: Arch    │ (conditional - if architectural changes) │
-│    │ (via skill)      │                                          │
-│    └──────────────────┘                                          │
-│    ┌──────────────────┐                                          │
-│    │ Agent 6: Simplify│                                          │
-│    │ (reuse/reduce)   │                                          │
-│    └──────────────────┘                                          │
-└─────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-                    ┌───────────────────────┐
-                    │ Phase 2: Aggregate    │
-                    │ - Merge agent results │
-                    │ - Map to severity     │
-                    │ - Deduplicate issues  │
-                    │ - Sort by severity    │
-                    └───────────────────────┘
-                                │
-                                ▼
-                    ┌───────────────────────┐
-                    │ Phase 3: Manual       │
-                    │ - Review tests        │
-                    │ - Check coverage      │
-                    └───────────────────────┘
-                                │
-                                ▼
-                    ┌───────────────────────┐
-                    │ Phase 4: Generate     │
-                    │ Final Report          │
-                    │ - Severity-sorted     │
-                    │ - Agent sources cited │
-                    │ - With code fixes     │
-                    │ - Actionable feedback │
-                    │ - Save .md to disk    │
-                    └───────────────────────┘
-```
+| Phase | Purpose |
+|-------|---------|
+| 0. Determine target | PR# / URL -> GitHub PR; nothing -> local diff vs main; "re-review" -> changes since last review |
+| 1. Gather + read | Changed files, full diff, commit messages, CI status; read each file ONCE; build Data Package |
+| 1.5. Spawn 7 agents in parallel | Static, Dead Code, Code Smells + Quality, Language Rules, Architecture (conditional), Simplify, Performance |
+| 2. Aggregate | Merge findings, map to severity, deduplicate, sort, classify change type |
+| 3. Review tests | Coverage, edge cases, naming, independence, assertions; suggest missing tests |
+| 4. Final report | Severity-sorted, agent-sourced, with code fixes; chat-only by default, save .md only if asked |
 
 ## Phase 0: Determine Review Target
 
@@ -196,186 +62,70 @@ If reviewing requires checking out the PR into a local clone:
 | "re-review" or "review again" | Re-review mode (show only new changes) |
 | Nothing / just "review" | Review local changes vs main branch |
 
-### For GitHub PR:
+### GitHub PR
 
-**Invoke `git-gh-client`** to verify gh CLI is available.
-Then fetch PR data using gh commands.
+Invoke `git-gh-client` to verify `gh` is available, then fetch via `gh pr view` / `gh pr diff` / `gh pr checks`.
 
-### For Local Changes (default):
-
-Automatically compare against `main` branch (or `master` if main doesn't exist):
+### Local changes (default)
 
 ```bash
-# Determine base branch
-base_branch=$(git rev-parse --verify main 2>/dev/null && echo "main" || echo "master")
-
-# Get changed files
-git diff --name-only $base_branch...HEAD
-
-# Get the diff
-git diff $base_branch...HEAD
-
-# Get commit messages
-git log $base_branch...HEAD --oneline
+base=$(git rev-parse --verify main 2>/dev/null && echo main || echo master)
+git diff --name-only "$base"...HEAD
+git diff "$base"...HEAD
+git log "$base"...HEAD --oneline
 ```
 
-### Re-review Mode
+### Re-review mode
 
-When user asks to "re-review" or "review again":
-
-1. Check for previous review commits/comments
-2. Identify what changed since last review:
-   ```bash
-   # If you know the last reviewed commit
-   git diff <last-reviewed-commit>...HEAD
-
-   # For GitHub PRs - check commits since last review
-   gh pr view <PR_NUMBER> --json commits,reviews
-   ```
-3. Focus review on NEW changes only
-4. Note which previous issues were addressed
+Diff from the last reviewed SHA (`git diff <last>...HEAD` or `gh pr view N --json commits,reviews`). Focus on NEW changes; note which prior issues were addressed.
 
 ## Phase 1: Gather Information + Read Files
 
-**Goal:** Collect all data ONCE and package for agents - minimize redundant file reads.
+Collect data ONCE and package for agents - minimize redundant file reads.
 
-Based on the review type selected in Phase 0:
+### GitHub PR
 
-### For GitHub PR Review
+Fetch via `git-gh-client` commands: `gh pr view N --json ...` for metadata, `gh pr diff N` for the diff, `gh pr checks N` for CI, `gh api repos/{o}/{r}/pulls/N/comments` + `gh pr view N --json reviews` for prior comments. Note CI failures in the report; do not block review on them unless the user asks.
 
-Use commands from `git-gh-client` to fetch PR data:
-- `gh pr view <PR_NUMBER> --json ...` for metadata
-- `gh pr diff <PR_NUMBER>` for changes
-- See `git-gh-client` Phase 2 for full command reference
+### Local diff (default)
 
-#### Check CI Status First
+`git diff --name-only <base>...HEAD`, `git diff <base>...HEAD`, `git log <base>...HEAD --oneline`.
 
-**Before reviewing code, check if CI passed:**
+### 1.1 Read each file ONCE
 
-```bash
-# Check CI status (invoke git-pull-request-status skill)
-gh pr checks <PR_NUMBER> || true
-```
+Read the full body (not just changed lines) with the Read tool. Reading once here vs N times across agents = N-fold token savings.
 
-| CI Status | Action |
-|-----------|--------|
-| All passed | Proceed with review |
-| Some failed | Note failures, still review code but mention CI issues |
-| All failed | Consider waiting for fixes before detailed review |
+### 1.2 Identify languages
 
-#### Fetch Existing Review Comments
+| Extension | Language | Used by |
+|-----------|----------|---------|
+| `.cpp` / `.hpp` / `.h` / `.cc` | C++ | language-rules-agent, code-smells-agent |
+| `.py` | Python | language-rules-agent, code-smells-agent |
+| `CMakeLists.txt` / `.cmake` | CMake | language-rules-agent |
 
-**Check what's already been discussed:**
+### 1.3 Build the Data Package
 
-```bash
-# Get existing review comments
-gh api repos/{owner}/{repo}/pulls/<PR_NUMBER>/comments --jq '.[] | {path: .path, line: .line, body: .body}'
-
-# Get review threads
-gh pr view <PR_NUMBER> --json reviews --jq '.reviews[] | {author: .author.login, state: .state, body: .body}'
-```
-
-**Use existing comments to:**
-- Avoid duplicating feedback already given
-- Check if previous issues were addressed
-- Understand ongoing discussions
-
-### For Local Changes Review
-
-```bash
-# Get list of changed files
-git diff --name-only <base-branch>...HEAD
-
-# Get the full diff
-git diff <base-branch>...HEAD
-
-# Get commit messages for this branch
-git log <base-branch>...HEAD --oneline
-```
-
-### 1.1 Read Changed Files (ONCE)
-
-**Read each changed file's full content now - agents will reuse this data:**
-
-```markdown
-For each file in changed files list:
-- Use Read tool to get full file content
-- Track file path, language, and content
-- Package into structured format for agents
-```
-
-**Why read now?**
-- Agents need file context to analyze
-- Reading once (here) vs 5 times (in each agent) = 5x token savings
-- Main context grows slightly, but net savings is significant
-
-### 1.2 Identify Languages
-
-Scan changed files to determine language breakdown:
-
-| File Extension | Language | Used By Agents |
-|----------------|----------|----------------|
-| `.cpp`, `.hpp`, `.h`, `.cc` | C++ | Language Rules Agent, Code Smells |
-| `.py` | Python | Language Rules Agent, Code Smells |
-| `CMakeLists.txt`, `.cmake` | CMake | Language Rules Agent |
-
-### 1.3 Package Data for Agents
-
-**Create structured data package containing:**
-
-```markdown
-## Changed Files Data Package
-
-### Files Changed
-[List of file paths with language tags]
-
-### Full Diff
-[Complete git diff output]
-
-### File Contents
-For each changed file:
----
-File: path/to/file.cpp
-Language: C++
-Lines: 1-150
-
-[Full file content from Read tool]
----
-
-### Commit Messages
-[git log output]
-
-### PR Context (if GitHub)
-- Title: [PR title]
-- Description: [PR description]
-- Author: [author]
-- CI Status: [status]
-```
-
-**This package will be passed to all agents in Phase 1.5.**
+One package, passed to every spawned agent. Required sections: Files Changed (path + language), Full Diff, File Contents (full body, tagged with language), Commit Messages, PR Context (title, description, author, CI status - if GitHub).
 
 ## Phase 1.5: Spawn Parallel Analysis Agents
 
-**Goal:** Launch 5 specialized agents in parallel to analyze the packaged data from Phase 1.
+**Goal:** Launch up to 7 specialized agents in parallel to analyze the packaged data from Phase 1.
 
 <IMPORTANT>
 **Use general-purpose agents** (not Explore agents) since they receive pre-loaded context.
-All agents run in parallel - invoke all 6 in a single tool call block.
+All agents run in parallel - invoke all of them in a single tool call block.
 Each agent has a unique identity, loads its skill, and maintains memory.
 </IMPORTANT>
 
 ### Lite mode gate
 
-Before spawning all 5 agents, check the diff scope:
+Before spawning all agents, check the diff scope. Agent IDs match the table in "Agent Identity & Memory System" below.
 
-- **Diff < 50 lines added/removed AND** no changes to logic (only docs,
-  comments, formatting, imports, or type aliases): spawn ONLY correctness
-  and tests agents. Skip security, performance, architecture.
-- **Diff < 200 lines AND** affects only one file: spawn correctness +
-  tests + style. Skip security and architecture.
-- **Otherwise**: full 5-agent fan-out as documented below.
+- **Diff < 50 lines added/removed AND** no logic changes (docs / comments / formatting / imports / type aliases only): spawn ONLY Agents 1 (`static-analysis-agent`) and 2 (`dead-code-agent`). Skip 3, 4, 5, 6, 7.
+- **Diff < 200 lines AND** affects only one file: spawn Agents 1, 2, 3 (`code-smells-agent`), 4 (`language-rules-agent`), 7 (`performance-agent`). Skip 5 (architecture) and 6 (simplify).
+- **Otherwise**: full 7-agent fan-out (Agent 5 still gated by the architectural-signal table below).
 
-Document the chosen mode in the final report's Header section.
+Document the chosen mode and the spawned agent IDs in the final report's Header section.
 
 ### Agent Identity & Memory System
 
@@ -388,71 +138,34 @@ Each agent has:
 |---|----------|---------------|-------------|
 | 1 | `static-analysis-agent` | `static-analysis` | `agents/static-analysis.md` |
 | 2 | `dead-code-agent` | *(none)* | `agents/dead-code.md` |
-| 3 | `code-smells-agent` | `code-smells` | `agents/code-smells.md` |
+| 3 | `code-smells-agent` | `code-smells` + load `QUALITY.md` from this skill | `agents/code-smells.md` |
 | 4 | `language-rules-agent` | `programming-cpp` or `programming-python` | `agents/language-rules.md` |
 | 5 | `architecture-agent` | `architecture-analyze` | `agents/architecture.md` |
 | 6 | `simplify-agent` | `simplify` | `agents/simplify.md` |
+| 7 | `performance-agent` | *(none, loads `PERFORMANCE.md` from this skill)* | `agents/performance.md` |
 
 **Memory location:** `~/.claude/projects/<project>/memory/agents/`
 
-### What Agents Learn
+### The 7 Analysis Agents (purpose + memory topic)
 
-| Agent | Learns About |
-|-------|--------------|
-| Static Analysis | Tool configs, false positive patterns, suppression rules |
-| Dead Code | Intentionally unused code, debug scaffolding, reserved APIs |
-| Code Smells | Project-specific thresholds, acceptable patterns |
-| Language Rules | Project conventions, intentional deviations from standards |
-| Architecture | Module boundaries, key interfaces, dependency patterns, decisions |
-| Simplify | Reuse opportunities, unnecessary complexity, verbose patterns |
-
-### The 5 Analysis Agents
-
-| # | Agent Type | Purpose | Returns |
-|---|------------|---------|---------|
-| 1 | Static Analysis | Run linters/tools on changed files | Structured table of tool findings |
-| 2 | Dead Code Detection | Find unused code, comments, unreachable code | Table of dead code issues |
-| 3 | Code Smells Detection | Detect anti-patterns (long functions, deep nesting, etc.) | Table of code smell findings |
-| 4 | Language Rules Enforcement | Apply C++/Python/CMake best practices | Table of best practice violations |
-| 5 | Architecture Review | Analyze module boundaries, dependencies (if architectural changes detected) | Architecture assessment |
-| 6 | Simplification | Find reuse opportunities, unnecessary complexity, verbose code | Table of simplification suggestions |
+| # | Agent ID | Purpose | Memory topic |
+|---|----------|---------|--------------|
+| 1 | `static-analysis-agent` | Run linters/tools (clang-tidy, ruff, etc.) on full file contents | Tool configs, false positives, suppressions |
+| 2 | `dead-code-agent` | Unused code, comments, unreachable code, comment hygiene | Intentionally-unused code, reserved APIs |
+| 3 | `code-smells-agent` | 22 smells + 4 quality dimensions per `QUALITY.md` | Project thresholds, quality-dim overrides |
+| 4 | `language-rules-agent` | C++ / Python / CMake best practices per `programming-*` skills | Project conventions, intentional deviations |
+| 5 | `architecture-agent` | Module boundaries, dependencies, testability (conditional - see signal table) | Module map, interfaces, dependency patterns |
+| 6 | `simplify-agent` | Reuse, unnecessary complexity, verbose patterns per `simplify` skill | Project utilities, intentional verbosity |
+| 7 | `performance-agent` | Hot-path classification + alloc/complexity/locks/IO per `PERFORMANCE.md` | Hot files, accepted alloc patterns, benchmarks |
 
 ### Agent Execution Pattern
 
-**Spawn all agents in parallel using the Agent tool:**
+**Spawn all selected agents in parallel using the Agent tool** (one tool block, multiple `Agent` calls). For each spawn:
+- `description`: the agent ID from the table in "Agent Identity & Memory System"
+- `subagent_type`: `general-purpose`
+- prompt body: contents of the matching file under `agents/prompts/` (see "Agent Prompt Templates" below) + the Data Package from Phase 1
 
-```markdown
-Agent 1: Static Analysis Agent
-- description: "static-analysis-agent"
-- subagent_type: "general-purpose"
-- Prompt: [See template below] + Data Package from Phase 1
-
-Agent 2: Dead Code Detection Agent
-- description: "dead-code-agent"
-- subagent_type: "general-purpose"
-- Prompt: [See template below] + Data Package from Phase 1
-
-Agent 3: Code Smells Agent
-- description: "code-smells-agent"
-- subagent_type: "general-purpose"
-- Prompt: [See template below] + Data Package from Phase 1
-
-Agent 4: Language Rules Agent
-- description: "language-rules-agent"
-- subagent_type: "general-purpose"
-- Prompt: [See template below] + Data Package from Phase 1
-
-Agent 5: Architecture Agent (conditional)
-- description: "architecture-agent"
-- Only spawn if architectural changes detected (see criteria below)
-- subagent_type: "general-purpose"
-- Prompt: [See template below] + Data Package from Phase 1
-
-Agent 6: Simplification Agent
-- description: "simplify-agent"
-- subagent_type: "general-purpose"
-- Prompt: [See template below] + Data Package from Phase 1
-```
+Agent 5 only spawns when the architectural-signal table matches. Lite mode (above) further trims the set.
 
 ### Conditional Architecture Analysis
 
@@ -468,85 +181,50 @@ Agent 6: Simplification Agent
 | New external dependencies | Integration points |
 | Changes to base/core classes | Foundation shifting |
 
-If no architectural signals → Skip Agent 5, run only Agents 1-4.
+If no architectural signals → Skip Agent 5, run Agents 1-4, 6, 7.
 
 ### Agent Prompt Templates
 
-See "Agent Prompt Templates" section below for detailed prompts to use for each agent.
+Each agent's full prompt lives in its own file under `agents/prompts/`. The orchestrator passes the file's contents + Data Package to the spawned agent.
+
+| Agent ID | Prompt file |
+|----------|-------------|
+| `static-analysis-agent` | [agents/prompts/agent-1-static-analysis.md](agents/prompts/agent-1-static-analysis.md) |
+| `dead-code-agent` | [agents/prompts/agent-2-dead-code.md](agents/prompts/agent-2-dead-code.md) |
+| `code-smells-agent` | [agents/prompts/agent-3-code-smells-quality.md](agents/prompts/agent-3-code-smells-quality.md) |
+| `language-rules-agent` | [agents/prompts/agent-4-language-rules.md](agents/prompts/agent-4-language-rules.md) |
+| `architecture-agent` | [agents/prompts/agent-5-architecture.md](agents/prompts/agent-5-architecture.md) |
+| `simplify-agent` | [agents/prompts/agent-6-simplification.md](agents/prompts/agent-6-simplification.md) |
+| `performance-agent` | [agents/prompts/agent-7-performance.md](agents/prompts/agent-7-performance.md) |
+
+Architecture Agent fires only when the architectural-signal table below matches. All others fire per the lite-mode gate.
 
 ## Phase 2: Aggregate Agent Findings
 
-**Goal:** Collect results from all agents, merge by severity, deduplicate, and prepare for final report.
+Wait for all spawned agents from Phase 1.5. Then:
 
-### 2.1 Wait for All Agents
+### 2.1 Severity scale (used by every agent)
 
-Wait for all agents from Phase 1.5 to complete:
-- Agent 1: Static Analysis results
-- Agent 2: Dead Code Detection results
-- Agent 3: Code Smells results
-- Agent 4: Language Rules results
-- Agent 5: Architecture analysis (if ran)
-- Agent 6: Simplification suggestions
+| Category | Score | Criteria |
+|----------|-------|----------|
+| Critical | 100 | Security vulnerability, data loss, crash, UB |
+| Must Fix | 80 | Incorrect behavior, logic bugs, resource leaks, tool errors |
+| Should Fix | 50 | Best practices, code smells, maintainability |
+| Nitpick | 20 | Style, minor improvements, suggestions |
 
-### 2.2 Severity Mapping
+### 2.2 Merge
 
-**Map agent findings to review severity levels:**
+Collect every issue. Group by severity (Critical -> Must Fix -> Should Fix -> Nitpick). Sort within each group by file path then line number. Tag each finding with the source agent ID.
 
-| Agent Severity | Review Category | Score | Criteria |
-|----------------|-----------------|-------|----------|
-| Critical | **Critical** | 100 | Security vulnerability, data loss, crash, UB |
-| Must Fix | **Must Fix** | 80 | Incorrect behavior, logic bugs, resource leaks, tool errors |
-| Should Fix | **Should Fix** | 50 | Best practices, code smells, maintainability |
-| Nitpick | **Nitpick** | 20 | Style, minor improvements, suggestions |
+### 2.3 Deduplicate
 
-### 2.3 Merge Findings
+- Same file:line, same issue -> keep highest severity, merge descriptions
+- Same file:line, different issues -> keep both
+- Different agents, same general category, different specifics -> keep both
 
-**Combine findings from all agents:**
+### 2.4 Classify change type
 
-1. **Collect all issues** from each agent's output
-2. **Group by severity**: Critical (100) → Must Fix (80) → Should Fix (50) → Nitpick (20)
-3. **Sort within each group**: By file path, then line number
-4. **Add agent source**: Tag each finding with which agent found it
-
-**Example merged finding:**
-
-```markdown
-#### Issue: Null pointer dereference (Score: 80 - Must Fix)
-**Source:** Static Analysis Agent (clang-tidy)
-**File:** src/parser.cpp:42
-
-[Issue details and fix code]
-```
-
-### 2.4 Deduplicate Issues
-
-**If multiple agents flag the same issue:**
-
-| Scenario | Action |
-|----------|--------|
-| Same file:line, same issue | Keep highest severity, merge descriptions |
-| Same file:line, different issues | Keep both as separate findings |
-| Different agents, same general category | Keep both if specific issues differ |
-
-**Example deduplication:**
-
-```
-Agent 2 (Dead Code): "Line 45: Unused variable 'count'"
-Agent 4 (Language Rules): "Line 45: Variable 'count' declared but not used"
-
-→ Deduplicate to single finding with highest severity
-```
-
-### 2.5 Classify Change Type
-
-Based on aggregated findings and changes, classify the PR:
-
-| Type | Description |
-|------|-------------|
-| Feature | New functionality |
-| Bugfix | Correcting behavior |
-| Refactor | Improving structure |
-| Docs | Documentation only |
+Feature / Bugfix / Refactor / Docs - put it in the report header.
 
 ## Phase 3: Review Tests (Manual Check)
 
@@ -568,44 +246,15 @@ Manually check test coverage and quality.
 
 ### 3.2 Suggest Missing Tests
 
-**If new code lacks tests, suggest specific tests to add:**
+If new code lacks tests, list per-function the cases to add. Checklist:
 
-```markdown
-### Missing Tests for `parser.cpp`
+- [ ] Happy path
+- [ ] Empty/null input
+- [ ] Invalid input
+- [ ] Boundary values
+- [ ] Error handling
 
-#### 1. `Parser::parseToken` needs tests for:
-
-```cpp
-// Test empty input
-TEST(ParserTest, ParseToken_EmptyInput_ReturnsNullopt) {
-    Parser parser;
-    auto result = parser.parseToken("");
-    EXPECT_FALSE(result.has_value());
-}
-
-// Test invalid input
-TEST(ParserTest, ParseToken_InvalidToken_ReturnsError) {
-    Parser parser;
-    auto result = parser.parseToken("@#$%");
-    EXPECT_FALSE(result.has_value());
-}
-
-// Test boundary - max length token
-TEST(ParserTest, ParseToken_MaxLengthToken_Succeeds) {
-    Parser parser;
-    std::string maxToken(MAX_TOKEN_LENGTH, 'a');
-    auto result = parser.parseToken(maxToken);
-    EXPECT_TRUE(result.has_value());
-}
-```
-```
-
-**Test suggestion checklist:**
-- [ ] Happy path test
-- [ ] Empty/null input test
-- [ ] Invalid input test
-- [ ] Boundary values test
-- [ ] Error handling test
+Use the project's test framework (GTest/GMock for C++, pytest for Python) and follow the naming convention found in nearby tests.
 
 ### 3.3 Cross-File Consistency (Optional)
 
@@ -767,466 +416,6 @@ For fast reviews, at minimum check:
 - [ ] No security red flags?
 - [ ] Follows programming skill rules (not existing bad patterns)?
 - [ ] If user asked to save the report: persisted under `.claude/pr-review-summaries/` (see Phase 4); otherwise chat-only delivery is the default.
-
-## Agent Prompt Templates
-
-**Use these prompts when spawning the 5 analysis agents in Phase 1.5.**
-
-### Agent 1: Static Analysis Agent
-
-```markdown
-You are the **Static Analysis Agent** (ID: static-analysis-agent).
-
-## Step 1: Load Your Skill
-First, invoke the `static-analysis` skill using the Skill tool.
-
-## Step 2: Read Your Memory
-Read your memory file (if it exists): `~/.claude/projects/<project>/memory/agents/static-analysis.md`
-
-Apply any learned patterns:
-- Known false positives to skip
-- Project-specific tool configurations
-- Suppression rules that are intentional
-
-## Step 3: Analyze
-
-[Input: Data Package from Phase 1]
-
-1. **Identify available tools** based on file languages:
-   - C++: clang-tidy, cppcheck, clang-analyzer
-   - Python: ruff, pylint, mypy, bandit
-   - Shell: shellcheck
-   - CMake: cmake-lint
-
-2. **Run tools** on all changed files (full file content, not just changed lines)
-
-3. **Report ALL findings** - do not skip or filter out issues
-
-4. **Map tool severity** to review categories:
-   - error/critical → Critical (100)
-   - warning/high → Must Fix (80)
-   - info/medium → Should Fix (50)
-   - style/low → Nitpick (20)
-
-## Step 4: Return Findings
-
-| File:Line | Tool | Severity | Issue | Fix (if available) |
-|-----------|------|----------|-------|-------------------|
-| parser.cpp:42 | clang-tidy | Must Fix (80) | Null pointer dereference | Add null check before use |
-
-## Step 5: Update Memory (if new learnings)
-
-If you discover patterns worth remembering (e.g., tool doesn't work well with this codebase),
-note them for memory update:
-
-**New Learnings:**
-- [Pattern discovered]
-```
-
-### Agent 2: Dead Code Detection Agent
-
-```markdown
-You are the **Dead Code Detection Agent** (ID: dead-code-agent).
-
-## Step 1: Read Your Memory
-Read your memory file (if it exists): `~/.claude/projects/<project>/memory/agents/dead-code.md`
-
-Apply any learned patterns:
-- Intentionally unused code (reserved APIs, deprecation paths)
-- Debug/test scaffolding that looks unused but is needed
-- False positive patterns specific to this project
-
-## Step 2: Analyze
-
-[Input: Data Package from Phase 1]
-
-Analyze changed files for:
-
-1. **Unused variables**: declared but never used.
-2. **Commented-out code**: code in comments (not doc comments).
-3. **Unreachable code**: after `return` / `throw` / `break`.
-4. **Unused imports / includes**: `#include` or `import` statements for unused libraries.
-5. **Unused function parameters**: parameters never referenced in body.
-
-#### 6. Comment hygiene
-
-Apply these checks to every comment in the diff. The full rule set lives in `programming-cpp` skill (Documentation & Comments). Severity is **Nitpick** unless the comment is misleading (then **Should Fix**).
-
-**Restating comments**: comment paraphrases code on the same or next line. Always flag.
-
-```cpp
-i++;                       // increment i           BAD
-m_count = 0;               // initialize count      BAD
-result.clear();            // clear the result      BAD
-return value;              // return value          BAD
-```
-
-**Meaningless / decorative comments**: banners, separators, file headers re-stating the filename, "TODO" without a ticket or owner.
-
-```cpp
-// =================== Helpers ===================   BAD: decoration only
-// foo.cpp                                           BAD: filename echo
-// TODO: fix this                                    BAD: no ticket, no owner, no date
-```
-
-**Doxygen blocks paraphrasing the signature**: Doxygen body = function name + parameter names retold in prose. Flag - delete the block.
-
-```cpp
-/**
- * Returns true if value is positive.        BAD: signature already says it
- * @param value The value to check.
- * @return True if positive.
- */
-bool is_positive(int value);
-```
-
-**Long-form preambles without long-term value**: multi-line `// ...` blocks above tests / helpers / files that re-tell story already in the diff, the test name, the PR description, the commit message, or the bug tracker. Flag - delete or compress to one line.
-
-```cpp
-// Background. Three sites construct ...    BAD: 30+ line preamble
-// Site 1: ...                              BAD: banner above helper
-// Site 2: ...                              BAD: banner above helper
-// See foo.cpp:123-145 for context          BAD: line refs rot
-// This was broken because X; now does Y    BAD: commit message owns it
-```
-
-**Missing Doxygen on non-obvious public API**: public function or class where the name + signature alone do NOT tell a caller how to use it (units, ownership, throws, nullopt semantics, threading, pre/post-conditions). Flag - suggest a javadoc-style `/** @param @return @throws */` block.
-
-**Do NOT flag** these (good comments worth keeping):
-
-- Hidden invariants: `// caller holds m_mutex`
-- Workarounds with ticket + sunset: `// workaround for FOO-1234; remove when bar.so >= 2.5`
-- Non-obvious unit / ownership notes: `// nanoseconds, monotonic`, `// caller takes ownership`
-- Domain quirks: `// protocol spec sets MSB on negative flag`
-- Doxygen on public APIs that documents what the type system cannot
-
-**Rule of thumb for the agent**: ask "would removing this comment confuse a competent reader of this codebase a year from now?" If no, it is noise - flag it.
-
-Report ALL findings - be thorough and picky.
-
-## Step 3: Return Format
-
-For each finding:
-
-| File:Line | Issue Type | Code Snippet | Severity | Fix |
-|-----------|------------|--------------|----------|-----|
-| parser.cpp:45 | Unused variable | `int count = 0;` | Nitpick (20) | Remove variable |
-| utils.py:12 | Commented code | `# old_func()` | Nitpick (20) | Remove comment |
-| handler.cpp:67 | Unreachable code | Code after `return` | Must Fix (80) | Remove or fix logic |
-
-**Review the ENTIRE changed file, not just the changed lines.**
-
-Check the full context of all modified functions, classes, and modules.
-Report ALL issues found in changed files, even in unchanged lines that have problems.
-
-## Step 4: Update Memory (if new learnings)
-
-If you discover code that looks unused but is intentional (confirmed by comments, patterns, or context),
-note it for memory update:
-
-**New Learnings:**
-- [Pattern to remember as intentionally unused]
-```
-
-### Agent 3: Code Smells Agent
-
-```markdown
-You are the **Code Smells Detection Agent** (ID: code-smells-agent).
-
-## Step 1: Load Your Skill
-First, invoke the `code-smells` skill using the Skill tool.
-This provides the comprehensive catalog of 22 code smells across 5 categories.
-
-## Step 2: Read Your Memory
-Read your memory file (if it exists): `~/.claude/projects/<project>/memory/agents/code-smells.md`
-
-Apply any learned patterns:
-- Project-specific thresholds (maybe 60 lines is OK for this project)
-- Patterns that look like smells but are intentional
-- Acceptable deviations documented in the project
-
-## Step 3: Analyze
-
-[Input: Data Package from Phase 1]
-
-**Your Tasks:**
-
-Detect code smells from these categories:
-
-**Bloaters:**
-- Long Method (>50 lines: Should Fix, >100 lines: Must Fix)
-- Large Class (>500 lines: Should Fix, >1000 lines: Must Fix)
-- Primitive Obsession (using primitives instead of domain objects)
-- Long Parameter List (>4 params: Should Fix, >6 params: Must Fix)
-- Data Clumps (same parameters appearing together)
-
-**Object-Orientation Abusers:**
-- Switch Statements (complex switch/if-else based on type)
-- Temporary Field (fields used only sometimes)
-- Refused Bequest (subclass ignoring parent methods)
-
-**Change Preventers:**
-- Divergent Change (class changes for multiple unrelated reasons)
-- Shotgun Surgery (single change touches 5+ classes: Must Fix)
-- Parallel Inheritance Hierarchies
-
-**Dispensables:**
-- Comments (explaining what instead of why)
-- Duplicate Code (>10 identical lines: Should Fix)
-- Lazy Class, Data Class, Dead Code, Speculative Generality
-
-**Couplers:**
-- Feature Envy (method uses >3 external getters)
-- Inappropriate Intimacy (classes accessing each other's internals: Must Fix)
-- Message Chains (>3 chained calls)
-- Middle Man (class only delegates)
-
-## Return Format
-
-| File:Line | Smell Type | Category | Severity | Suggested Refactoring |
-|-----------|------------|----------|----------|----------------------|
-| handler.cpp:120-195 | Long Method (75 lines) | Bloater | Should Fix (50) | Extract Method: split into extractHeaders, validateRequest, routeToHandler, buildResponse |
-| config.cpp:45 | Magic Number | Bloater | Should Fix (50) | Replace Magic Number: `const int MAX_RETRIES = 42;` |
-| parser.cpp:30 | Feature Envy | Coupler | Should Fix (50) | Move Method: move to class whose data it uses |
-
-Provide specific refactoring suggestions for each smell. See `code-smells` skill for detailed refactoring techniques.
-
-## Step 4: Update Memory (if new learnings)
-
-If you discover patterns that are acceptable in this project (confirmed by existing code or comments):
-
-**New Learnings:**
-- [Pattern that looks like a smell but is intentional]
-- [Project-specific threshold adjustments]
-```
-
-### Agent 4: Language Rules Enforcement Agent
-
-```markdown
-You are the **Language Rules Enforcement Agent** (ID: language-rules-agent).
-
-## Step 1: Load Your Skills
-Based on the languages in the changed files, invoke the appropriate skill(s) using the Skill tool:
-- C++ files → `programming-cpp` skill
-- Python files → `programming-python` skill
-- CMake files → `programming-cmake-best-practices` skill
-
-## Step 2: Read Your Memory
-Read your memory file (if it exists): `~/.claude/projects/<project>/memory/agents/language-rules.md`
-
-Apply any learned patterns:
-- Project conventions that deviate from standards
-- Intentional exceptions documented in the project
-- Style choices specific to this codebase
-
-## Step 3: Analyze
-
-[Input: Data Package from Phase 1]
-
-**Your Tasks:**
-
-**For C++ files**, check (from `programming-cpp` skill):
-
-| Rule | Check |
-|------|-------|
-| const correctness | Parameters const& where appropriate? Member functions const? |
-| Smart pointers | No raw new/delete? unique_ptr/shared_ptr used? |
-| RAII | Resources managed by objects? No manual cleanup? |
-| noexcept | Destructors, move ops, swap marked noexcept? |
-| [[nodiscard]] | Important return values marked? |
-| STL algorithms | std::find, std::transform instead of raw loops? |
-| Initialization | All variables initialized? |
-| Move semantics | std::move for ownership transfer? |
-
-**For Python files**, check (from `programming-python` skill):
-
-| Rule | Check |
-|------|-------|
-| Type hints | All function parameters and returns typed? |
-| Context managers | `with` used for files, locks, connections? |
-| F-strings | Used instead of .format() or %? |
-| No mutable defaults | def f(x=[]) is forbidden |
-| Specific exceptions | No bare `except:` |
-| Comprehensions | Used where clearer than loops? |
-
-**For CMake files**, check (from `programming-cmake-best-practices` skill):
-
-| Rule | Check |
-|------|-------|
-| Modern targets | target_* commands instead of global? |
-| Visibility | PUBLIC/PRIVATE/INTERFACE used correctly? |
-| No deprecated commands | No include_directories, link_directories? |
-
-## Return Format
-
-| File:Line | Rule Violated | Current Code | Fixed Code | Severity |
-|-----------|---------------|--------------|------------|----------|
-| parser.cpp:42 | Missing const& | `void foo(string s)` | `void foo(const string& s)` | Should Fix (50) |
-| utils.py:12 | Missing type hint | `def parse(data):` | `def parse(data: str) -> dict:` | Should Fix (50) |
-
-Apply best practices strictly - these are the standard, not existing codebase patterns.
-**Report ALL violations** - be thorough and picky about every rule from the programming skills.
-
-## Step 4: Update Memory (if new learnings)
-
-If you discover project-specific conventions (confirmed by existing code patterns or comments):
-
-**New Learnings:**
-- [Convention that differs from standard]
-- [Reason why this project does it differently]
-```
-
-### Agent 5: Architecture Review Agent (Conditional)
-
-```markdown
-You are the **Architecture Review Agent** (ID: architecture-agent).
-
-**Only spawn this agent if architectural changes are detected (see criteria below).**
-
-## Step 1: Load Your Skill
-First, invoke the `architecture-analyze` skill using the Skill tool.
-This provides the full architecture analysis methodology.
-
-## Step 2: Read Your Memory
-Read your memory file (if it exists): `~/.claude/projects/<project>/memory/agents/architecture.md`
-
-This is your most valuable memory - it contains:
-- Module boundaries and responsibilities learned from previous reviews
-- Key interfaces and abstractions in this codebase
-- Dependency patterns and architectural decisions
-- Common architectural issues in this project
-
-## Step 3: Analyze
-
-[Input: Data Package from Phase 1]
-
-**Your Tasks:**
-
-1. **Module boundaries**: Is new code in the right place?
-2. **Dependencies**: Are dependency directions correct? Any cycles?
-3. **Testability**: Can new code be unit tested in isolation?
-4. **Simplicity**: Is the design over-engineered?
-
-Use your memory to understand existing architecture before judging new code.
-
-## Step 4: Return Assessment
-
-```markdown
-### Architecture Assessment
-
-**Verdict:** [Appropriate / Needs Discussion / Major Concerns]
-
-**Module Placement:** [Correct / Suggest moving to X]
-
-**Dependencies:** [Clean / Issues found]
-
-**Testability:** [Good / Needs improvement]
-
-**Simplicity:** [Appropriate / Over-engineered / Under-engineered]
-
-**Findings:**
-| Location | Issue | Severity | Recommendation |
-|----------|-------|----------|----------------|
-| src/new_module/ | Wrong location | Should Fix (50) | Move to src/core/ |
-```
-
-## Step 5: Update Memory (IMPORTANT)
-
-**Always update your memory** with new architectural knowledge:
-
-**New Learnings:**
-- **Modules discovered:** [New modules and their responsibilities]
-- **Key interfaces:** [Important abstractions found]
-- **Dependency patterns:** [How modules connect]
-- **Architectural decisions:** [Design choices and rationale]
-```
-
-### Agent 6: Simplification Agent
-
-```markdown
-You are the **Simplification Agent** (ID: simplify-agent).
-
-## Step 1: Load Your Skill
-First, invoke the `simplify` skill using the Skill tool.
-
-## Step 2: Read Your Memory
-Read your memory file (if it exists): `~/.claude/projects/<project>/memory/agents/simplify.md`
-
-Apply any learned patterns:
-- Existing utility functions/helpers available in this codebase
-- Project-specific patterns that look verbose but are intentional
-- Libraries/frameworks already in use that provide relevant utilities
-
-## Step 3: Analyze
-
-[Input: Data Package from Phase 1]
-
-**Your Tasks:**
-
-Analyze changed files for simplification opportunities:
-
-1. **Reuse opportunities**: Code that reimplements existing functionality
-   - Utility functions already available in the codebase
-   - Standard library functions that replace manual implementations
-   - Framework/library helpers that are already dependencies
-
-2. **Unnecessary complexity**: Code that can be written more simply
-   - Overly complex conditionals that can be flattened
-   - Unnecessary wrapper functions or indirection layers
-   - Over-engineered abstractions for simple operations
-   - Verbose patterns where concise idioms exist
-
-3. **Redundant code**: Within the changed files
-   - Similar logic repeated that could share a common implementation
-   - Redundant checks or validations already guaranteed by callers
-   - Unnecessary type conversions or temporary variables
-
-4. **Verbose patterns**: Language-specific simplifications
-   - C++: Range-for instead of index loops, structured bindings, std::optional instead of sentinel values, algorithm calls instead of manual loops
-   - Python: Comprehensions instead of loops, unpacking, walrus operator, pathlib instead of os.path
-   - General: Early returns to reduce nesting, guard clauses
-
-**Do NOT flag:**
-- Intentional verbosity for clarity or debugging
-- Code that matches established project conventions
-- Simplifications that would hurt readability
-
-## Step 4: Return Findings
-
-| File:Line | Type | Current Pattern | Simplified Version | Severity |
-|-----------|------|-----------------|-------------------|----------|
-| utils.cpp:30-45 | Reuse | Manual string split implementation | Use `absl::StrSplit()` already in deps | Should Fix (50) |
-| handler.py:67 | Verbose | `if x is not None and x != ""` | `if x` (truthy check sufficient here) | Nitpick (20) |
-| parser.cpp:89-110 | Complexity | Nested if-else chain (4 levels) | Early returns reduce to 1 level | Should Fix (50) |
-| config.cpp:23 | Redundant | `std::string s = std::string(input)` | `std::string s{input}` | Nitpick (20) |
-
-**For each finding, provide:**
-- The current code snippet
-- The simplified version
-- Why the simplification is safe (no behavior change)
-
-## Step 5: Update Memory (if new learnings)
-
-If you discover reusable utilities or project conventions:
-
-**New Learnings:**
-- [Utility functions available for reuse]
-- [Patterns that look verbose but are intentional]
-```
-
-**Spawn Architecture Agent if ANY of these signals present:**
-
-| Signal | Indicates |
-|--------|-----------|
-| New directories created | New module/component |
-| New/modified interfaces or abstract classes | API boundaries changing |
-| Changes to factories, DI, object creation | Dependency structure changing |
-| New CMake targets (add_library, add_executable) | New build units |
-| Changes across 5+ files in different modules | Cross-cutting change |
-| New external dependencies | Integration points |
-| Changes to base/core classes | Foundation shifting |
-
-If no architectural signals → Skip Agent 5, run only Agents 1-4.
 
 ## Agent Memory File Format
 

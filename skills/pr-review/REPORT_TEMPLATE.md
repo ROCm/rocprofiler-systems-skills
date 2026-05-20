@@ -5,6 +5,28 @@ Sections marked `[OPTIONAL]` may be omitted only when genuinely not applicable;
 when omitted, state why (e.g. "No public API touched - N/A") rather than
 silently dropping the section.
 
+## Contents
+
+- [REQUIRED] Header
+- [REQUIRED] Summary
+- [OPTIONAL] Intent vs Implementation
+- [OPTIONAL] Per-File Walkthrough
+- [OPTIONAL] Agent Analysis Summary
+- [OPTIONAL] Architecture (if applicable)
+- [OPTIONAL] What's Good
+- [REQUIRED] Issues Found (sorted by severity)
+- [OPTIONAL] Test Coverage
+- [REQUIRED] Files Reviewed
+- [OPTIONAL] Static Analysis Pass
+- [OPTIONAL] Security Audit
+- [OPTIONAL] Performance Review
+- [OPTIONAL] API / ABI Compatibility
+- [OPTIONAL] Documentation Review
+- [OPTIONAL] Cleanup Confirmation
+- [OPTIONAL] Previous Review Comments (GitHub PRs)
+- [REQUIRED] Checklist
+- [OPTIONAL] Questions for Author
+
 ---
 
 ## [REQUIRED] Header
