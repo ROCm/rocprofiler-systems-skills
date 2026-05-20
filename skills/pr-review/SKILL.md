@@ -1098,6 +1098,8 @@ Apply any learned patterns:
 | STL algorithms | std::find, std::transform instead of raw loops? |
 | Initialization | All variables initialized? |
 | Move semantics | std::move for ownership transfer? |
+| Fixed-width integers | `std::uint32_t` / `std::uint64_t` / `std::int16_t` / `std::int32_t` / `std::int64_t` (from `<cstdint>`) instead of bare `int` / `unsigned int` / `long` / `short` whenever the value has a defined bit width, comes from / goes to a wire / file / register / GPU buffer / hash / bitfield / counter, or interops with a typed external API. Bare `int` is acceptable only for loop counters over `int`-sized data, return codes from `main()`, and locals whose value range is trivially within `[INT_MIN, INT_MAX]` and not part of any contract. Flag bare `int`/`unsigned`/`long`/`short` in struct fields, function signatures (params or return), serialized payloads, IDs, sizes, counts, masks, and any value crossing an ABI boundary. Severity: Should Fix (Must Fix when the underlying width matters for correctness, e.g. wire protocol, file format, register layout, bit mask). |
+| Avoid `size_t` for signed arithmetic | `std::size_t` is unsigned; flag mixed signed/unsigned arithmetic and underflow risks. Prefer `std::ptrdiff_t` or `std::int64_t` for differences that can be negative. |
 
 **For Python files**, check (from `programming-python` skill):
 
