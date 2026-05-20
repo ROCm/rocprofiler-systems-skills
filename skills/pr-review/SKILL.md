@@ -136,7 +136,7 @@ If reviewing requires checking out the PR into a local clone:
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│      Phase 1.5: Spawn 6 Parallel Analysis Agents                │
+│      Phase 1.5: Spawn 7 Parallel Analysis Agents                │
 │    All agents receive pre-loaded context from Phase 1            │
 │                                                                   │
 │    ┌──────────────────┐  ┌──────────────────┐                   │
@@ -145,16 +145,16 @@ If reviewing requires checking out the PR into a local clone:
 │    └──────────────────┘  └──────────────────┘                   │
 │    ┌──────────────────┐  ┌──────────────────┐                   │
 │    │ Agent 3: Code    │  │ Agent 4: Language│                   │
-│    │ Smells           │  │ Rules (C++/Py)   │                   │
+│    │ Smells + Quality │  │ Rules (C++/Py)   │                   │
 │    └──────────────────┘  └──────────────────┘                   │
 │    ┌──────────────────┐                                          │
 │    │ Agent 5: Arch    │ (conditional - if architectural changes) │
 │    │ (via skill)      │                                          │
 │    └──────────────────┘                                          │
-│    ┌──────────────────┐                                          │
-│    │ Agent 6: Simplify│                                          │
-│    │ (reuse/reduce)   │                                          │
-│    └──────────────────┘                                          │
+│    ┌──────────────────┐  ┌──────────────────┐                   │
+│    │ Agent 6: Simplify│  │ Agent 7:         │                   │
+│    │ (reuse/reduce)   │  │ Performance      │                   │
+│    └──────────────────┘  └──────────────────┘                   │
 └─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
@@ -356,24 +356,24 @@ Lines: 1-150
 
 ## Phase 1.5: Spawn Parallel Analysis Agents
 
-**Goal:** Launch 5 specialized agents in parallel to analyze the packaged data from Phase 1.
+**Goal:** Launch up to 7 specialized agents in parallel to analyze the packaged data from Phase 1.
 
 <IMPORTANT>
 **Use general-purpose agents** (not Explore agents) since they receive pre-loaded context.
-All agents run in parallel - invoke all 6 in a single tool call block.
+All agents run in parallel - invoke all of them in a single tool call block.
 Each agent has a unique identity, loads its skill, and maintains memory.
 </IMPORTANT>
 
 ### Lite mode gate
 
-Before spawning all 5 agents, check the diff scope:
+Before spawning all agents, check the diff scope:
 
 - **Diff < 50 lines added/removed AND** no changes to logic (only docs,
   comments, formatting, imports, or type aliases): spawn ONLY correctness
-  and tests agents. Skip security, performance, architecture.
+  and tests agents. Skip security, performance, architecture, simplify.
 - **Diff < 200 lines AND** affects only one file: spawn correctness +
-  tests + style. Skip security and architecture.
-- **Otherwise**: full 5-agent fan-out as documented below.
+  tests + style + performance. Skip architecture and simplify.
+- **Otherwise**: full 7-agent fan-out (architecture conditional) as documented below.
 
 Document the chosen mode in the final report's Header section.
 
@@ -388,10 +388,11 @@ Each agent has:
 |---|----------|---------------|-------------|
 | 1 | `static-analysis-agent` | `static-analysis` | `agents/static-analysis.md` |
 | 2 | `dead-code-agent` | *(none)* | `agents/dead-code.md` |
-| 3 | `code-smells-agent` | `code-smells` | `agents/code-smells.md` |
+| 3 | `code-smells-agent` | `code-smells` + load `QUALITY.md` from this skill | `agents/code-smells.md` |
 | 4 | `language-rules-agent` | `programming-cpp` or `programming-python` | `agents/language-rules.md` |
 | 5 | `architecture-agent` | `architecture-analyze` | `agents/architecture.md` |
 | 6 | `simplify-agent` | `simplify` | `agents/simplify.md` |
+| 7 | `performance-agent` | *(none, loads `PERFORMANCE.md` from this skill)* | `agents/performance.md` |
 
 **Memory location:** `~/.claude/projects/<project>/memory/agents/`
 
@@ -401,21 +402,23 @@ Each agent has:
 |-------|--------------|
 | Static Analysis | Tool configs, false positive patterns, suppression rules |
 | Dead Code | Intentionally unused code, debug scaffolding, reserved APIs |
-| Code Smells | Project-specific thresholds, acceptable patterns |
+| Code Smells | Project-specific thresholds, acceptable patterns, quality-dim threshold overrides |
 | Language Rules | Project conventions, intentional deviations from standards |
 | Architecture | Module boundaries, key interfaces, dependency patterns, decisions |
 | Simplify | Reuse opportunities, unnecessary complexity, verbose patterns |
+| Performance | Hot paths in this project, accepted allocation patterns, perf-critical files, benchmark locations |
 
-### The 5 Analysis Agents
+### The 7 Analysis Agents
 
 | # | Agent Type | Purpose | Returns |
 |---|------------|---------|---------|
 | 1 | Static Analysis | Run linters/tools on changed files | Structured table of tool findings |
 | 2 | Dead Code Detection | Find unused code, comments, unreachable code | Table of dead code issues |
-| 3 | Code Smells Detection | Detect anti-patterns (long functions, deep nesting, etc.) | Table of code smell findings |
+| 3 | Code Smells + Quality | Detect anti-patterns plus 4-dimension quality checks (name<->behavior, cognitive complexity, single-responsibility-per-function, magic numbers) per `QUALITY.md` | Table of code smell + quality findings |
 | 4 | Language Rules Enforcement | Apply C++/Python/CMake best practices | Table of best practice violations |
 | 5 | Architecture Review | Analyze module boundaries, dependencies (if architectural changes detected) | Architecture assessment |
 | 6 | Simplification | Find reuse opportunities, unnecessary complexity, verbose code | Table of simplification suggestions |
+| 7 | Performance | Hot-path impact, copies, allocations (`new`/`malloc`/container growth), lock contention, I/O patterns per `PERFORMANCE.md` | Table of performance findings |
 
 ### Agent Execution Pattern
 
@@ -452,6 +455,11 @@ Agent 6: Simplification Agent
 - description: "simplify-agent"
 - subagent_type: "general-purpose"
 - Prompt: [See template below] + Data Package from Phase 1
+
+Agent 7: Performance Agent
+- description: "performance-agent"
+- subagent_type: "general-purpose"
+- Prompt: [See template below] + Data Package from Phase 1
 ```
 
 ### Conditional Architecture Analysis
@@ -468,7 +476,7 @@ Agent 6: Simplification Agent
 | New external dependencies | Integration points |
 | Changes to base/core classes | Foundation shifting |
 
-If no architectural signals → Skip Agent 5, run only Agents 1-4.
+If no architectural signals → Skip Agent 5, run Agents 1-4, 6, 7.
 
 ### Agent Prompt Templates
 
@@ -483,10 +491,11 @@ See "Agent Prompt Templates" section below for detailed prompts to use for each 
 Wait for all agents from Phase 1.5 to complete:
 - Agent 1: Static Analysis results
 - Agent 2: Dead Code Detection results
-- Agent 3: Code Smells results
+- Agent 3: Code Smells + Quality results
 - Agent 4: Language Rules results
 - Agent 5: Architecture analysis (if ran)
 - Agent 6: Simplification suggestions
+- Agent 7: Performance findings
 
 ### 2.2 Severity Mapping
 
@@ -928,14 +937,26 @@ note it for memory update:
 - [Pattern to remember as intentionally unused]
 ```
 
-### Agent 3: Code Smells Agent
+### Agent 3: Code Smells + Quality Agent
 
 ```markdown
-You are the **Code Smells Detection Agent** (ID: code-smells-agent).
+You are the **Code Smells + Quality Detection Agent** (ID: code-smells-agent).
 
 ## Step 1: Load Your Skill
 First, invoke the `code-smells` skill using the Skill tool.
 This provides the comprehensive catalog of 22 code smells across 5 categories.
+
+## Step 1b: Load Quality Reference
+
+Read `QUALITY.md` from this skill directory (radisha/skills/pr-review/QUALITY.md).
+It defines what "quality code" means across four dimensions:
+
+1. **Naming <-> Behavior Match** - function name honors its contract; no side-effect getters; correct polarity / plurality
+2. **Cognitive Complexity** - nesting depth, branch count, cyclomatic complexity, lines per function, flow clarity
+3. **Single Responsibility per Function** - one-sentence summary uses no "and"; split when 2+ symptoms appear
+4. **Magic Numbers and Strings** - named constants for any literal that carries meaning
+
+You apply these checks IN ADDITION to the smell catalog. Cite the dimension number (Dim 1 / Dim 2 / Dim 3 / Dim 4) in each quality finding.
 
 ## Step 2: Read Your Memory
 Read your memory file (if it exists): `~/.claude/projects/<project>/memory/agents/code-smells.md`
@@ -944,12 +965,13 @@ Apply any learned patterns:
 - Project-specific thresholds (maybe 60 lines is OK for this project)
 - Patterns that look like smells but are intentional
 - Acceptable deviations documented in the project
+- Quality-dim threshold overrides (e.g. parser dispatch tables allowed at higher cyclomatic complexity)
 
 ## Step 3: Analyze
 
 [Input: Data Package from Phase 1]
 
-**Your Tasks:**
+**Your Tasks (Part A - smell catalog):**
 
 Detect code smells from these categories:
 
@@ -981,15 +1003,54 @@ Detect code smells from these categories:
 - Message Chains (>3 chained calls)
 - Middle Man (class only delegates)
 
+**Your Tasks (Part B - quality dimensions per QUALITY.md):**
+
+For each function in the changed files run all four dimensions:
+
+**Dim 1 - Naming <-> Behavior**
+- Read the function name as a contract; read the body; flag mismatches
+- Side-effect-free names (`get_*`, `is_*`, `has_*`, `find_*`, `peek_*`) that mutate, log, allocate persistent resources, or do I/O = Must Fix
+- Mutating names (`set_*`, `update_*`, `apply_*`, `commit_*`) that are pure or no-op = Must Fix
+- Inverted polarity (`is_valid()` returning true on invalid; `has_error()` returning false when error present) = Must Fix
+- Plural/singular mismatch with return type = Must Fix
+- Weak / generic verbs (`do`, `handle`, `process`, `manage`) where body is specific = Should Fix
+- "manager"/"handler"/"processor" with unspecific `handle()`/`process()` method = Should Fix; propose verb-noun rename based on the body
+
+**Dim 2 - Cognitive Complexity** (auto-flag at thresholds, severities per QUALITY.md)
+- Nesting depth > 3 (Should Fix), > 4 (Must Fix)
+- Cyclomatic complexity > 10 (Should Fix), > 15 (Must Fix)
+- Lines per function > 40 (Should Fix), > 80 (Must Fix)
+- Boolean operands in single conditional > 3 unnamed (Should Fix), > 4 (Must Fix)
+- Mixed levels of abstraction, "arrow"-shaped code, 60-line loop bodies, scattered state branches = Should Fix; suggest guard clauses, extracted helpers, named predicates, single state switch
+
+**Dim 3 - Single Responsibility per Function**
+- Symptoms: section comments, phase locals, disjoint param groups, blank-line seams, reads-and-writes-disjoint-subsystems, "and"/"or" in name, callers using return value differently
+- Two or more symptoms OR (one symptom + Dim 2 hard limit) = Should Fix
+- Three or more symptoms AND function unreviewable = Must Fix
+- ALWAYS pair the split suggestion with a proposed decomposition (named extracted functions)
+
+**Dim 4 - Magic Numbers and Strings**
+- Numeric thresholds (timeouts, retries, buffer sizes, limits) without a name = Should Fix
+- Bit masks/shifts without a name = Should Fix
+- Port numbers, version numbers, protocol constants, format strings reused in multiple call sites, error/status strings that branch logic = Should Fix
+- Literal controlling security/correctness (crypto key length, signature size, safety-affecting timeout) = Must Fix
+- Do NOT flag `0`/`1`/`-1`/`2` arithmetic, empty/null literals, test fixture data, percentage `100` with `%` context, loop accumulators
+- Heuristic: if a future change requires updating the literal in two places to stay consistent, demand a named constant now
+
 ## Return Format
 
-| File:Line | Smell Type | Category | Severity | Suggested Refactoring |
-|-----------|------------|----------|----------|----------------------|
+| File:Line | Smell / Quality-Dim | Category | Severity | Suggested Refactoring |
+|-----------|---------------------|----------|----------|----------------------|
 | handler.cpp:120-195 | Long Method (75 lines) | Bloater | Should Fix (50) | Extract Method: split into extractHeaders, validateRequest, routeToHandler, buildResponse |
-| config.cpp:45 | Magic Number | Bloater | Should Fix (50) | Replace Magic Number: `const int MAX_RETRIES = 42;` |
+| config.cpp:45 | Dim 4 - Magic Number | Quality | Should Fix (50) | Replace Magic Number: `constexpr int MAX_RETRIES = 42;` |
 | parser.cpp:30 | Feature Envy | Coupler | Should Fix (50) | Move Method: move to class whose data it uses |
+| auth.cpp:88 | Dim 1 - Getter Side Effect | Quality | Must Fix (80) | `get_token()` writes to disk; rename to `fetch_and_persist_token()` or remove the write |
+| dispatch.cpp:10-140 | Dim 2 + Dim 3 - 131 lines, depth 5, "and" in name | Quality | Must Fix (80) | Split `parse_and_validate_and_dispatch()` into parse_header / validate_header / route_to_handler |
+| net.cpp:55 | Dim 4 - Timeout literal | Quality | Should Fix (50) | `constexpr auto SOCKET_TIMEOUT = 5s;` (currently `5000`) |
 
-Provide specific refactoring suggestions for each smell. See `code-smells` skill for detailed refactoring techniques.
+Cite the dimension number for every Part-B finding. Propose names for renames and splits; do not stop at "rename this" or "split this".
+
+Provide specific refactoring suggestions for each smell. See `code-smells` skill and `QUALITY.md` for detailed techniques.
 
 ## Step 4: Update Memory (if new learnings)
 
@@ -1214,6 +1275,126 @@ If you discover reusable utilities or project conventions:
 - [Patterns that look verbose but are intentional]
 ```
 
+### Agent 7: Performance Agent
+
+```markdown
+You are the **Performance Analysis Agent** (ID: performance-agent).
+
+## Step 1: Load Performance Reference
+
+Read `PERFORMANCE.md` from this skill directory (radisha/skills/pr-review/PERFORMANCE.md).
+It defines hot-path detection, allocation/copy patterns to flag, lock contention rules, and I/O patterns.
+
+## Step 2: Read Your Memory
+
+Read your memory file (if it exists): `~/.claude/projects/<project>/memory/agents/performance.md`
+
+Apply any learned patterns:
+- Files/functions known to be on the hot path in this project
+- Accepted allocation patterns (e.g. arena-backed allocators where `new` is cheap)
+- Perf-critical translation units, benchmark locations, micro-benchmark thresholds
+- False positives (e.g. a `std::string` copy that the compiler reliably elides in this codebase)
+
+## Step 3: Analyze
+
+[Input: Data Package from Phase 1]
+
+For each changed file/function answer these in order:
+
+### 3a. Hot-path classification
+
+Classify each changed function as one of:
+
+| Class | Definition | How to detect |
+|---|---|---|
+| `hot` | On a per-request / per-frame / per-sample / per-event path | Called from inner loops; name matches `on_*`, `dispatch_*`, `tick`, `step`, `poll`, `record`, `process_sample`; located in files marked hot by project memory; called from benchmark binaries |
+| `warm` | Setup/teardown that runs O(N) where N scales with input size | Per-file / per-connection / per-record init |
+| `cold` | One-shot init, CLI parsing, error reporting, logging-only | Main(), constructors of long-lived singletons, error paths |
+
+A change in a `hot` function elevates the severity of every other perf finding by one level.
+
+### 3b. Allocation and copy audit
+
+Flag the following in `hot` and `warm` functions:
+
+| Pattern | Severity in hot | Severity in warm | Severity in cold |
+|---|---|---|---|
+| `new` / `malloc` / `std::make_unique` / `std::make_shared` per call | Must Fix | Should Fix | Nitpick |
+| Container growth without `reserve` (`push_back` in known-N loop, `+=` on `std::string` in loop) | Must Fix | Should Fix | Nitpick |
+| Pass-by-value of large types (anything not trivially copyable AND > 16 bytes; any `std::string`, container, `std::function`) when const-ref would do | Should Fix | Should Fix | Nitpick |
+| Return-by-value of large containers where the caller will move-construct anyway | OK (RVO) | OK | OK |
+| Implicit conversions creating temporaries (`std::string(const char*)` repeatedly; `std::string_view` -> `std::string` on a hot lookup) | Must Fix | Should Fix | Nitpick |
+| `std::shared_ptr` where `std::unique_ptr` or raw observer pointer would suffice | Should Fix | Nitpick | Nitpick |
+| Unnecessary `.c_str()` + back conversions, repeated map/set lookups (`m.find` then `m[]`) | Should Fix | Should Fix | Nitpick |
+| Capture-by-value of large objects in a lambda that stays local | Should Fix | Nitpick | Nitpick |
+| Iterating with `auto` (copy) instead of `const auto&` over heavy elements | Should Fix | Nitpick | Nitpick |
+| `std::regex` constructed per call instead of static | Must Fix | Should Fix | Nitpick |
+
+### 3c. Algorithmic complexity
+
+| Pattern | Severity |
+|---|---|
+| Nested loop where the inner pass is over the same container (O(N^2)) when O(N log N) or O(N) is available | Must Fix in hot; Should Fix elsewhere |
+| Linear search inside a tight loop where the data is also being built (use a hash set) | Must Fix in hot; Should Fix elsewhere |
+| Sort in a loop instead of once before the loop | Must Fix in hot; Should Fix elsewhere |
+| Quadratic string building via repeated concat | Must Fix in hot; Should Fix elsewhere |
+| Unbounded recursion that could overflow on adversarial input | Must Fix everywhere |
+
+### 3d. Lock contention and synchronization
+
+| Pattern | Severity |
+|---|---|
+| Lock held across an I/O call, syscall, or allocation | Must Fix |
+| Lock held across a callback / user function pointer | Must Fix |
+| Lock taken in destructor of an object that is destroyed under another lock (lock-order inversion) | Critical |
+| Repeated lock acquire/release inside a tight loop (should hoist or batch) | Should Fix |
+| `std::mutex` where `std::shared_mutex` would let readers proceed in parallel and reads dominate | Should Fix |
+| Atomic with `std::memory_order_seq_cst` where a weaker order is sufficient and the function is hot | Should Fix |
+
+### 3e. I/O and syscall patterns
+
+| Pattern | Severity |
+|---|---|
+| Per-record `write()`/`fwrite()` without buffering | Must Fix in hot |
+| `open()`/`close()` per call where a long-lived handle would do | Must Fix in hot |
+| Per-call `getenv()` / `localtime()` / `gettimeofday()` on a hot path | Should Fix |
+| `printf`/`std::cout` in hot path without a level gate | Must Fix |
+| `std::endl` in hot path (flushes); use `'\n'` | Should Fix |
+| Synchronous DNS / blocking syscalls on a loop thread | Must Fix |
+
+### 3f. GPU / profiling / domain-specific (apply if relevant to the project)
+
+| Pattern | Severity |
+|---|---|
+| Per-kernel-launch host allocation in a sampling path | Must Fix |
+| String formatting inside a sample callback | Must Fix |
+| Synchronous `cudaMemcpy` / `hipMemcpy` where async + event would do | Should Fix |
+| Profiler instrumentation that itself allocates per event | Must Fix |
+
+## Return Format
+
+| File:Line | Hot/Warm/Cold | Pattern | Severity | Recommendation |
+|-----------|---------------|---------|----------|----------------|
+| sample.cpp:120 | hot | `std::string("status=") + ...` per sample | Must Fix (80) | Use `fmt::format_to` into a preallocated buffer or `std::string_view` constants |
+| dispatch.cpp:45 | hot | `std::shared_ptr<Handler>` per call | Should Fix (50) | `Handler*` observer; ownership lives in registry |
+| parser.cpp:200 | warm | container growth without `reserve` | Should Fix (50) | `out.reserve(in.size())` before loop |
+| log.cpp:30 | hot | `std::cout << ... << std::endl` | Must Fix (80) | Gate behind log level + use `'\n'` not `std::endl` |
+| net.cpp:88 | hot | Lock held across `send()` syscall | Must Fix (80) | Snapshot data under lock, release, then send |
+| init.cpp:15 | cold | `std::regex` constructed once | Nitpick (20) | Cold path; leave |
+
+Always state the hot/warm/cold classification - it justifies the severity choice. State *why* the change matters in perf terms (cycles, cache, allocator pressure, syscall, contention) - not just "slow".
+
+**Do NOT flag** micro-optimizations on cold paths, RVO-friendly returns, or patterns the project memory marks as accepted.
+
+## Step 4: Update Memory (if new learnings)
+
+Update memory with:
+- Newly identified hot files / functions
+- Accepted allocation patterns confirmed by reviewer or existing code comments
+- Benchmark locations and thresholds discovered
+- Compiler/library specifics that change the trade-off in this codebase
+```
+
 **Spawn Architecture Agent if ANY of these signals present:**
 
 | Signal | Indicates |
@@ -1226,7 +1407,7 @@ If you discover reusable utilities or project conventions:
 | New external dependencies | Integration points |
 | Changes to base/core classes | Foundation shifting |
 
-If no architectural signals → Skip Agent 5, run only Agents 1-4.
+If no architectural signals → Skip Agent 5, run Agents 1-4, 6, 7.
 
 ## Agent Memory File Format
 
