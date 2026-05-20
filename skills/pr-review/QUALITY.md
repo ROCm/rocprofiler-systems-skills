@@ -1,5 +1,14 @@
 # Quality Code - Definition
 
+## Contents
+
+- Bar for quality code (four-question test)
+- Dimension 1: Naming <-> Behavior Match
+- Dimension 2: Cognitive Complexity (nesting, cyclomatic, length, flow clarity)
+- Dimension 3: Single Responsibility per Function (split symptoms + how to propose)
+- Dimension 4: Magic Numbers and Strings (always-flag, do-not-flag, heuristic)
+- How the Code Smells Agent applies this (process)
+
 Reference loaded by the `pr-review` skill (Code Smells Agent) to judge
 function-level quality during a review.
 

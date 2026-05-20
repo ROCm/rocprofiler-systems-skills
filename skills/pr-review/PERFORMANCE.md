@@ -1,5 +1,16 @@
 # Performance - Definition
 
+## Contents
+
+- Bar for performance-safe change (four-question test)
+- Dimension 0: Hot-path classification (hot / warm / cold + severity bump rule)
+- Dimension 1: Allocation and copy audit (new/malloc, container growth, copies, regex)
+- Dimension 2: Algorithmic complexity (N^2 traps, sort-in-loop, recursion)
+- Dimension 3: Lock contention and synchronization (lock-across-IO, memory order, lock-free)
+- Dimension 4: I/O and syscall patterns (buffering, endl, getenv, blocking syscalls)
+- Dimension 5: GPU / profiling / domain-specific
+- How the Performance Agent reports + project-memory overrides
+
 Reference loaded by the `pr-review` skill (Performance Agent) to judge
 whether a change introduces performance regressions or hot-path
 hazards during a review.
@@ -38,6 +49,41 @@ it is a Critical (correctness implication, lock-order inversion,
 unbounded recursion).
 
 ---
+
+## Cost reference (why the severities below are what they are)
+
+Order-of-magnitude costs on commodity x86-64 hardware. These ground
+the "Must Fix vs Should Fix" calls in concrete numbers, not taste.
+
+| Operation | Approx cost | Why it matters |
+|---|---|---|
+| L1 cache hit | ~1 ns (~4 cycles) | Baseline; never the bottleneck on its own |
+| L2 hit | ~3-4 ns | Tolerable in hot path |
+| L3 hit | ~10-15 ns | Adds up across iterations |
+| Main memory (cache miss) | ~80-120 ns | A single miss erases dozens of ALU ops |
+| Branch mispredict | ~10-20 cycles | Why branchy hot loops hurt |
+| `new` / `malloc` (uncontended) | ~50-150 ns | Allocator lock, free-list walk, possibly zeroing |
+| `new` / `malloc` (contended) | microseconds | Multi-threaded allocator pressure |
+| Atomic CAS (uncontended) | ~5-20 ns | Cheap-ish |
+| Atomic CAS (contended) | hundreds of ns -> microseconds | Cache-line bouncing |
+| `std::mutex` lock/unlock (uncontended) | ~25 ns | OK outside the inner loop |
+| `std::mutex` lock/unlock (contended) | microseconds + scheduler entry | Wait time dominates |
+| Syscall (cheap, e.g. `gettimeofday` via vDSO) | ~20-30 ns | Acceptable; raw syscall ~300 ns is not |
+| `write()` / `read()` syscall (small) | ~300 ns - 1 us | Buffer or batch |
+| `open()` / `close()` | ~5-10 us | Never per-record in hot |
+| Synchronous DNS / blocking syscall | milliseconds - seconds | Catastrophic on event loops |
+| `cudaMemcpy` (sync, small) | ~10-30 us | Round-trip dominated by launch overhead |
+| Per-event `printf` / iostream | microseconds + lock + syscall | Triple cost: format + lock + I/O |
+
+**Severity calibration rule**:
+- Hot-path operation that adds >= 100 ns per call OR involves a
+  syscall, contended lock, or allocation: **Must Fix**.
+- Hot-path operation that adds 10-100 ns and is easy to remove:
+  **Should Fix**.
+- Anything that turns O(N) into O(N^2) when N can grow: **Must Fix**
+  regardless of hot/warm/cold (correctness-of-scaling).
+- Lock-order inversion or signal-handler unsafety: **Critical** -
+  these are correctness bugs that masquerade as perf concerns.
 
 ## Dimension 1: Allocation and copy audit
 
