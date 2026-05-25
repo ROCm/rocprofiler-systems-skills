@@ -39,7 +39,7 @@ Walk every changed C/C++/unsafe-Rust file and hunt UB classes.
 |---------|----------|
 | Use-after-free, use-after-scope, dangling pointer / reference | Critical |
 | Returning reference / pointer / `std::string_view` / `std::span` to local | Critical |
-| Iterator invalidation after `vector::push_back`, `unordered_map::insert`, etc. | Critical |
+| Iterator invalidation after `vector::push_back`, `unordered_map::insert`, etc. MUST flag every loop that mutates the container it iterates: `for (auto it = v.begin(); it != v.end(); ++it) { v.erase(it); }`, `for (auto& x : v) { v.push_back(...); }`, `for (size_t i = 0; i < v.size(); ++i) { v.erase(v.begin() + i); }` (index-based scan with mid-loop erase also invalidates indices past `i`). Even when the index loop "works by accident" because erased element shifts everything down, the semantic bug remains (skipped element). Treat ANY container-mutation inside a loop over the same container as invalidation unless the mutation API explicitly returns a fresh valid iterator AND the loop re-binds to it. | Critical |
 | Reading from uninitialized variable, struct padding, or member | Critical |
 | OOB array / `vector::operator[]` / `std::array::operator[]` access | Critical |
 | `std::memcpy` / `memmove` with wrong size, null pointer, or overlapping regions | Critical |
@@ -57,6 +57,7 @@ Walk every changed C/C++/unsafe-Rust file and hunt UB classes.
 | `reinterpret_cast` to over-aligned type; misaligned load / store | Critical |
 | `bit_cast` on non-trivially-copyable types | Critical |
 | `static_cast` to derived without proving dynamic type | Critical |
+| **ADL surprise / unqualified-name ambiguity**: unqualified call (`swap(a, b);`, `move(...)`, `begin(...)`, `end(...)`, `size(...)`, `data(...)`) inside a template or generic context that may simultaneously resolve via argument-dependent lookup to a user namespace AND via `using std::swap`. The compiler picks one; intent is ambiguous; a refactor of either side silently changes the chosen overload. Pattern to flag: `using std::swap; swap(a, b);` is OK; bare `std::swap(a, b)` is OK; bare `swap(a, b)` without a preceding `using` is the problem. Same for `move`, `forward`, `begin`/`end` outside range-for, `size`/`data` C++17 free functions. Severity: Must Fix (semantic ambiguity, future-proofing). | Must Fix |
 
 ### 3d. Concurrency UB
 
