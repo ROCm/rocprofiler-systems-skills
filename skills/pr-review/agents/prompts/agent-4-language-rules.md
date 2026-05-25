@@ -26,7 +26,8 @@ Apply learned patterns:
 | Smart pointers | No raw new/delete? unique_ptr/shared_ptr used? |
 | RAII | Resources managed by objects? No manual cleanup? |
 | noexcept | Destructors, move ops, swap marked noexcept? |
-| [[nodiscard]] | Important return values marked? |
+| [[nodiscard]] | Important return values marked? MUST flag every function whose return type is an error/status code (`enum class *_result`, `std::error_code`, `bool` returned by a mutating op, `Status`, `Outcome<T>`, `expected<T,E>`, raw `int` returning 0-on-success) when the declaration lacks `[[nodiscard]]`. Silently-ignored error returns are a top-tier bug source. Severity: Should Fix; Must Fix when the function performs I/O, allocation, or mutates persistent state. |
+| C-style cast | MUST flag every `(T)expr` C-style cast in C++ code. Replace with `static_cast<T>`, `reinterpret_cast<T>`, `const_cast<T>`, or `std::bit_cast<T>` per intent. C-style casts silently pick the strongest cast available and hide const/type-safety violations. Pay extra attention to `(int)atoi(...)`, `(void*)expr`, `(T*)malloc(...)`. Severity: Nit when redundant; Should Fix when masking a real conversion; Must Fix when stripping `const` or crossing pointer types. |
 | STL algorithms | std::find, std::transform instead of raw loops? |
 | Initialization | All variables initialized? |
 | Move semantics | std::move for ownership transfer? |
@@ -48,9 +49,13 @@ Apply learned patterns:
 
 | Rule | Check |
 |------|-------|
-| Modern targets | target_* commands instead of global? |
-| Visibility | PUBLIC/PRIVATE/INTERFACE used correctly? |
-| No deprecated commands | No include_directories, link_directories? |
+| Modern targets | target_* commands instead of global? MUST flag every `include_directories(...)`, `link_directories(...)`, `add_definitions(...)`, `link_libraries(...)` at directory scope - they leak settings to every target. Replace with the matching `target_*` form. |
+| Visibility | PUBLIC/PRIVATE/INTERFACE used correctly? MUST flag every `target_link_libraries(target lib ...)` AND `target_include_directories(target dir ...)` AND `target_compile_options(target opt ...)` that OMITS the PRIVATE/PUBLIC/INTERFACE keyword (CMake policy CMP0023 forbids plain form once any keyword form is used in the project; mixed forms are an error). Severity: Should Fix. |
+| No deprecated commands | No include_directories, link_directories, link_libraries, add_definitions, cmake_policy(SET CMPxxx OLD)? |
+| Minimum CMake version | `cmake_minimum_required(VERSION X.Y)` MUST appear before any other command. Missing call = Must Fix. Version `< 3.10` is too old for most modern target-based code; recommend `3.16` or newer. |
+| C++ standard sufficiency | When `CMAKE_CXX_STANDARD` (or `target_compile_features(... cxx_std_NN)`) is set, MUST verify the standard is sufficient for every C++ feature used in the codebase under review. `std::string_view`, structured bindings, `if constexpr`, `inline` variables, fold expressions need C++17. `std::span`, `std::ranges`, `std::jthread`, concepts need C++20. `std::expected`, `std::print` need C++23. Mismatch = Must Fix (compile error). |
+| Hard-coded paths | Flag absolute paths in `include_directories`, `install(DESTINATION ...)`, `link_directories`, or `find_library(... PATHS ...)`. Replace with `GNUInstallDirs` (`CMAKE_INSTALL_*DIR`), `find_package`, or relative paths. Severity: Should Fix. |
+| GLOB sources | Flag `file(GLOB ...)` or `file(GLOB_RECURSE ...)` used to collect source files - new files are not re-detected and breaks reproducible builds. Use explicit source lists. Severity: Should Fix. |
 
 ## Return Format
 

@@ -36,10 +36,11 @@ A written report (as opposed to inline chat feedback) MUST contain all of the fo
 5. **Static analysis pass** - summary of linter/tool findings (from Static Analysis Agent).
 6. **Security audit** - input validation, injection, auth, secrets, unsafe deserialization, path traversal, crypto misuse.
 7. **Performance review** - algorithmic complexity, hot-path allocations, unnecessary copies, lock contention, I/O patterns.
-8. **API/ABI compatibility** - does the PR change a public API or ABI? If yes, is the change additive, deprecating, or breaking? Migration notes?
-9. **Documentation review** - are README, doc comments, changelog, man pages updated to match behavior changes?
-10. **Verdict** - one of `APPROVE`, `REQUEST CHANGES`, or `NEEDS DISCUSSION` (use these exact labels).
-11. **Cleanup confirmation** - confirm the local clone was restored to its starting branch, any stash was popped, and `git status` matches the pre-review state.
+8. **Undefined behaviour audit** (C/C++ / unsafe-Rust / low-level C-FFI only) - signed-integer overflow, uninitialized reads, OOB access, lifetime / use-after-free / dangling references, strict aliasing, type punning, alignment violations, data races, null deref, shift width >= type width, integer / pointer-arithmetic UB, unsequenced modifications, invalid `union` active-member reads, `std::memcpy` size / overlap errors, signed-to-unsigned conversions producing subsequent UB. Recommend a sanitizer build (UBSan + ASan, plus TSan / MSan when relevant) if the project does not already run one in CI. Skip entirely for pure docs / Python / CMake diffs.
+9. **API/ABI compatibility** - does the PR change a public API or ABI? If yes, is the change additive, deprecating, or breaking? Migration notes?
+10. **Documentation review** - are README, doc comments, changelog, man pages updated to match behavior changes?
+11. **Verdict** - one of `APPROVE`, `REQUEST CHANGES`, or `NEEDS DISCUSSION` (use these exact labels).
+12. **Cleanup confirmation** - confirm the local clone was restored to its starting branch, any stash was popped, and `git status` matches the pre-review state.
 
 See `REPORT_TEMPLATE.md` for the full layout.
 

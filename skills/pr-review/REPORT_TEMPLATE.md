@@ -20,6 +20,7 @@ silently dropping the section.
 - [OPTIONAL] Static Analysis Pass
 - [OPTIONAL] Security Audit
 - [OPTIONAL] Performance Review
+- [OPTIONAL] Undefined Behaviour
 - [OPTIONAL] API / ABI Compatibility
 - [OPTIONAL] Documentation Review
 - [OPTIONAL] Cleanup Confirmation
@@ -79,16 +80,18 @@ silently dropping the section.
 
 ## [OPTIONAL] Agent Analysis Summary
 
-**6 agents analyzed the changes in parallel:**
+**Up to 8 agents analyzed the changes in parallel:**
 
 | Agent | Purpose | Issues Found |
 |-------|---------|--------------|
 | Static Analysis | Linter/tool findings | X issues |
 | Dead Code Detection | Unused code, comments | Y issues |
-| Code Smells | Anti-patterns, long functions | Z issues |
+| Code Smells + Quality | Anti-patterns, long functions, naming/complexity/SRP/magic numbers | Z issues |
 | Language Rules | C++/Python best practices | W issues |
 | Architecture | Module boundaries, dependencies | V issues (or N/A) |
 | Simplification | Reuse, complexity reduction | U issues |
+| Performance | Hot-path classification, allocations, locks, I/O | P issues |
+| UB Detection | Undefined behaviour (C/C++/unsafe-Rust) | T issues (or N/A) |
 
 **All findings below are sourced from agent analysis.**
 
@@ -283,6 +286,25 @@ notable suppressions. "Clean" if nothing to report.]
 | Unnecessary copies | [OK / Concern] |
 | Lock contention / threading | [OK / N/A / Concern] |
 | I/O patterns | [OK / N/A / Concern] |
+
+---
+
+## [OPTIONAL] Undefined Behaviour
+
+(C/C++ / unsafe-Rust only. State "N/A - no C/C++/unsafe-Rust changes" otherwise.)
+
+| UB class | File:Line | Snippet | Std citation | Fix | Severity |
+|----------|-----------|---------|--------------|-----|----------|
+| [class]  | [file:N]  | [code]  | [ref]        | [fix] | Critical (100) |
+
+### Sanitizer Coverage
+
+| Sanitizer | In CI? | Recommendation |
+|-----------|--------|----------------|
+| UBSan | [Yes / No] | [N/A or "Add `-fsanitize=undefined`"] |
+| ASan  | [Yes / No] | [N/A or "Add `-fsanitize=address`"] |
+| TSan  | [Yes / No / N/A] | [N/A or "Add separate `-fsanitize=thread` job"] |
+| MSan  | [Yes / No / N/A] | [N/A or "Add separate clang `-fsanitize=memory` job"] |
 
 ---
 

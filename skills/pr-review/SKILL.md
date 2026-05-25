@@ -1,6 +1,6 @@
 ---
 name: pr-review
-description: Reviews Pull Requests or local diffs with a 7-agent fan-out covering static analysis, dead code, code smells + quality (naming, complexity, single-responsibility, magic numbers), language rules (C++/Python/CMake), architecture, simplification, and performance (hot-path classification, allocations, locks, I/O). Use when the user asks to "review this PR", "review the diff", "audit this branch", "/pr-review", or when staging changes before push.
+description: Reviews Pull Requests or local diffs with an 8-agent fan-out covering static analysis, dead code, code smells + quality (naming, complexity, single-responsibility, magic numbers), language rules (C++/Python/CMake), architecture, simplification, performance (hot-path classification, allocations, locks, I/O), and undefined behaviour (signed overflow, lifetime, strict aliasing, data races, sanitizer coverage; C/C++/unsafe-Rust only). Use when the user asks to "review this PR", "review the diff", "audit this branch", "/pr-review", or when staging changes before push.
 ---
 
 # PR Review Skill
@@ -46,7 +46,7 @@ Apply to every invocation of this skill. Full text in [HYGIENE.md](HYGIENE.md). 
 |-------|---------|
 | 0. Determine target | PR# / URL -> GitHub PR; nothing -> local diff vs main; "re-review" -> changes since last review |
 | 1. Gather + read | Changed files, full diff, commit messages, CI status; read each file ONCE; build Data Package |
-| 1.5. Spawn 7 agents in parallel | Static, Dead Code, Code Smells + Quality, Language Rules, Architecture (conditional), Simplify, Performance |
+| 1.5. Spawn 8 agents in parallel | Static, Dead Code, Code Smells + Quality, Language Rules, Architecture (conditional), Simplify, Performance, UB Detection (C/C++/unsafe-Rust only) |
 | 2. Aggregate | Merge findings, map to severity, deduplicate, sort, classify change type |
 | 3. Review tests | Coverage, edge cases, naming, independence, assertions; suggest missing tests |
 | 4. Final report | Severity-sorted, agent-sourced, with code fixes; chat-only by default, save .md only if asked |
@@ -109,7 +109,7 @@ One package, passed to every spawned agent. Required sections: Files Changed (pa
 
 ## Phase 1.5: Spawn Parallel Analysis Agents
 
-**Goal:** Launch up to 7 specialized agents in parallel to analyze the packaged data from Phase 1.
+**Goal:** Launch up to 8 specialized agents in parallel to analyze the packaged data from Phase 1.
 
 <IMPORTANT>
 **Use general-purpose agents** (not Explore agents) since they receive pre-loaded context.
@@ -121,9 +121,11 @@ Each agent has a unique identity, loads its skill, and maintains memory.
 
 Before spawning all agents, check the diff scope. Agent IDs match the table in "Agent Identity & Memory System" below.
 
-- **Diff < 50 lines added/removed AND** no logic changes (docs / comments / formatting / imports / type aliases only): spawn ONLY Agents 1 (`static-analysis-agent`) and 2 (`dead-code-agent`). Skip 3, 4, 5, 6, 7.
-- **Diff < 200 lines AND** affects only one file: spawn Agents 1, 2, 3 (`code-smells-agent`), 4 (`language-rules-agent`), 7 (`performance-agent`). Skip 5 (architecture) and 6 (simplify).
-- **Otherwise**: full 7-agent fan-out (Agent 5 still gated by the architectural-signal table below).
+- **Diff < 50 lines added/removed AND** no logic changes (docs / comments / formatting / imports / type aliases only): spawn ONLY Agents 1 (`static-analysis-agent`) and 2 (`dead-code-agent`). Skip 3, 4, 5, 6, 7, 8.
+- **Diff < 200 lines AND** affects only one file: spawn Agents 1, 2, 3 (`code-smells-agent`), 4 (`language-rules-agent`), 7 (`performance-agent`), 8 (`ub-detection-agent` if a C/C++/unsafe-Rust file changed). Skip 5 (architecture) and 6 (simplify).
+- **Otherwise**: full 8-agent fan-out (Agent 5 still gated by the architectural-signal table below; Agent 8 still gated by the UB-trigger rule below).
+
+**UB-agent trigger (Agent 8).** Spawn Agent 8 ONLY when at least one changed file matches `*.c`, `*.cc`, `*.cpp`, `*.cxx`, `*.h`, `*.hpp`, `*.hxx`, `*.inl`, `*.ipp`, `*.tpp`, OR contains `unsafe {` (Rust). Skip otherwise (pure Python / CMake / docs / shell diffs do not exercise UB classes).
 
 Document the chosen mode and the spawned agent IDs in the final report's Header section.
 
@@ -143,10 +145,11 @@ Each agent has:
 | 5 | `architecture-agent` | `architecture-analyze` | `agents/architecture.md` |
 | 6 | `simplify-agent` | `simplify` | `agents/simplify.md` |
 | 7 | `performance-agent` | *(none, loads `PERFORMANCE.md` from this skill)* | `agents/performance.md` |
+| 8 | `ub-detection-agent` | `programming-cpp` (for C++ Core Guidelines lifetime / type-safety rules) | `agents/ub-detection.md` |
 
 **Memory location:** `~/.claude/projects/<project>/memory/agents/`
 
-### The 7 Analysis Agents (purpose + memory topic)
+### The 8 Analysis Agents (purpose + memory topic)
 
 | # | Agent ID | Purpose | Memory topic |
 |---|----------|---------|--------------|
@@ -157,6 +160,7 @@ Each agent has:
 | 5 | `architecture-agent` | Module boundaries, dependencies, testability (conditional - see signal table) | Module map, interfaces, dependency patterns |
 | 6 | `simplify-agent` | Reuse, unnecessary complexity, verbose patterns per `simplify` skill | Project utilities, intentional verbosity |
 | 7 | `performance-agent` | Hot-path classification + alloc/complexity/locks/IO per `PERFORMANCE.md` | Hot files, accepted alloc patterns, benchmarks |
+| 8 | `ub-detection-agent` | Hunts undefined behaviour in C/C++/unsafe-Rust (signed overflow, lifetime, strict aliasing, data races, alignment, null deref, sanitizer-coverage check) | Sanitizer wiring in CI, vetted `reinterpret_cast` / `union` / `bit_cast` sites, confirmed-safe `unsafe` blocks |
 
 ### Agent Execution Pattern
 
@@ -165,7 +169,21 @@ Each agent has:
 - `subagent_type`: `general-purpose`
 - prompt body: contents of the matching file under `agents/prompts/` (see "Agent Prompt Templates" below) + the Data Package from Phase 1
 
-Agent 5 only spawns when the architectural-signal table matches. Lite mode (above) further trims the set.
+Agent 5 only spawns when the architectural-signal table matches. Agent 8 only spawns when the UB-trigger rule above matches. Lite mode (above) further trims the set.
+
+### Output discipline (applies to EVERY agent)
+
+**Line-number discipline.** NEVER cite a line number you have not actually read in the file body. Before emitting `path:line`, verify:
+
+1. The file content at that line was part of the Data Package passed to you in Phase 1.
+2. The line number is within the file's actual length. A finding citing line 660 in a 222-line file is fabricated; the underlying issue may be real but the citation is unactionable and erodes reviewer trust.
+3. If you remember the function/class name but not the exact line, cite `path:<function-name>` or `path:<line-N..line-M>` covering the function's known range. Omit the specific line rather than guess.
+
+Fabricated line numbers are WORSE than missing line numbers. The reviewer who follows a citation to line 660 of a 222-line file loses trust in every other finding from the agent.
+
+**Class-tag discipline.** The `Class` / `Issue Type` column must use the agent's own vocabulary (`UB:*`, `Perf:*`, `Lang:*`, `Smell:*`, `Dim N:*`, `Dead:*`, `Comment:*`, `Test:*`, `CMake:*`, `Arch:*`, `Simplify:*`, `Static:*`). Do not tag a missing-virtual-destructor finding as `Dead:*` or a `catch(...)` as `Comment:*`.
+
+**Completeness discipline.** When a checklist item says MUST flag, the agent emits ONE row per offending site - never collapses multiple violations of the same class into a single representative finding. Five `using namespace std;` instances in five files = five rows.
 
 ### Conditional Architecture Analysis
 
@@ -181,7 +199,7 @@ Agent 5 only spawns when the architectural-signal table matches. Lite mode (abov
 | New external dependencies | Integration points |
 | Changes to base/core classes | Foundation shifting |
 
-If no architectural signals → Skip Agent 5, run Agents 1-4, 6, 7.
+If no architectural signals → Skip Agent 5, run Agents 1-4, 6, 7, and 8 (8 only when its UB-trigger rule matches).
 
 ### Agent Prompt Templates
 
@@ -196,8 +214,9 @@ Each agent's full prompt lives in its own file under `agents/prompts/`. The orch
 | `architecture-agent` | [agents/prompts/agent-5-architecture.md](agents/prompts/agent-5-architecture.md) |
 | `simplify-agent` | [agents/prompts/agent-6-simplification.md](agents/prompts/agent-6-simplification.md) |
 | `performance-agent` | [agents/prompts/agent-7-performance.md](agents/prompts/agent-7-performance.md) |
+| `ub-detection-agent` | [agents/prompts/agent-8-ub-detection.md](agents/prompts/agent-8-ub-detection.md) |
 
-Architecture Agent fires only when the architectural-signal table below matches. All others fire per the lite-mode gate.
+Architecture Agent fires only when the architectural-signal table below matches. UB Detection Agent fires only when the UB-trigger rule above matches. All others fire per the lite-mode gate.
 
 ## Phase 2: Aggregate Agent Findings
 
@@ -211,6 +230,8 @@ Wait for all spawned agents from Phase 1.5. Then:
 | Must Fix | 80 | Incorrect behavior, logic bugs, resource leaks, tool errors |
 | Should Fix | 50 | Best practices, code smells, maintainability |
 | Nitpick | 20 | Style, minor improvements, suggestions |
+
+**UB never downgrades.** Any finding from the UB Detection Agent defaults to **Critical (100)**. Drop to **Must Fix (80)** only when the code path is provably unreachable on every target platform (documented with citation). Never **Should Fix** or below.
 
 ### 2.2 Merge
 

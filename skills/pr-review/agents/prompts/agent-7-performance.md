@@ -36,9 +36,9 @@ Flag in `hot` and `warm` functions:
 
 | Pattern | hot | warm | cold |
 |---|---|---|---|
-| `new` / `malloc` / `make_unique` / `make_shared` per call | Must Fix | Should Fix | Nitpick |
+| `new` / `malloc` / `make_unique` / `make_shared` per call (INCLUDING `new T(...)` immediately freed via `delete` in same scope - the temporary alloc still costs malloc + free). **Cross-agent overlap is REQUIRED**: if the same site is already flagged by `ub-detection-agent` as use-after-free, double-free, or leak, this agent MUST still emit its OWN perf-angle finding. Severity rationale and fix differ (alloc-elision vs lifetime correctness), so reviewers need both. Do NOT suppress a perf finding because another agent owns the correctness angle. | Must Fix | Should Fix | Nitpick |
 | Container growth without `reserve` (`push_back` in known-N loop, `+=` on `std::string` in loop) | Must Fix | Should Fix | Nitpick |
-| Pass-by-value of large types (any non-trivially-copyable >16B; any `std::string`, container, `std::function`) when const-ref would do | Should Fix | Should Fix | Nitpick |
+| Pass-by-value of large types (any non-trivially-copyable >16B; any `std::string`, container, `std::function`) when const-ref would do. **Applies uniformly to class methods, free functions, lambdas, AND function-pointer-style callbacks. Scan EVERY parameter list in the diff, header or `.cpp`, NOT only class methods.** Cite each offending parameter on its own row; do not collapse multi-param violations into one. | Should Fix | Should Fix | Nitpick |
 | Return-by-value of large containers where caller will move-construct | OK (RVO) | OK | OK |
 | Implicit conversions creating temporaries (`std::string(const char*)` repeated; `string_view -> string` on a hot lookup) | Must Fix | Should Fix | Nitpick |
 | `std::shared_ptr` where `std::unique_ptr` or raw observer would suffice | Should Fix | Nitpick | Nitpick |

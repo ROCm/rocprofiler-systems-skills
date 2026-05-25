@@ -95,6 +95,37 @@ Detect existing PENDING review by current user on this PR:
 
 Order: Must-Fix -> Should-Fix -> Nits. For each finding:
 
+**a.0. Fetch context (before presenting):**
+
+For each finding, fetch three source-code views and cache them in
+`$CLAUDE_JOB_DIR/pr-review-interactive/snippets/<finding-id>.json`:
+
+1. **Problem snippet** - `Read(path, offset=max(1, line-8), limit=17)`
+   to get ±8 lines around the finding line. If the file is part of
+   the PR diff and the line numbers match the HEAD SHA, use the
+   working-copy file. If the finding references the **old** side,
+   fetch via `git show $BASE_SHA:<path>` instead. Mark the problem
+   line(s) with a `>` prefix when rendering.
+
+2. **Proposed change** - extract from the finding body any fenced
+   code block following text like "Fixed code:", "Suggested fix:",
+   "Replace with:", or the `Fix` column in a table. If none present,
+   render a diff hunk derived from the analysis (best-effort) or
+   write `(no concrete patch in finding - reviewer to draft)`.
+
+3. **Related code (up to 3 sites)** - parse the finding body for
+   additional `path:line` mentions, fully-qualified symbol names, or
+   "see also" references. For each, fetch ±5 lines via the same
+   `Read` mechanism. If the finding body has none AND the title
+   contains an identifier (function/class/macro), run one
+   `grep -n -R <symbol> <repo-root>` capped at 3 hits, fetch ±3
+   lines for each. Skip entirely when there is nothing meaningful to
+   show - do not pad with random call sites.
+
+Cap total snippet bytes at 4 KB per finding; truncate the related
+block first, then the problem block (keep at least ±3 lines around
+the problem line), never the proposed change.
+
 **a. Present:**
 
 ```
@@ -105,9 +136,43 @@ title:    <title>
 analysis:
 <2-4 lines distilled from the report body, plain prose>
 
+problem code (<path>:<line-N>-<line+N>):
+\`\`\`<lang>
+  <line-8>:  context line
+  <line-7>:  context line
+  ...
+> <line>:    THE PROBLEM LINE
+  <line+1>:  context line
+  ...
+\`\`\`
+
+proposed change:
+\`\`\`<lang>
+<fix snippet, or "(no concrete patch - reviewer to draft)">
+\`\`\`
+
+related code:
+- <path1>:<line1>-<line1+M>
+  \`\`\`<lang>
+  <snippet>
+  \`\`\`
+- <path2>:<line2>-<line2+M>
+  \`\`\`<lang>
+  <snippet>
+  \`\`\`
+(omit this block entirely when no related sites)
+
 proposed comment:
 <the short body, code fence only when needed>
 ```
+
+Rendering rules:
+- Show line numbers as a left gutter (`%4d: `) so the user can map
+  to the file without counting.
+- Use `>` as the problem-line marker (1 char + space, so gutter stays
+  aligned).
+- Pick the language tag from the file extension (`cpp`, `py`, `cmake`,
+  `rs`, `go`, `sh`, `md`, ...); default to no tag when unknown.
 
 **b. Ask user via `AskUserQuestion`:**
 
@@ -218,6 +283,7 @@ All under `$CLAUDE_JOB_DIR/pr-review-interactive/`:
 | `diff-lines.json` | Cached valid-line set |
 | `accepted.json` | Posted comments |
 | `skipped.json` | Skipped findings + reason |
+| `snippets/<finding-id>.json` | Cached problem/fix/related code blocks per finding (step 6.a.0) |
 
 Resume on next session: read all state files, skip past last
 accepted/skipped index, continue.
@@ -233,6 +299,9 @@ accepted/skipped index, continue.
 | Long comments | 1-3 sentences max, fix snippet only when non-obvious |
 | Forgetting to save state | Persist after every accept/skip |
 | Re-creating PENDING review on resume | Detect existing PENDING by current user first |
+| Presenting finding with no source context | Always fetch problem snippet + proposed change before asking (step 6.a.0). Reviewer cannot judge accept/edit/skip without seeing the code |
+| Dumping 50-line related-code blocks | Cap 3 related sites, ±5 lines each, total snippet budget 4 KB per finding |
+| Showing snippet from wrong SHA | Old-side findings use `git show $BASE_SHA:<path>`; new-side uses working copy |
 
 ## Integration with Other Skills
 
