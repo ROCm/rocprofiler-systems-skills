@@ -171,6 +171,20 @@ Each agent has:
 
 Agent 5 only spawns when the architectural-signal table matches. Agent 8 only spawns when the UB-trigger rule above matches. Lite mode (above) further trims the set.
 
+### Output discipline (applies to EVERY agent)
+
+**Line-number discipline.** NEVER cite a line number you have not actually read in the file body. Before emitting `path:line`, verify:
+
+1. The file content at that line was part of the Data Package passed to you in Phase 1.
+2. The line number is within the file's actual length. A finding citing line 660 in a 222-line file is fabricated; the underlying issue may be real but the citation is unactionable and erodes reviewer trust.
+3. If you remember the function/class name but not the exact line, cite `path:<function-name>` or `path:<line-N..line-M>` covering the function's known range. Omit the specific line rather than guess.
+
+Fabricated line numbers are WORSE than missing line numbers. The reviewer who follows a citation to line 660 of a 222-line file loses trust in every other finding from the agent.
+
+**Class-tag discipline.** The `Class` / `Issue Type` column must use the agent's own vocabulary (`UB:*`, `Perf:*`, `Lang:*`, `Smell:*`, `Dim N:*`, `Dead:*`, `Comment:*`, `Test:*`, `CMake:*`, `Arch:*`, `Simplify:*`, `Static:*`). Do not tag a missing-virtual-destructor finding as `Dead:*` or a `catch(...)` as `Comment:*`.
+
+**Completeness discipline.** When a checklist item says MUST flag, the agent emits ONE row per offending site - never collapses multiple violations of the same class into a single representative finding. Five `using namespace std;` instances in five files = five rows.
+
 ### Conditional Architecture Analysis
 
 **Only run Architecture Agent if ANY of these signals present:**

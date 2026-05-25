@@ -73,6 +73,7 @@ Walk every changed C/C++/unsafe-Rust file and hunt UB classes.
 | Pattern | Severity |
 |---------|----------|
 | Null deref (incl. `*this` when `this == nullptr`) | Critical |
+| **Null-param deref**: function takes a pointer parameter and dereferences it (incl. via `->`) without a preceding null check, when callers may plausibly pass `nullptr`. Treat every `T* p` parameter as suspect until either (a) the function precondition explicitly forbids null, documented in a comment, OR (b) a guard appears before first use. Pay special attention to `void run_*(X* a, Y* b)`, `void handle(*req)`, healthcheck / callback / event functions. | Critical |
 | Deref of `end()` iterator | Critical |
 | Deref of `unique_ptr` / `shared_ptr` after `reset()` or `release()` | Critical |
 | Dangling `string_view` / `span` / `function_ref` capturing temporary | Critical |

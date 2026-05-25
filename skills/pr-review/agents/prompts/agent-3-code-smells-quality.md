@@ -49,13 +49,18 @@ Apply learned patterns:
 **Dispensables:**
 - Comments (explaining what instead of why)
 - Duplicate Code (>10 identical lines: Should Fix)
-- Lazy Class, Data Class, Dead Code, Speculative Generality
+- **Lazy Class**: MUST flag every class whose entire body is a single primitive / `std::string` field plus a trivial getter (no invariants, no validation, no additional state, no behaviour). Suggest replacing with a type alias (`using KeyName = std::string;`) or the raw type. Severity: Should Fix.
+- Data Class, Dead Code, Speculative Generality
 
 **Couplers:**
 - Feature Envy (method uses >3 external getters)
 - Inappropriate Intimacy (classes accessing each other's internals: Must Fix)
 - Message Chains (>3 chained calls)
-- Middle Man (class only delegates)
+- **Middle Man**: MUST flag every method whose entire body is `return member_.method(args...)` or `return field_` with no transformation, validation, logging, or added semantics. The wrapper adds no value; callers should talk to the inner object directly. Severity: Should Fix.
+
+**Flag-argument anti-pattern (DEFINITELY flag these):**
+- **Bool-dispatch parameter**: function declares a `bool` parameter that selects fundamentally different behaviour paths (e.g. `apply_defaults(cfg, bool use_production)`, `parse(input, bool strict)`, `write(data, bool sync)`). The bool is a flag-argument smell - split into two functions OR replace with an `enum class` whose values name the modes. Severity: Should Fix; Must Fix when each branch is >20 lines.
+- **Opaque bool / int at call site**: call site passes a positional `bool` or `0`/`1` literal whose meaning is invisible without opening the callee (e.g. `do_warmup(store, 10, true, "key", 0)` - what do `true` and `0` mean here?). Suggest named-bool constants (`constexpr bool VERBOSE = true;`), designated initialisers, or a struct of options. Severity: Should Fix.
 
 ### Part B - quality dimensions per QUALITY.md
 
@@ -90,6 +95,7 @@ For each function in the changed files run all four dimensions:
 - Literal controlling security/correctness (crypto key length, signature size, safety-affecting timeout) = Must Fix
 - Do NOT flag `0`/`1`/`-1`/`2` arithmetic, empty/null literals, test fixture data, percentage `100` with `%` context, loop accumulators
 - Heuristic: if a future change requires updating the literal in two places to stay consistent, demand a named constant now
+- **Per-site reporting**: when the SAME literal value appears in multiple sites across the diff (e.g. `42` as `MAX_EVENTS`, `POLL_BATCH`, threshold in `if (n > 42)`, init arg, default), each call/use site is its own finding row. Naming one occurrence does not fix the others - and cross-file occurrences are also a Shotgun-Surgery smell (cite under both Dim 4 AND Shotgun-Surgery). Procedure: grep every changed file for each numeric literal you flag once, list every additional hit as a separate row with a back-reference to the named constant proposal.
 
 ## Return Format
 

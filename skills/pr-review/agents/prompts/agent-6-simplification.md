@@ -38,6 +38,18 @@ Analyze changed files for simplification opportunities:
    - Python: comprehensions, unpacking, walrus operator, pathlib over os.path
    - General: early returns to reduce nesting, guard clauses
 
+5. **Hand-rolled STL algorithms**: MUST flag every manual loop that re-implements a standard algorithm. Common offenders:
+   - `total = total + x` / `total += x` over a container -> `std::accumulate` / `std::reduce`
+   - `if (any element matches) ...` -> `std::any_of`
+   - `for (...) if (cond) return true; return false;` -> `std::any_of` / `std::find_if != end()`
+   - `for (...) out.push_back(transform(x));` -> `std::transform`
+   - `for (...) if (cond) out.push_back(x);` -> `std::copy_if`
+   - `for (...) if (x == target) return true;` over an unordered/sorted set -> `set.count(x) > 0` or `set.contains(x)` (C++20)
+   - Manual min/max search -> `std::min_element` / `std::max_element`
+   Severity: Should Fix for hot or non-trivial loops; Nit for one-liners.
+
+6. **Unfulfilled-helper TODOs**: MUST flag any `// TODO: replace with <existing helper>` (or similar) comment when the named replacement exists in the codebase and the current code re-implements it inline. The TODO acknowledges the duplication; refusing to fix it is technical debt being checked in. Severity: Should Fix; cite the helper's location.
+
 **Do NOT flag:**
 - Intentional verbosity for clarity or debugging
 - Code that matches established project conventions
