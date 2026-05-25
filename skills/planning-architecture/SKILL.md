@@ -1,6 +1,6 @@
 ---
 name: planning-architecture
-description: Plan new or redesigned system architecture - define components, boundaries, interactions, and technical decisions before implementation
+description: Use when planning a NEW system or REDESIGNING existing architecture - components, boundaries, interactions, technical decisions - BEFORE implementation. Skip for changes that fit an existing component without architectural shift, single-file features, or pure cleanup (use planning-refactor). MUST invoke programming-cpp + programming-cpp-design-patterns + programming-cpp-stl-algorithms for C++ designs; MUST invoke grill-me before drafting (architecture is always underspecified); MUST invoke architecture-analyze agent for independent review of the drafted design. Hands off to planning-feature or planning-refactor for implementation tasks.
 ---
 
 # Architecture Planning
@@ -12,7 +12,30 @@ Use this skill when designing NEW architecture or planning REDESIGN of existing 
 
 Follow all base planning rules, plus the architecture-specific rules below.
 
-**Mandatory:** Invoke `programming-cpp-design-patterns` during Phase 4 (detailing the architecture). Consider which patterns apply to the component interactions and extension points being designed.
+**Mandatory programming-skill invocation** (extends planning-base):
+
+- ALWAYS invoke `programming-cpp` for C++ designs - RAII, smart
+  pointers, avoidance of virtual inheritance, testability seams.
+- ALWAYS invoke `programming-cpp-design-patterns` during Phase 4 - 
+  pick the pattern that fits the component interaction shape, do not
+  decorate.
+- ALWAYS invoke `programming-cpp-stl-algorithms` when the design has
+  iteration / container choices - prefer std lib over hand-rolled.
+- ALWAYS invoke `programming-cpp-naming-rules` when introducing new
+  types / namespaces / files.
+- For Python designs, invoke `programming-python` analogously.
+- For CMake-touching designs, invoke `programming-cmake-best-practices`.
+
+Architecture proposals MUST cite the rule(s) from these skills that
+each design decision is satisfying. A decision without a cited rule is
+either obvious (don't document it) or wrong (rethink it).
+
+**Mandatory `grill-me`** for any architecture work. Architecture is
+the most underspecified type of plan - grill before drafting.
+
+**Mandatory `architecture-analyze` agent** as an independent review
+pass on the drafted architecture (Phase 4 output). Treat as
+informational - address what's important; acknowledge the rest.
 
 **Key distinction:**
 - `planning-architecture` = design what WILL BE built (this skill)
@@ -69,7 +92,7 @@ If the system is on a hot path or performance-critical, this changes the polymor
 | **CRTP** | Zero overhead, compile-time polymorphism | Static dispatch with base class behavior |
 
 <IMPORTANT>
-Always ask whether the code is on a hot path. If yes, prefer compile-time polymorphism (templates, std::variant, CRTP) over virtual interfaces. Virtual dispatch has vtable indirection and prevents inlining — avoid it in performance-critical code.
+Always ask whether the code is on a hot path. If yes, prefer compile-time polymorphism (templates, std::variant, CRTP) over virtual interfaces. Virtual dispatch has vtable indirection and prevents inlining - avoid it in performance-critical code.
 </IMPORTANT>
 
 Present findings and ask: **"Are these requirements complete, or should I add/change anything?"**

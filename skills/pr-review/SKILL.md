@@ -20,10 +20,25 @@ Review Pull Requests or local changes with structured, thorough analysis.
 
 **Persist the review (opt-in):** Do NOT write a markdown file by default. The report goes to chat output. Save the full markdown to `.claude/pr-review-summaries/` ONLY when the user explicitly asks ("save the review", "write a summary file", "persist this", or equivalent). See Phase 4 for filename rules when saving.
 
-**Invoke relevant programming skills during review:**
-- C++ code → `programming-cpp`, `programming-cpp-design-patterns`, `programming-cpp-stl-algorithms`
-- Python code → `programming-python`
-- CMake files → `programming-cmake-best-practices`
+**Mandatory: invoke the same skills the code was written under.** A
+review that doesn't know the project's rules can't catch violations.
+For every file in the changeset:
+
+- `.cpp/.hpp/.h/.cc/.cxx` → MUST invoke `programming-cpp`, plus
+  `programming-cpp-naming-rules` (if identifiers added/renamed),
+  `programming-cpp-design-patterns` (if structural changes), and
+  `programming-cpp-stl-algorithms` (if iteration / containers touched)
+- `.py` → MUST invoke `programming-python`
+- `CMakeLists.txt` / `cmake/**` / `CMakePresets.json` → MUST invoke
+  `programming-cmake-best-practices`
+- Test files → MUST invoke `testing` (the dispatcher) and the
+  language-specific `testing-*` it routes to
+- Architecture-touching changes → MUST invoke `review-architecture`
+  agent (sub-agent of code-reviewer) and consult
+  `programming-cpp-design-patterns`
+- Refactor-style changes → MUST invoke `code-smells` and
+  `refactoring-techniques` so smells are flagged with the named
+  refactoring that would fix them
 </IMPORTANT>
 
 > **Workspace-level overrides.** Workspaces may define additional
@@ -237,6 +252,10 @@ Wait for all spawned agents from Phase 1.5. Then:
 
 Collect every issue. Group by severity (Critical -> Must Fix -> Should Fix -> Nitpick). Sort within each group by file path then line number. Tag each finding with the source agent ID.
 
+**Aggregation discipline - no findings dropped.** Every finding returned by an agent MUST appear in the merged output. Condense by *grouping* (multiple agents flag the same line -> one row with combined source tags), never by *deletion*. If the shortlist gets long, lower the severity of the marginal items - do not silently omit them. The agents are the detection layer; the aggregator is presentation only. Dropping a finding here means the next reviewer cannot see what was checked.
+
+Before publishing, reconcile agent-table-row-counts against merged-row-counts. Every missing row is either a genuine duplicate of another row (name which row) or it must be added back.
+
 ### 2.3 Deduplicate
 
 - Same file:line, same issue -> keep highest severity, merge descriptions
@@ -311,7 +330,7 @@ When the user has asked, persist the report under the **git repository root** of
 
 - **GitHub PR review:** `<pr-number>-<pr-title-slug>.md`
   - `pr-number`: the PR number (digits only, no `#`).
-  - `pr-title-slug`: slug derived from the PR **title** — lowercase, replace spaces and punctuation with single hyphens, strip leading/trailing hyphens, ASCII only; collapse repeated hyphens; **max 60 characters** so paths stay reasonable. If the title slug is empty, use `review`.
+  - `pr-title-slug`: slug derived from the PR **title** - lowercase, replace spaces and punctuation with single hyphens, strip leading/trailing hyphens, ASCII only; collapse repeated hyphens; **max 60 characters** so paths stay reasonable. If the title slug is empty, use `review`.
 - **Local review (no PR):** `local-<branch-slug>-<short-slug>.md`
   - `branch-slug`: current branch name slugified the same way (max 40 chars), or `detached` if not on a branch.
   - `short-slug`: from the first line of `git log -1 --pretty=%s` (slugified, max 40 chars), or `changes` if unavailable.

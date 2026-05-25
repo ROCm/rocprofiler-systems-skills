@@ -1,6 +1,6 @@
 ---
 name: planning-bugfix
-description: Planning skill for bug fixes - includes optional changelog update
+description: Use when fixing a bug - root-cause hypothesis, fix scope, optional changelog update. Triggers on "bug", "fix", "regression", or any defect report. Skip for typos, single-line obvious fixes, or behavior changes that aren't a defect (use planning-feature). Composes with: programming-cpp / programming-python (the implementation), testing (REQUIRED - every bug fix gets a regression test that would have caught the bug), debugging-rocprof-sys (when the bug surfaces in rocprofiler-systems output).
 ---
 
 # Bugfix Planning
@@ -8,9 +8,32 @@ description: Planning skill for bug fixes - includes optional changelog update
 Use this skill when fixing bugs, errors, or unexpected behavior.
 
 <IMPORTANT>
-**Prerequisites:** Invoke `planning-base` skill first if not already loaded. It provides the core planning phases (0-5).
+**Prerequisites:** Invoke `planning-base` skill first if not already loaded. It provides the core planning phases (0-5) AND the mandatory programming-skill consultation rules.
 
 Follow all base planning rules, plus the bugfix-specific rules below.
+
+**Mandatory programming-skill invocation** (from planning-base, restated for visibility):
+
+- C++ bug → invoke `programming-cpp`; add
+  `programming-cpp-naming-rules` if the fix renames anything; add
+  `programming-cpp-stl-algorithms` if the fix replaces hand-rolled
+  iteration with STL.
+- Python bug → invoke `programming-python`.
+- CMake-touching → invoke `programming-cmake-best-practices`.
+
+Invoke BEFORE drafting the fix so the proposed change conforms to
+language rules from the start (e.g., constants in screaming snake case,
+no `tim::*`, RAII over raw resource management).
+
+**Mandatory `debugging-rocprof-sys`** when the bug surfaces in
+rocprofiler-systems output (crash, hang, wrong trace contents,
+instrumentation failure, GPU/MPI/threading misbehavior during
+profiling).
+
+**Mandatory regression test.** Every bug fix gets a test that fails
+before the fix and passes after. No exceptions. Invoke `testing` (the
+dispatcher) to decide scope and route to `testing-gtest-gmock` or
+`testing-pytest`.
 </IMPORTANT>
 
 ## Bugfix-Specific Requirements

@@ -1,6 +1,6 @@
 ---
 name: planning-feature
-description: Planning skill for new features - includes changelog summary and test case consideration
+description: Use when adding NEW functionality - feature scope, acceptance criteria, changelog summary, test case consideration. Triggers on "feature", "add", "implement". Skip for trivial additions, defect fixes (use planning-bugfix), pure refactoring (use planning-refactor), or features requiring structural changes (use planning-architecture first). Composes with: planning-architecture (when structural decisions needed), programming-cpp / programming-python (implementation), testing (acceptance test coverage), planning-docs (when feature needs user-facing docs).
 ---
 
 # Feature Planning
@@ -8,9 +8,25 @@ description: Planning skill for new features - includes changelog summary and te
 Use this skill when implementing NEW functionality or capabilities.
 
 <IMPORTANT>
-**Prerequisites:** Invoke `planning-base` skill first if not already loaded. It provides the core planning phases (0-5).
+**Prerequisites:** Invoke `planning-base` skill first if not already loaded. It provides the core planning phases (0-5) AND the mandatory programming-skill consultation rules.
 
 Follow all base planning rules, plus the feature-specific rules below.
+
+**Mandatory programming-skill invocation** (from planning-base, restated for visibility):
+
+- C++ feature → invoke `programming-cpp`; add
+  `programming-cpp-naming-rules` for new identifiers; add
+  `programming-cpp-design-patterns` if the feature introduces new
+  abstractions; add `programming-cpp-stl-algorithms` if iteration /
+  containers are central.
+- Python feature → invoke `programming-python`.
+- CMake-touching → invoke `programming-cmake-best-practices`.
+
+Invoke BEFORE drafting acceptance criteria so criteria can reference
+the language rules they must satisfy.
+
+**Mandatory `grill-me`** when acceptance criteria are vague, scope is
+unclear, or the feature touches ≥ 3 files / ≥ 2 modules.
 </IMPORTANT>
 
 ## Feature-Specific Requirements

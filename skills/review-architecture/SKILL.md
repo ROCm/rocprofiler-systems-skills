@@ -13,6 +13,25 @@ This skill produces architecture documents by first analyzing the codebase silen
 
 **Core principle:** The user controls what gets documented and approves every chapter. The agent never generates the full document at once.
 
+<IMPORTANT>
+**Mandatory: consult the same skills the code was written under.** A
+documentation pass that doesn't know the project's rules will miss
+weaknesses and mis-explain expansion points.
+
+- C++ codebase (`.cpp/.hpp/.h/.cc/.cxx`) → MUST invoke
+  `programming-cpp`, `programming-cpp-design-patterns` (to name the
+  patterns observed in the code), `programming-cpp-stl-algorithms`
+  (to spot where STL was/wasn't leveraged)
+- Python codebase → MUST invoke `programming-python`
+- Build system being documented → MUST invoke
+  `programming-cmake-best-practices`
+- Testability sections in the doc → MUST invoke `testing` (the
+  dispatcher) for the scope-tier vocabulary
+
+Without these, "system weaknesses" and "expansion points" are
+opinion; with them, they are anchored to the project's coding rules.
+</IMPORTANT>
+
 ## Process Flowchart
 
 ```dot

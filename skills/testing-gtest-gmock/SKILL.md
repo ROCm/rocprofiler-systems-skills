@@ -1,6 +1,6 @@
 ---
 name: testing-gtest-gmock
-description: Plan and write C++ unit tests using GTest and GMock - creates test plan and implements tests one by one with user approval
+description: Use when writing C++ unit tests with GTest/GMock - creates a test plan, implements tests one at a time with user approval. **Triggered by the `testing` dispatcher** when C++ unit-test work is needed; do NOT invoke directly. The dispatcher applies test-first and triage discipline. Composes with: programming-cpp (the code under test), testing (parent dispatcher), testing-testplan (handoff doc when implementation is complete).
 ---
 
 # GTest/GMock Testing Skill

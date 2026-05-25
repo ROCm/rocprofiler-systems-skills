@@ -1,6 +1,6 @@
 ---
 name: planning-docs
-description: Planning skill for documentation - no changelog updates
+description: Use when writing or updating documentation - README, API docs, design notes, user guides. Skip for inline source comments accompanying code changes (those belong with the code task) and for skill/agent definitions. No changelog updates.
 ---
 
 # Documentation Planning

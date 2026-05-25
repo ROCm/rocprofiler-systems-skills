@@ -1,6 +1,6 @@
 ---
 name: programming-cpp-stl-algorithms
-description: C++ STL algorithms and data structures - suggests appropriate containers and algorithms when they solve the problem at hand
+description: Use when implementing C++ where the standard library would solve the problem - `std::vector`/`std::array`/`std::unordered_map` for storage, `std::find` / `std::sort` / `std::accumulate` / ranges algorithms for iteration. Suggests appropriate STL types instead of hand-rolled equivalents. Composes with: programming-cpp (parent), programming-cpp-design-patterns (when std lib already implements the pattern, prefer std).
 ---
 
 # C++ STL Algorithms & Data Structures Skill
