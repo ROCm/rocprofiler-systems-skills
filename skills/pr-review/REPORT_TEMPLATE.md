@@ -34,15 +34,19 @@ silently dropping the section.
 
 | Field | Value |
 |-------|-------|
-| PR # | #123 |
-| Title | [PR title] |
-| Author | @username |
-| Target branch | main |
-| Base SHA | abc1234 |
-| Head SHA | def5678 |
-| Files changed | X |
-| Lines | +Y / -Z |
-| Commits | N |
+| PR # | #123 (omit for Full-repo audit) |
+| Title | [PR title] (omit for Full-repo audit) |
+| Author | @username (omit for Full-repo audit) |
+| Target branch | main (omit for Full-repo audit) |
+| Base SHA | abc1234 (omit for Full-repo audit) |
+| Head SHA | def5678 (omit for Full-repo audit) |
+| Files changed | X (in-scope file count for Full-repo audit) |
+| Lines | +Y / -Z (omit for Full-repo audit) |
+| Commits | N (omit for Full-repo audit) |
+| **Mode** | `Diff review` / `Full-repo audit` / `Re-review (delta)` |
+| **Agents spawned** | comma-separated agent IDs that actually ran |
+| **Orchestrator sweeps** | `1.6.a doc-drift`, `1.6.b repo-meta`, or `none (triggers not matched)` |
+| **Report status** | `COMPLETE` / `PARTIAL (gates failed: A,C)` |
 
 ## [REQUIRED] Summary
 
@@ -248,6 +252,8 @@ TEST(HandlerTest, Process_EmptyInput_ReturnsError) {
 
 ## [REQUIRED] Files Reviewed
 
+**Coverage:** In-scope file count: N. Files reviewed: N. Gaps: `none` OR explicit list of unreviewed files. Empty `Gaps:` value is forbidden — write `Gaps: none` when there are none.
+
 | File | Status | Issues (by severity) |
 |------|--------|----------------------|
 | `src/parser.cpp` | OK | 0 critical, 1 must-fix, 0 should-fix |
@@ -327,6 +333,50 @@ notable suppressions. "Clean" if nothing to report.]
 
 ---
 
+## [REQUIRED when Full-repo audit OR docs touched] Doc-vs-Code Drift
+
+Sourced from Phase 1.6.a sweep. Mark `N/A — no docs in scope` when neither
+trigger fires.
+
+| Doc location | Claim | Current reality | Severity |
+|---|---|---|---|
+| `README.md:N` | "All endpoints require authentication" | One or more routes lack an auth check | Must Fix |
+| `docs/ARCHITECTURE.md:N` | "3-tier architecture (frontend / API / DB)" | No frontend module; monolithic layout | Should Fix |
+| `docs/ARCHITECTURE.md:N` | "100% test coverage" | Coverage not measured | Should Fix |
+| `CHANGELOG.md:N` | Last entry version 2.0 | Packaging declares 1.4 | Should Fix |
+
+Per the Per-site enumeration rule, each row above also appears as an
+individual finding in the main Issues section.
+
+---
+
+## [REQUIRED when Full-repo audit OR meta files touched] Repo Hygiene & Process
+
+Sourced from Phase 1.6.b sweep. Mark `N/A — no meta files in scope` when
+neither trigger fires.
+
+| Check | Present? | Quality | Severity if missing/poor |
+|---|---|---|---|
+| `LICENSE` | Yes / No | matches README claim? | Must Fix (when README claims one) |
+| `CONTRIBUTING.md` | Yes / No | — | Should Fix |
+| `CODEOWNERS` | Yes / No | — | Should Fix (shared repos) |
+| `SECURITY.md` | Yes / No | — | Must Fix (when security findings ≥ 1) |
+| `.gitignore` | Yes / No | language-appropriate entries? | Should Fix per missing class |
+| `.pre-commit-config.yaml` | Yes / No | format + lint hooks? | Should Fix |
+| Packaging (`pyproject.toml` / `Cargo.toml` / `CMakeLists.txt` / `package.json`) | Yes / No | modern format? deps pinned? | Should Fix |
+| Matrix runner (`tox.ini` / `noxfile.py` / CI matrix) | Yes / No | covers supported versions? | Should Fix |
+| `.editorconfig` | Yes / No | — | Nitpick |
+| `.github/ISSUE_TEMPLATE/` | Yes / No | — | Nitpick (GitHub repos) |
+| `.github/pull_request_template.md` | Yes / No | — | Nitpick (GitHub repos) |
+| CI workflow quality | — | pinned actions, real secrets, deploy gated on success, matrix, cache, supported language versions | Must Fix per security/correctness gap |
+| Dockerfile quality (if present) | — | pinned base, layer hygiene, non-root, no baked secrets, `.dockerignore` | Must Fix per security gap |
+
+Per the Per-site enumeration rule, every missing or substandard item also
+appears as an individual finding in the main Issues section. This table is
+the orchestrator-sweep summary, not a replacement for per-item rows.
+
+---
+
 ## [OPTIONAL] Cleanup Confirmation
 
 - [ ] Local clone restored to original branch (`<orig_branch>`)
@@ -348,13 +398,22 @@ notable suppressions. "Clean" if nothing to report.]
 
 ## [REQUIRED] Checklist
 
-- [x] All files reviewed
-- [ ] Correctness verified - **1 issue found**
-- [ ] Language-specific best practices checked - **2 issues found**
+- [ ] All files reviewed
+- [ ] Correctness verified
+- [ ] Language-specific best practices checked
 - [ ] Code quality/smells checked
-- [x] Tests adequate - **1 function missing tests**
-- [ ] No security issues - **1 critical issue found**
-- [x] Architecture sound
+- [ ] Tests adequate
+- [ ] No security issues
+- [ ] Architecture sound
+
+### Pre-publish gates (SKILL.md Phase 4)
+
+- [ ] **Gate A — File coverage:** every in-scope file Read; Files Reviewed row count = in-scope file count; gaps enumerated explicitly (`Gaps: none` or list).
+- [ ] **Gate B — Per-site enumeration:** ≥ 2-site classes have one row per site; cross-cutting summaries are additive only.
+- [ ] **Gate C — Mode-fit:** spawned agents match Phase 0 mode + Phase 1.5 gate; Phase 1.6 sweeps fired when triggered.
+- [ ] **Gate D — Reconciliation:** sum(agent rows) + sum(sweep rows) = merged rows + named duplicates.
+
+If any gate is unchecked, the Header `Report status` MUST be `PARTIAL (gates failed: ...)`.
 
 ---
 

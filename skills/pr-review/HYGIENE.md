@@ -15,6 +15,19 @@ These rules apply to **every** invocation of the `pr-review` skill, regardless o
 
 **Do NOT post to GitHub by default.** A review run produces a local written report (file or chat output) only. Post to the PR (review comment, line comment, or `gh pr review`) **only** if the user explicitly says "post", "submit", "comment on the PR", or equivalent. When in doubt, save locally and ask.
 
+## Mode determination
+
+Every invocation runs in one of two modes (full table in SKILL.md Phase 0):
+
+- **Diff review** — a PR, a local branch vs `main`/`master`, or a re-review delta. Lite-mode gate (SKILL.md Phase 1.5) may apply.
+- **Full-repo audit** — user asks to "audit / review the repo / review the codebase", OR no git baseline exists (`main`/`master` both absent, or the path is not a git work tree). **Lite-mode is never available in this mode.** Every file under the audit root is in scope; the full agent fan-out plus both Phase 1.6 orchestrator sweeps run.
+
+Record the chosen mode in the report Header.
+
+## Synthesis ban
+
+"I'll synthesize the review directly without spawning agents" is never a valid mode. The failure mode this skill exists to prevent is exactly that shortcut. If the Data Package is too large to pass inline, save it to disk under `<repo-root>/.claude/pr-review-data-package.md` and have agents Read it from there. Token cost is never a reason to skip fan-out.
+
 ## Fresh-eyes rule (sub-agent invocations)
 
 When this skill is invoked from inside a sub-agent (i.e. the agent was spawned specifically to review a PR), treat the brief as the **only** context:
