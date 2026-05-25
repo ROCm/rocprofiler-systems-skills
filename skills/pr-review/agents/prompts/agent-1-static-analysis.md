@@ -28,6 +28,18 @@ Apply learned patterns:
    - info/medium -> Should Fix (50)
    - style/low -> Nitpick (20)
 
+5. **Annotation-absence patterns** (do not assume a tool ran; check by reading the source). For each pattern, MUST emit one finding per offending site:
+
+   | Pattern | Class tag | Severity |
+   |---------|-----------|----------|
+   | `switch` case that falls through to the next case without a `[[fallthrough]]` attribute on the line preceding the next `case:` / `default:`. Scan every `case` body for the absence of a terminating `break;` / `return;` / `throw;` / `[[noreturn]]` call. Do NOT collapse - one row per missing annotation. | `Static:missing-fallthrough` | Must Fix |
+   | `assert(expr)` where `expr` has side effects (`assert(x = compute())`, `assert(++i < n)`, `assert(map.insert(...).second)`); side effect vanishes in NDEBUG builds | `Static:side-effect-in-assert` | Must Fix |
+   | `for (size_t i = container.size() - 1; i >= 0; --i)` or any unsigned downward loop comparing `>= 0`; loop never terminates because `size_t` wraps | `Static:unsigned-wrap-loop` | Critical |
+   | `if (a < b < c)` style chained comparison; parses as `(a < b) < c`, comparing a bool against `c` | `Static:chained-comparison` | Must Fix |
+   | `sizeof(arr)/sizeof(arr[0])` where `arr` is a function parameter (already decayed to pointer); returns `sizeof(ptr)/sizeof(elem)` not the array length | `Static:sizeof-on-decayed` | Must Fix |
+   | `if (x == y)` where `x` or `y` is `float`/`double` AND there is no epsilon, no `std::isnan`, no `std::isfinite` guard nearby. Floating-point equality is generally a bug; even when one side is a literal, NaN propagation (`x == x` returns false if x is NaN) makes equality unreliable. Suggest `std::fabs(x - y) < eps` or named "near-equal" predicate. Note explicitly: `x == x` is false for NaN. | `Static:float-equality` | Must Fix |
+   | `printf` / `fprintf` / `snprintf` format string conversion mismatched against argument type (`%d` with `int64_t`, `%lu` with `size_t` on a platform where `size_t` is `unsigned long long`, `%s` with non-`char*`). Walk every format string in the file. | `Static:printf-format-mismatch` | Must Fix |
+
 ## Step 4: Return Findings
 
 | File:Line | Tool | Severity | Issue | Fix (if available) |
