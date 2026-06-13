@@ -134,11 +134,14 @@ def fetch_manifest(
         with urllib.request.urlopen(url, timeout=15) as resp:
             return url, json.load(resp)
     except urllib.error.HTTPError as exc:
-        if exc.code in (403, 404):
-            return url, None
-        raise
+        if exc.code not in (403, 404):
+            log(f"warn: HTTP {exc.code} fetching {url}: {exc.reason}")
+        return url, None
     except urllib.error.URLError as exc:
         log(f"warn: network error fetching {url}: {exc.reason}")
+        return url, None
+    except (json.JSONDecodeError, ValueError) as exc:
+        log(f"warn: invalid JSON manifest at {url}: {exc}")
         return url, None
 
 
@@ -160,7 +163,13 @@ def is_ancestor(repo: str, commit: str, pin: str) -> tuple[bool, dict[str, Any] 
     if data is None:
         return False, None
     status = data.get("status")
-    return status in ("identical", "ahead"), data
+    if status in ("identical", "ahead"):
+        return True, data
+    # GitHub can return status=null for very large diffs; fall back to the
+    # ancestry counts. behind_by == 0 means commit is reachable from pin.
+    if status is None and data.get("behind_by") == 0 and data.get("ahead_by") is not None:
+        return True, data
+    return False, data
 
 
 def parse_since(value: str) -> str:
@@ -361,7 +370,7 @@ def main(argv: list[str] | None = None) -> int:
         behind_by = cmp_data.get("behind_by")
         log(
             f"[{idx:>3}/{total}] run={run_id} created={created}"
-            f" pin={pin[:8]} status={status:<9}"
+            f" pin={pin[:8]} status={status or 'null':<9}"
             f" ahead_by={ahead_by} behind_by={behind_by}"
             f"{'  FOUND' if included else ''}"
         )

@@ -5,7 +5,7 @@ description: Find the first TheRock nightly build that includes a given rocm-sys
 
 # Find the First TheRock Nightly Build to Include a Commit
 
-Walks scheduled runs of the `Release portable Linux packages` workflow (the one that actually publishes nightly manifests to S3) on `ROCm/TheRock` in chronological order, starting at (or just before) the commit's date, and reports the first build whose `rocm-systems` `pin_sha` is an ancestor of (or equal to) the user's commit.
+Walks scheduled runs of the `Release portable Linux packages` workflow (the one that actually publishes nightly manifests to S3) on `ROCm/TheRock` in chronological order, starting at (or just before) the commit's date, and reports the first build whose `rocm-systems` `pin_sha` is a descendant of (or equal to) the user's commit — i.e. the commit is an ancestor of the build's `pin_sha`.
 
 Backed by an executable helper script: [find_first_build.py](find_first_build.py).
 
