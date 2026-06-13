@@ -25,6 +25,7 @@ import shutil
 import subprocess
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from typing import Any
 
@@ -74,7 +75,13 @@ def gh_json(*api_args: str, fatal: bool = True) -> Any:
     out = run_gh("api", *api_args, fatal=fatal)
     if out is None:
         return None
-    return json.loads(out)
+    try:
+        return json.loads(out)
+    except json.JSONDecodeError as exc:
+        if fatal:
+            die(EXIT_UPSTREAM, f"gh api {' '.join(api_args)} returned non-JSON: {exc}")
+        log(f"warn: gh api {' '.join(api_args)} returned non-JSON: {exc}")
+        return None
 
 
 def resolve_commit(repo: str, ref: str) -> tuple[str, dt.datetime]:
@@ -103,11 +110,13 @@ def list_nightly_runs(
     Filters ``event=schedule`` so manual re-runs and PR-triggered runs (which
     don't publish nightly artifacts to the canonical S3 path) are excluded.
     """
+    query = urllib.parse.urlencode(
+        {"per_page": 100, "event": "schedule", "created": f">={since_iso}"}
+    )
     raw = run_gh(
         "api",
         "--paginate",
-        f"repos/{THEROCK_REPO}/actions/workflows/{workflow_id}/runs"
-        f"?per_page=100&event=schedule&created=%3E%3D{since_iso}",
+        f"repos/{THEROCK_REPO}/actions/workflows/{workflow_id}/runs?{query}",
         "--jq",
         ".workflow_runs[] | {id, created_at, status, conclusion, head_branch, html_url}",
     )
