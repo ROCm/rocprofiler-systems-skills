@@ -2,3 +2,7 @@ planning/
 .vscode/
 .cursor/
 .claude/
+
+# Python
+__pycache__/
+*.py[cod]
