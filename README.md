@@ -332,6 +332,14 @@ Applied during implementation phase. For refactoring, ALL language-specific skil
 | `rocprofsys-configure` | Configure rocprofiler-systems build with CMake presets |
 | `rocprofsys-build` | Build, test, and install rocprofiler-systems |
 
+### TheRock Skills
+
+| Skill | Description |
+|-------|-------------|
+| `therock-build-to-commit` | Resolve a TheRock nightly build (URL or run-id) to the rocm-systems `pin_sha` it shipped |
+| `therock-commit-in-build` | Check whether a specific rocm-systems commit is included in a TheRock nightly build |
+| `therock-first-build-with-commit` | Find the first TheRock nightly build that contains a given rocm-systems commit |
+
 ### Git Skills
 
 | Skill | Description |
@@ -498,6 +506,13 @@ skills/
 │   └── SKILL.md
 ├── rocprofsys-build/           # Build rocprofsys project
 │   └── SKILL.md
+├── therock-build-to-commit/    # Resolve a TheRock nightly build to rocm-systems pin_sha
+│   └── SKILL.md
+├── therock-commit-in-build/    # Check if a rocm-systems commit is in a TheRock nightly build
+│   └── SKILL.md
+├── therock-first-build-with-commit/  # Find the first nightly build to include a commit
+│   ├── SKILL.md
+│   └── find_first_build.py     # Bundled helper script (Python)
 ├── exploration/                # Code exploration skills
 │   └── explore-code/           # Systematic codebase exploration
 │       └── SKILL.md
@@ -799,6 +814,73 @@ Build, test, and install rocprofiler-systems after configuration.
 - Build error handling (OOM, dependencies, linker errors)
 - Test result analysis
 - Installation and environment setup
+
+### TheRock Skills
+
+#### `therock-build-to-commit`
+Resolve a TheRock nightly build (URL or run-id) to the `rocm-systems` `pin_sha` it shipped.
+
+**Use when:**
+- User asks "what rocm-systems commit is in TheRock build X?"
+- User provides a nightly URL like `https://rocm.nightlies.amd.com/deb/YYYYMMDD-<RUN_ID>/...` or a bare run-id
+- Another skill needs the `pin_sha` for a build (e.g. `therock-commit-in-build`)
+
+**Features:**
+- Accepts full nightly URL, index path, or bare run-id
+- Parses the GitHub Actions run id from the input
+- Fetches `therock_manifest.json` from the public S3 artifact bucket
+- Extracts `pin_sha` for the `rocm-systems` submodule (overridable)
+- Reports `pin_sha`, GitHub tree URL, run URL, and manifest URL
+
+**Covers:**
+- Default `gpu_family=gfx94X-dcgpu` and `platform=linux`, with overrides
+- `jq` extraction with a `python3` fallback
+- Lists every `submodule_name` in the manifest when the requested one is missing
+- Recipe source: [Wiki - Helpful Links and Information](https://amd.atlassian.net/wiki/spaces/AGSRCIT/pages/1306934643)
+
+#### `therock-commit-in-build`
+Check whether a specific `rocm-systems` commit is included in a TheRock nightly build.
+
+**Use when:**
+- User asks "is commit `<sha>` in TheRock build `<X>`?"
+- User wants to confirm a fix has shipped in last night's build
+- A yes/no inclusion answer is needed (not just the `pin_sha`)
+
+**Features:**
+- Delegates to `therock-build-to-commit` to resolve the build's `pin_sha`
+- Uses `gh api repos/ROCm/rocm-systems/compare/<commit>...<pin_sha>` for an ancestry check
+- Maps GitHub `status` (`identical`, `ahead`, `behind`, `diverged`) to an included/not-included verdict
+- Returns `ahead_by` / `behind_by` counts and a compare URL for inspection
+
+**Covers:**
+- Pre-flight checks for `gh` availability and authentication (via `git-gh-client`)
+- Handling of forks, abbreviated SHAs, and unresolvable commits
+- Offline fallback note (`git merge-base --is-ancestor`)
+- Recipe source: [Wiki - Helpful Links and Information](https://amd.atlassian.net/wiki/spaces/AGSRCIT/pages/1306934643)
+
+#### `therock-first-build-with-commit`
+Find the first TheRock nightly build that contains a given `rocm-systems` commit. Backed by an executable helper script (`find_first_build.py`) — the first repo skill to ship one.
+
+**Use when:**
+- User asks "what is the first nightly build to include commit `<sha>`?"
+- User asks "has my fix shipped yet, and if so where can I grab it?"
+- Bisecting which nightly first contained a regression
+- Verifying a PR landed in a downstream consumer
+
+**Features:**
+- Bundled Python script with `--commit`, `--repo`, `--submodule`, `--gpu-family`, `--platform`, `--workflow`, `--since`, `--max-runs`, `--json` flags
+- Lists scheduled runs of `Release portable Linux packages` (workflow id `161312296` — the workflow that actually publishes nightly manifests to S3) since the commit date and walks them oldest-first
+- Fetches each build's `therock_manifest.json` from S3, skipping runs that did not publish artifacts
+- Stops on the first build where the ancestry check returns `identical` or `ahead`
+- Per-iteration progress on stderr; clean human or `--json` final result on stdout
+- Exit codes: `0` found, `3` invalid input, `4` upstream failure, `5` exhausted (kept distinct from Python's argparse `2`)
+
+**Covers:**
+- Pre-flight checks for `gh` availability and authentication (via `git-gh-client`)
+- Standard library only — no `pip install` required (`python3 >= 3.8`)
+- Bounded by GitHub Actions' ~90-day retention; documents how to widen via `--since` / `--max-runs`
+- PR-to-merge-commit resolution recipe so the user doesn't pass `head_sha` by mistake
+- Recipe source: [Wiki - Helpful Links and Information](https://amd.atlassian.net/wiki/spaces/AGSRCIT/pages/1306934643)
 
 ### Exploration Skills
 
