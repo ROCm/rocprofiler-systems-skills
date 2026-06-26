@@ -17,14 +17,15 @@ Use this skill when:
 
 Unless the user says otherwise, this skill targets the `rocm-systems` repository (`ROCm/rocm-systems`).
 
+Run URLs for current nightlies are on [`ROCm/rockrel`](https://github.com/ROCm/rockrel/actions/workflows/multi_arch_release.yml); legacy pre-June-2026 runs are on `ROCm/TheRock`. See [therock-build-to-commit](../therock-build-to-commit/SKILL.md) for manifest and packages URL patterns.
+
 ## Inputs
 
 | Input | Required | Notes |
 |-------|----------|-------|
 | Commit SHA | yes | Full 40-char SHA recommended; minimum 7 chars; must be a commit on `ROCm/rocm-systems` (or reachable from a tag/branch there) |
-| Build URL or run-id | yes | Same forms accepted by `therock-build-to-commit` |
-| `gpu_family` | no | Default `gfx94X-dcgpu` (forwarded to `therock-build-to-commit`) |
-| `platform` | no | Default `linux` (forwarded to `therock-build-to-commit`) |
+| Build URL or run-id | yes | Current: `packages-multi-arch/deb/...` URL, index path, or bare run-id. Legacy `/deb/...` URLs still parse. |
+| `platform` | no | Default `linux` (forwarded to manifest fetch) |
 
 ## Prerequisites
 
@@ -43,7 +44,7 @@ gh api repos/ROCm/rocm-systems/commits/<COMMIT_SHA> --jq '.sha' >/dev/null && ec
 
 ### Phase 1: Resolve the Build to a pin_sha
 
-Invoke `therock-build-to-commit` with the user's build URL/run-id (and any `gpu_family` / `platform` overrides). Capture the reported `pin_sha`.
+Invoke `therock-build-to-commit` with the user's build URL/run-id (and any `platform` overrides). Capture the reported `pin_sha`.
 
 Do not re-implement the manifest fetch here - delegate to keep behavior consistent.
 

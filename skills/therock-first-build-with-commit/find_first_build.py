@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """Find the first TheRock nightly build that includes a given rocm-systems commit.
 
-Walks scheduled runs of the ``Release portable Linux packages`` workflow on
-``ROCm/TheRock`` (the workflow that publishes nightly manifests to S3) in
-chronological order starting at (or just before) the commit's committer date,
-fetches each run's ``therock_manifest.json``, and uses the GitHub compare API
-to determine whether the commit is an ancestor of the manifest's ``pin_sha``.
-Stops on the first match.
+Walks scheduled runs of the ``Multi-Arch Release`` workflow on ``ROCm/rockrel``
+(the workflow that currently publishes nightly manifests to S3) in chronological
+order starting at (or just before) the commit's committer date, fetches each
+run's ``therock_manifest.json``, and uses the GitHub compare API to determine
+whether the commit is an ancestor of the manifest's ``pin_sha``. Stops on the
+first match.
+
+Legacy nightlies (before mid-June 2026) used ``Release portable Linux packages``
+on ``ROCm/TheRock`` (workflow id ``161312296``, now deleted). Pass ``--legacy``
+to walk those runs instead of the current ``ROCm/rockrel`` workflow.
 
 Exit codes:
   0  - found
@@ -31,12 +35,17 @@ from typing import Any
 
 DEFAULT_REPO = "ROCm/rocm-systems"
 DEFAULT_SUBMODULE = "rocm-systems"
-DEFAULT_GPU_FAMILY = "gfx94X-dcgpu"
+DEFAULT_GPU_FAMILY = "gfx94X-dcgpu"  # legacy per-family manifest layout only
 DEFAULT_PLATFORM = "linux"
-DEFAULT_WORKFLOW_ID = 161312296  # Release portable Linux packages (nightly)
+DEFAULT_WORKFLOW_ID = 265449761  # Multi-Arch Release (nightly) on ROCm/rockrel
+DEFAULT_WORKFLOW_REPO = "ROCm/rockrel"
+LEGACY_WORKFLOW_ID = (
+    161312296  # Release portable Linux packages on ROCm/TheRock (deleted)
+)
+LEGACY_WORKFLOW_REPO = "ROCm/TheRock"
 DEFAULT_MAX_RUNS = 90
-THEROCK_REPO = "ROCm/TheRock"
 S3_BASE = "https://therock-nightly-artifacts.s3.amazonaws.com"
+NIGHTLIES_BASE = "https://rocm.nightlies.amd.com"
 
 EXIT_FOUND = 0
 EXIT_INVALID_INPUT = 3
@@ -103,7 +112,7 @@ def resolve_commit(repo: str, ref: str) -> tuple[str, dt.datetime]:
 
 
 def list_nightly_runs(
-    workflow_id: int, since_iso: str, max_runs: int
+    workflow_repo: str, workflow_id: int, since_iso: str, max_runs: int
 ) -> list[dict[str, Any]]:
     """Return scheduled nightly runs at/after ``since_iso``, oldest first.
 
@@ -116,7 +125,7 @@ def list_nightly_runs(
     raw = run_gh(
         "api",
         "--paginate",
-        f"repos/{THEROCK_REPO}/actions/workflows/{workflow_id}/runs?{query}",
+        f"repos/{workflow_repo}/actions/workflows/{workflow_id}/runs?{query}",
         "--jq",
         ".workflow_runs[] | {id, created_at, status, conclusion, head_branch, html_url}",
     )
@@ -135,23 +144,67 @@ def list_nightly_runs(
     return runs[:max_runs]
 
 
-def fetch_manifest(
-    run_id: int, platform: str, gpu_family: str
-) -> tuple[str, dict[str, Any] | None]:
-    url = f"{S3_BASE}/{run_id}-{platform}/manifests/{gpu_family}/therock_manifest.json"
+def manifest_candidate_urls(run_id: int, platform: str, gpu_family: str) -> list[str]:
+    """Return manifest URLs to try, current layout first then legacy per-GPU-family."""
+    base = f"{S3_BASE}/{run_id}-{platform}/manifests"
+    return [
+        f"{base}/therock_manifest.json",
+        f"{base}/{gpu_family}/therock_manifest.json",
+    ]
+
+
+def _fetch_manifest_url(url: str) -> dict[str, Any] | None:
     try:
         with urllib.request.urlopen(url, timeout=15) as resp:
-            return url, json.load(resp)
+            return json.load(resp)
     except urllib.error.HTTPError as exc:
         if exc.code not in (403, 404):
             log(f"warn: HTTP {exc.code} fetching {url}: {exc.reason}")
-        return url, None
+        return None
     except urllib.error.URLError as exc:
         log(f"warn: network error fetching {url}: {exc.reason}")
-        return url, None
+        return None
     except (json.JSONDecodeError, ValueError) as exc:
         log(f"warn: invalid JSON manifest at {url}: {exc}")
-        return url, None
+        return None
+
+
+def fetch_manifest(
+    run_id: int, platform: str, gpu_family: str
+) -> tuple[str, dict[str, Any] | None]:
+    urls = manifest_candidate_urls(run_id, platform, gpu_family)
+    last_url = urls[0]
+    for url in urls:
+        last_url = url
+        manifest = _fetch_manifest_url(url)
+        if manifest is not None:
+            return url, manifest
+    return last_url, None
+
+
+def date_prefix_from_package_version(version: str | None) -> str | None:
+    """Extract YYYYMMDD from ``rocm_package_version`` like ``7.14.0a20260624``."""
+    if not version:
+        return None
+    suffix = version.rsplit("a", 1)[-1]
+    if len(suffix) == 8 and suffix.isdigit():
+        return suffix
+    return None
+
+
+def packages_index_url(run_id: int, date_prefix: str | None) -> str | None:
+    if not date_prefix:
+        return None
+    return f"{NIGHTLIES_BASE}/packages-multi-arch/deb/{date_prefix}-{run_id}/index.html"
+
+
+def tarball_url(rocm_package_version: str | None) -> str | None:
+    if not rocm_package_version:
+        return None
+    return (
+        f"{NIGHTLIES_BASE}/tarball-multi-arch/"
+        f"therock-dist-linux-multiarch-{rocm_package_version}.tar.gz"
+    )
 
 
 def pin_sha_for(manifest: dict[str, Any], submodule: str) -> str | None:
@@ -176,7 +229,11 @@ def is_ancestor(repo: str, commit: str, pin: str) -> tuple[bool, dict[str, Any] 
         return True, data
     # GitHub can return status=null for very large diffs; fall back to the
     # ancestry counts. behind_by == 0 means commit is reachable from pin.
-    if status is None and data.get("behind_by") == 0 and data.get("ahead_by") is not None:
+    if (
+        status is None
+        and data.get("behind_by") == 0
+        and data.get("ahead_by") is not None
+    ):
         return True, data
     return False, data
 
@@ -216,7 +273,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--gpu-family",
         default=DEFAULT_GPU_FAMILY,
-        help="Manifest folder name under manifests/ in the artifact bucket.",
+        help=(
+            "Legacy manifest folder name for older builds that published "
+            "per-GPU-family manifests under manifests/<family>/."
+        ),
     )
     p.add_argument(
         "--platform",
@@ -225,13 +285,29 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Platform segment of the artifact bucket prefix.",
     )
     p.add_argument(
+        "--legacy",
+        action="store_true",
+        help=(
+            "Walk legacy TheRock nightlies (ROCm/TheRock workflow 161312296) "
+            "instead of current ROCm/rockrel Multi-Arch Release (265449761). "
+            "Use for commits first shipped before the mid-June 2026 migration."
+        ),
+    )
+    p.add_argument(
+        "--workflow-repo",
+        default=None,
+        help=(
+            "GitHub repo hosting the nightly workflow (OWNER/REPO). "
+            "Default: ROCm/rockrel (or ROCm/TheRock with --legacy)."
+        ),
+    )
+    p.add_argument(
         "--workflow",
         type=int,
-        default=DEFAULT_WORKFLOW_ID,
+        default=None,
         help=(
-            "TheRock workflow id to enumerate runs from "
-            "(default: Release portable Linux packages, the workflow that "
-            "publishes nightly manifests to S3)."
+            "Workflow id to enumerate scheduled runs from. "
+            "Default: 265449761 on ROCm/rockrel (or 161312296 with --legacy)."
         ),
     )
     p.add_argument(
@@ -268,26 +344,40 @@ def format_human(result: dict[str, Any]) -> str:
     pin = b["pin_sha"]
     short_pin = pin[:8]
     short_commit = result["commit"][:8]
-    return "\n".join(
-        [
-            f"First nightly build to include {result['commit']}:",
-            f"  run_id:           {b['run_id']}",
-            f"  created_at:       {b['created_at']}",
-            f"  the_rock_commit:  {b['the_rock_commit']}",
-            f"  pin_sha:          {pin}",
-            f"  Repo snapshot:    https://github.com/{result['repo']}/tree/{pin}",
-            f"  GitHub Actions:   {b['run_url']}",
-            f"  Compare:          https://github.com/{result['repo']}/compare/"
-            f"{short_commit}...{short_pin}  (full URL below)",
-            f"  Compare (full):   {b['compare_url']}",
-            f"  Manifest:         {b['manifest_url']}",
-        ]
-    )
+    lines = [
+        f"First nightly build to include {result['commit']}:",
+        f"  run_id:           {b['run_id']}",
+        f"  created_at:       {b['created_at']}",
+        f"  the_rock_commit:  {b['the_rock_commit']}",
+        f"  pin_sha:          {pin}",
+        f"  Repo snapshot:    https://github.com/{result['repo']}/tree/{pin}",
+        f"  GitHub Actions:   {b['run_url']}",
+        f"  Compare:          https://github.com/{result['repo']}/compare/"
+        f"{short_commit}...{short_pin}  (full URL below)",
+        f"  Compare (full):   {b['compare_url']}",
+        f"  Manifest:         {b['manifest_url']}",
+    ]
+    if b.get("packages_url"):
+        lines.append(f"  Packages:         {b['packages_url']}")
+    if b.get("tarball_url"):
+        lines.append(f"  Tarball:          {b['tarball_url']}")
+    return "\n".join(lines)
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
+
+    if args.legacy:
+        workflow_repo = LEGACY_WORKFLOW_REPO
+        workflow_id = LEGACY_WORKFLOW_ID
+    else:
+        workflow_repo = DEFAULT_WORKFLOW_REPO
+        workflow_id = DEFAULT_WORKFLOW_ID
+    if args.workflow_repo is not None:
+        workflow_repo = args.workflow_repo
+    if args.workflow is not None:
+        workflow_id = args.workflow
 
     log(f"Resolving commit {args.commit} on {args.repo}...")
     full_sha, committer_when = resolve_commit(args.repo, args.commit)
@@ -299,11 +389,11 @@ def main(argv: list[str] | None = None) -> int:
     else:
         since_date = args.since
     log(
-        f"Listing scheduled runs of workflow {args.workflow} since"
-        f" {since_date} (max {args.max_runs})..."
+        f"Listing scheduled runs of {workflow_repo} workflow {workflow_id}"
+        f" since {since_date} (max {args.max_runs})..."
     )
 
-    runs = list_nightly_runs(args.workflow, since_date, args.max_runs)
+    runs = list_nightly_runs(workflow_repo, workflow_id, since_date, args.max_runs)
     if not runs:
         log("No nightly runs found in the window.")
         result = {
@@ -311,6 +401,8 @@ def main(argv: list[str] | None = None) -> int:
             "commit": full_sha,
             "repo": args.repo,
             "since": since_date,
+            "workflow_repo": workflow_repo,
+            "workflow_id": workflow_id,
             "inspected_runs": 0,
             "inspected": [],
         }
@@ -397,16 +489,21 @@ def main(argv: list[str] | None = None) -> int:
 
         if included:
             the_rock_commit = manifest.get("the_rock_commit")
+            rocm_package_version = manifest.get("rocm_package_version")
+            date_prefix = date_prefix_from_package_version(rocm_package_version)
             result = {
                 "found": True,
                 "commit": full_sha,
                 "repo": args.repo,
                 "since": since_date,
+                "workflow_repo": workflow_repo,
+                "workflow_id": workflow_id,
                 "inspected_runs": idx,
                 "first_build": {
                     "run_id": run_id,
                     "created_at": created,
                     "the_rock_commit": the_rock_commit,
+                    "rocm_package_version": rocm_package_version,
                     "pin_sha": pin,
                     "compare_status": status,
                     "compare_url": (
@@ -415,9 +512,11 @@ def main(argv: list[str] | None = None) -> int:
                     "snapshot_url": f"https://github.com/{args.repo}/tree/{pin}",
                     "run_url": run.get(
                         "html_url",
-                        f"https://github.com/{THEROCK_REPO}/actions/runs/{run_id}",
+                        f"https://github.com/{workflow_repo}/actions/runs/{run_id}",
                     ),
                     "manifest_url": manifest_url,
+                    "packages_url": packages_index_url(run_id, date_prefix),
+                    "tarball_url": tarball_url(rocm_package_version),
                 },
                 "inspected": inspected,
             }
@@ -432,6 +531,8 @@ def main(argv: list[str] | None = None) -> int:
         "commit": full_sha,
         "repo": args.repo,
         "since": since_date,
+        "workflow_repo": workflow_repo,
+        "workflow_id": workflow_id,
         "inspected_runs": len(inspected),
         "inspected": inspected,
     }

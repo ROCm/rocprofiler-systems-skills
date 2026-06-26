@@ -5,7 +5,9 @@ description: Find the first TheRock nightly build that includes a given rocm-sys
 
 # Find the First TheRock Nightly Build to Include a Commit
 
-Walks scheduled runs of the `Release portable Linux packages` workflow (the one that actually publishes nightly manifests to S3) on `ROCm/TheRock` in chronological order, starting at (or just before) the commit's date, and reports the first build whose `rocm-systems` `pin_sha` is a descendant of (or equal to) the user's commit — i.e. the commit is an ancestor of the build's `pin_sha`.
+Walks scheduled runs of the [**Multi-Arch Release**](https://github.com/ROCm/rockrel/actions/workflows/multi_arch_release.yml) workflow on `ROCm/rockrel` (workflow id `265449761` — the workflow that currently publishes nightly manifests to S3) in chronological order, starting at (or just before) the commit's date, and reports the first build whose `rocm-systems` `pin_sha` is a descendant of (or equal to) the user's commit — i.e. the commit is an ancestor of the build's `pin_sha`.
+
+**Legacy:** Before mid-June 2026, nightlies used `Release portable Linux packages` on `ROCm/TheRock` (workflow id `161312296`, now deleted). For commits first shipped in that era, pass `--legacy` (equivalent to `--workflow-repo ROCm/TheRock --workflow 161312296`). The default `rockrel` walk may report a **later** run as "first" if the commit actually shipped in an earlier TheRock nightly.
 
 Backed by an executable helper script: [find_first_build.py](find_first_build.py).
 
@@ -26,9 +28,11 @@ Unless the user says otherwise, this skill targets the `rocm-systems` submodule 
 | `--commit SHA` | yes | - | Full 40-char SHA preferred (>= 7 chars); must be visible on `--repo` |
 | `--repo OWNER/REPO` | no | `ROCm/rocm-systems` | The repo that hosts the commit |
 | `--submodule NAME` | no | `rocm-systems` | Submodule name in `therock_manifest.json` |
-| `--gpu-family FAMILY` | no | `gfx94X-dcgpu` | Manifest folder name; `pin_sha` is identical across families, so any one is fine |
+| `--gpu-family FAMILY` | no | `gfx94X-dcgpu` | **Legacy only** — fallback path for older builds with per-GPU-family manifests |
 | `--platform {linux,windows}` | no | `linux` | Bucket prefix segment |
-| `--workflow ID` | no | `161312296` | TheRock's `Release portable Linux packages` workflow id (the one that publishes nightly manifests). `CI Nightly` (id `171171403`) does *not* publish to the canonical S3 path. |
+| `--legacy` | no | off | Walk `ROCm/TheRock` workflow `161312296` instead of current `ROCm/rockrel` / `265449761` |
+| `--workflow-repo OWNER/REPO` | no | `ROCm/rockrel` | Override repo hosting the nightly workflow (`ROCm/TheRock` with `--legacy`) |
+| `--workflow ID` | no | `265449761` | Override workflow id (`161312296` with `--legacy`) |
 | `--since YYYY-MM-DD` | no | commit date minus 1 day | Lower bound for the run listing |
 | `--max-runs N` | no | `90` | Caps the linear walk (Actions retention is ~90 days) |
 | `--json` | no | off | Emit final result as JSON on stdout (per-iteration progress still goes to stderr) |
@@ -78,44 +82,54 @@ Use `merge_commit_sha` (the commit that landed on the base branch) - **not** `he
 
 ## Examples
 
-### Example 1: Commit landed today, find the next nightly
+### Example 1: Recent commit — first rockrel nightly
 
 ```bash
 SKILL_DIR=~/.claude/skills/therock-first-build-with-commit
 python3 "$SKILL_DIR/find_first_build.py" \
-  --commit 570dcd3205005305b32b50996be1d7154d399c4a
+  --commit d22352b782e728115786965046088fc4a71341fb
 ```
 
 Sample stderr (progress):
 
 ```text
-Resolving commit 570dcd3205005305b32b50996be1d7154d399c4a on ROCm/rocm-systems...
-  full sha: 570dcd3205005305b32b50996be1d7154d399c4a
-  committed: 2026-05-28T16:08:55+00:00
-Listing scheduled runs of workflow 161312296 since 2026-05-27 (max 90)...
-Inspecting 8 runs in chronological order.
-[  1/8] run=26552616764 created=2026-05-28T03:21:11Z pin=ed975342 status=behind    ahead_by=0 behind_by=212
-[  2/8] run=26615892682 created=2026-05-29T03:19:41Z pin=4a30df8d status=behind    ahead_by=0 behind_by=75
-[  3/8] run=26673017729 created=2026-05-30T03:16:41Z pin=cb656124 status=behind    ahead_by=0 behind_by=7
-[  4/8] run=26701995708 created=2026-05-31T03:19:59Z pin=cb656124 status=behind    ahead_by=0 behind_by=7
-[  5/8] run=26733368587 created=2026-06-01T03:21:50Z pin=cb656124 status=behind    ahead_by=0 behind_by=7
-[  6/8] run=26796279962 created=2026-06-02T03:21:38Z pin=b8c378ef status=ahead     ahead_by=52 behind_by=0  FOUND
+Resolving commit d22352b782e728115786965046088fc4a71341fb on ROCm/rocm-systems...
+  committed: 2026-06-19T17:02:00+00:00
+Listing scheduled runs of ROCm/rockrel workflow 265449761 since 2026-06-18 (max 90)...
+Inspecting 9 runs in chronological order.
+[  1/9] run=27728528519 created=2026-06-18T00:25:59Z pin=7ced1a66 status=behind    ahead_by=0 behind_by=205
+[  2/9] run=27797822902 created=2026-06-19T00:29:01Z pin=7ced1a66 status=behind    ahead_by=0 behind_by=205
+[  3/9] run=27854481844 created=2026-06-20T00:21:36Z pin=a0952b2b status=behind    ahead_by=0 behind_by=30
+[  6/9] run=27993312669 created=2026-06-23T00:22:14Z pin=971dc690 status=ahead     ahead_by=34 behind_by=0  FOUND
 ```
 
 Sample stdout (final result):
 
 ```text
-First nightly build to include 570dcd3205005305b32b50996be1d7154d399c4a:
-  run_id:           26796279962
-  created_at:       2026-06-02T03:21:38Z
-  the_rock_commit:  412f3070ee240a2bd4df70b04d699c6cad7d3b09
-  pin_sha:          b8c378ef2c7220a68122d13b81dab5addd61e016
-  Repo snapshot:    https://github.com/ROCm/rocm-systems/tree/b8c378ef2c7220a68122d13b81dab5addd61e016
-  GitHub Actions:   https://github.com/ROCm/TheRock/actions/runs/26796279962
-  Compare:          https://github.com/ROCm/rocm-systems/compare/570dcd32...b8c378ef  (full URL below)
-  Compare (full):   https://github.com/ROCm/rocm-systems/compare/570dcd3205005305b32b50996be1d7154d399c4a...b8c378ef2c7220a68122d13b81dab5addd61e016
-  Manifest:         https://therock-nightly-artifacts.s3.amazonaws.com/26796279962-linux/manifests/gfx94X-dcgpu/therock_manifest.json
+First nightly build to include d22352b782e728115786965046088fc4a71341fb:
+  run_id:           27993312669
+  created_at:       2026-06-23T00:22:14Z
+  the_rock_commit:  86af3706e7bf2e43f673dbf2f9038e226ede3af7
+  pin_sha:          971dc6904568e810f00473760000939deaf30e84
+  Repo snapshot:    https://github.com/ROCm/rocm-systems/tree/971dc6904568e810f00473760000939deaf30e84
+  GitHub Actions:   https://github.com/ROCm/rockrel/actions/runs/27993312669
+  Compare (full):   https://github.com/ROCm/rocm-systems/compare/d22352b782e728115786965046088fc4a71341fb...971dc6904568e810f00473760000939deaf30e84
+  Manifest:         https://therock-nightly-artifacts.s3.amazonaws.com/27993312669-linux/manifests/therock_manifest.json
+  Packages:         https://rocm.nightlies.amd.com/packages-multi-arch/deb/20260623-27993312669/index.html
+  Tarball:          https://rocm.nightlies.amd.com/tarball-multi-arch/therock-dist-linux-multiarch-7.14.0a20260623.tar.gz
 ```
+
+### Example 1b: Pre-migration commit — use `--legacy`
+
+For commits first shipped before the `rockrel` migration (~2026-06-12), walk the deleted TheRock workflow:
+
+```bash
+python3 "$SKILL_DIR/find_first_build.py" \
+  --commit 570dcd3205005305b32b50996be1d7154d399c4a \
+  --legacy
+```
+
+Legacy run URLs use `https://github.com/ROCm/TheRock/actions/runs/<RUN_ID>` and per-GPU-family manifest paths.
 
 ### Example 2: Commit hasn't shipped yet
 
@@ -174,7 +188,7 @@ No files are written.
 | Passing a PR number instead of a SHA | Resolve via `gh api repos/.../pulls/<N> --jq .merge_commit_sha` first |
 | Passing the PR's `head_sha` instead of `merge_commit_sha` | The head SHA may not exist on the base branch (especially after squash); always use `merge_commit_sha` |
 | Setting `--since` *after* the commit's committer date | The walk would skip the very window where the fix could appear; if unsure, omit `--since` and let the default handle it |
-| Assuming `pin_sha` varies by GPU family | It does not - the script always queries one family because all families pin the same `rocm-systems` SHA |
+| Assuming `pin_sha` varies by architecture | It does not — multi-arch nightlies publish one manifest; `pin_sha` is the same everywhere |
 | Treating exit code `5` as a script failure | Exit code `5` means "no nightly in the window contains the commit yet" - rerun later or widen `--max-runs` / `--since`. (Note: argparse uses exit `2` for CLI errors like missing `--commit`, so `5` lets callers distinguish "no match" from "bad invocation".) |
 | Reading from stdout while the script is still running | Per-iteration progress goes to stderr; redirect appropriately (`2>progress.log` or just observe both) |
 
@@ -184,11 +198,13 @@ No files are written.
 
 Cause: not every workflow run publishes artifacts. Failed, cancelled, or in-progress runs typically have no manifest. The script skips them and continues.
 
-If *all* runs are skipped, the more likely cause is wrong `--platform` or `--gpu-family`. Verify against one known-good build first using [therock-build-to-commit](../therock-build-to-commit/SKILL.md):
+If *all* runs are skipped, verify manifest availability against one known-good build using [therock-build-to-commit](../therock-build-to-commit/SKILL.md):
 
 ```bash
-curl -fsSL https://therock-nightly-artifacts.s3.amazonaws.com/<RUN_ID>-linux/manifests/gfx94X-dcgpu/therock_manifest.json | head -c 200
+curl -fsSL https://therock-nightly-artifacts.s3.amazonaws.com/<RUN_ID>-linux/manifests/therock_manifest.json | head -c 200
 ```
+
+For legacy builds, fall back to `.../manifests/gfx94X-dcgpu/therock_manifest.json`.
 
 ### `gh` rate-limit errors
 
@@ -231,7 +247,7 @@ Decision matrix:
 
 ## Notes
 
-- This is the first skill in this repository to ship an executable helper script. The rationale: this lookup has multiple knobs (`--commit`, `--repo`, `--submodule`, `--gpu-family`, `--platform`, `--workflow`, `--since`, `--max-runs`, `--json`), needs structured per-iteration progress, and is most useful when reusable from a shell prompt or CI - not just from inside an agent session.
+- This is the first skill in this repository to ship an executable helper script. The rationale: this lookup has multiple knobs (`--commit`, `--repo`, `--submodule`, `--platform`, `--legacy`, `--workflow`, `--workflow-repo`, `--since`, `--max-runs`, `--json`), needs structured per-iteration progress, and is most useful when reusable from a shell prompt or CI - not just from inside an agent session.
 - Standard library only; no `pip install` required.
 - Bounded by GitHub Actions' default 90-day retention - older commits may not be locatable via this method even if they did ship.
 - Source recipe: [Wiki - Helpful Links and Information](https://amd.atlassian.net/wiki/spaces/AGSRCIT/pages/1306934643), *TheRock Nightly Builds* section.

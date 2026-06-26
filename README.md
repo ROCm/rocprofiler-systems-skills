@@ -822,18 +822,19 @@ Resolve a TheRock nightly build (URL or run-id) to the `rocm-systems` `pin_sha` 
 
 **Use when:**
 - User asks "what rocm-systems commit is in TheRock build X?"
-- User provides a nightly URL like `https://rocm.nightlies.amd.com/deb/YYYYMMDD-<RUN_ID>/...` or a bare run-id
+- User provides a nightly URL like `https://rocm.nightlies.amd.com/packages-multi-arch/deb/YYYYMMDD-<RUN_ID>/...` (or legacy `/deb/...`) or a bare run-id
 - Another skill needs the `pin_sha` for a build (e.g. `therock-commit-in-build`)
 
 **Features:**
-- Accepts full nightly URL, index path, or bare run-id
+- Accepts full nightly URL (current multi-arch or legacy), index path, or bare run-id
 - Parses the GitHub Actions run id from the input
-- Fetches `therock_manifest.json` from the public S3 artifact bucket
+- Fetches `therock_manifest.json` from the public S3 artifact bucket (`.../manifests/therock_manifest.json`, with legacy per-GPU-family fallback)
 - Extracts `pin_sha` for the `rocm-systems` submodule (overridable)
-- Reports `pin_sha`, GitHub tree URL, run URL, and manifest URL
+- Reports `pin_sha`, `rocm_package_version`, GitHub tree URL, run URL, manifest URL, packages index URL, and tarball URL
 
 **Covers:**
-- Default `gpu_family=gfx94X-dcgpu` and `platform=linux`, with overrides
+- Current multi-arch layout (`packages-multi-arch`, flat manifest path, `tarball-multi-arch`)
+- Legacy `/deb/` packages URLs and per-`gpu_family` manifest paths for older builds
 - `jq` extraction with a `python3` fallback
 - Lists every `submodule_name` in the manifest when the requested one is missing
 - Recipe source: [Wiki - Helpful Links and Information](https://amd.atlassian.net/wiki/spaces/AGSRCIT/pages/1306934643)
@@ -848,6 +849,7 @@ Check whether a specific `rocm-systems` commit is included in a TheRock nightly 
 
 **Features:**
 - Delegates to `therock-build-to-commit` to resolve the build's `pin_sha`
+- Accepts current `packages-multi-arch/deb/...` nightly URLs (and legacy `/deb/...`)
 - Uses `gh api repos/ROCm/rocm-systems/compare/<commit>...<pin_sha>` for an ancestry check
 - Maps GitHub `status` (`identical`, `ahead`, `behind`, `diverged`) to an included/not-included verdict
 - Returns `ahead_by` / `behind_by` counts and a compare URL for inspection
@@ -868,11 +870,11 @@ Find the first TheRock nightly build that contains a given `rocm-systems` commit
 - Verifying a PR landed in a downstream consumer
 
 **Features:**
-- Bundled Python script with `--commit`, `--repo`, `--submodule`, `--gpu-family`, `--platform`, `--workflow`, `--since`, `--max-runs`, `--json` flags
-- Lists scheduled runs of `Release portable Linux packages` (workflow id `161312296` — the workflow that actually publishes nightly manifests to S3) since the commit date and walks them oldest-first
-- Fetches each build's `therock_manifest.json` from S3, skipping runs that did not publish artifacts
+- Bundled Python script with `--commit`, `--repo`, `--submodule`, `--platform`, `--legacy`, `--workflow`, `--workflow-repo`, `--since`, `--max-runs`, `--json` flags (`--gpu-family` for legacy manifest fallback only)
+- Lists scheduled runs of [**Multi-Arch Release**](https://github.com/ROCm/rockrel/actions/workflows/multi_arch_release.yml) on `ROCm/rockrel` (workflow id `265449761`) since the commit date and walks them oldest-first
+- Fetches each build's `therock_manifest.json` from S3 (current flat path first, legacy per-GPU-family fallback), skipping runs that did not publish artifacts
 - Stops on the first build where the ancestry check returns `identical` or `ahead`
-- Per-iteration progress on stderr; clean human or `--json` final result on stdout
+- Per-iteration progress on stderr; clean human or `--json` final result on stdout (includes packages and tarball URLs when available)
 - Exit codes: `0` found, `3` invalid input, `4` upstream failure, `5` exhausted (kept distinct from Python's argparse `2`)
 
 **Covers:**
@@ -880,6 +882,7 @@ Find the first TheRock nightly build that contains a given `rocm-systems` commit
 - Standard library only — no `pip install` required (`python3 >= 3.8`)
 - Bounded by GitHub Actions' ~90-day retention; documents how to widen via `--since` / `--max-runs`
 - PR-to-merge-commit resolution recipe so the user doesn't pass `head_sha` by mistake
+- `--legacy` flag for commits first shipped in pre-migration `ROCm/TheRock` nightlies
 - Recipe source: [Wiki - Helpful Links and Information](https://amd.atlassian.net/wiki/spaces/AGSRCIT/pages/1306934643)
 
 ### Exploration Skills
