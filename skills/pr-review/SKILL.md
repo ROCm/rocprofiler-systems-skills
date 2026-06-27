@@ -222,6 +222,14 @@ Architecture Agent fires only when the architectural-signal table below matches.
 
 Wait for all spawned agents from Phase 1.5. Then:
 
+### 2.0 Verify before blocking (orchestrator responsibility)
+
+Sub-agent findings are **leads, not verified facts**. Before promoting any finding to **Critical** or **Must Fix** in the final report, the orchestrator MUST independently confirm it against the actual source — do not pass a sub-agent's correctness claim straight into a blocking bucket on trust.
+
+In particular, when a finding's severity depends on the behavior of a **library, framework, macro, or external API** (e.g. "this logging call can throw", "this API allocates", "this macro expands to X"), read the relevant definition/source before blocking on it. Tracing the *call path* to a library boundary is not enough — confirm what that library actually *does* (e.g. does it catch internally? is the throwing path reachable with these inputs?). The higher the severity assigned, the stronger the verification owed.
+
+If verification is impractical within the run, do **not** mark it Critical/Must Fix — record it as a "Should Fix / needs confirmation" item stating the unverified assumption explicitly, so the author isn't handed a blocking claim that may be wrong.
+
 ### 2.1 Severity scale (used by every agent)
 
 | Category | Score | Criteria |
