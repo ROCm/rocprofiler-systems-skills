@@ -224,6 +224,11 @@ curl -fsSL "https://therock-nightly-artifacts.s3.amazonaws.com/${RUN_ID}-linux/m
 RUN_ID=28066115163
 curl -fsSL "https://therock-nightly-artifacts.s3.amazonaws.com/${RUN_ID}-linux/manifests/therock_manifest.json" \
   | jq '{the_rock_commit, rocm_package_version, rocm_systems_pin: (.submodules[] | select(.submodule_name=="rocm-systems") | .pin_sha)}'
+# -> {
+#      "the_rock_commit": "f1e3fc2311fde45bf3e17b0e3349200be9caa4b4",
+#      "rocm_package_version": "7.14.0a20260624",
+#      "rocm_systems_pin": "8b2f7145a33519b7f397b1c3636abddb7823538f"
+#    }
 ```
 
 ## Output
