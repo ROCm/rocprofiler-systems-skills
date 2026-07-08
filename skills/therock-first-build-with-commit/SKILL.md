@@ -61,7 +61,7 @@ The skill is a thin wrapper around the bundled script. The agent's job is to:
    python3 "$SKILL_DIR/find_first_build.py" --commit <SHA>
    ```
 
-4. Stream the per-iteration progress (stderr) to the user as it runs. When done, present the final result (stdout) verbatim.
+4. Stream the per-iteration progress (stderr) to the user as it runs. When done, present the final result (stdout) verbatim — it is already a bullet list; do not reformat it into a table or prose.
 5. If the user wants to pipe the result into other tooling, add `--json`:
 
    ```bash
@@ -106,16 +106,15 @@ Sample stdout (final result):
 
 ```text
 First nightly build to include d22352b782e728115786965046088fc4a71341fb:
-  run_id:           27993312669
-  created_at:       2026-06-23T00:22:14Z
-  the_rock_commit:  86af3706e7bf2e43f673dbf2f9038e226ede3af7
-  pin_sha:          971dc6904568e810f00473760000939deaf30e84
-  Repo snapshot:    https://github.com/ROCm/rocm-systems/tree/971dc6904568e810f00473760000939deaf30e84
-  GitHub Actions:   https://github.com/ROCm/rockrel/actions/runs/27993312669
-  Compare (full):   https://github.com/ROCm/rocm-systems/compare/d22352b782e728115786965046088fc4a71341fb...971dc6904568e810f00473760000939deaf30e84
-  Manifest:         https://therock-nightly-artifacts.s3.amazonaws.com/27993312669-linux/manifests/therock_manifest.json
-  Packages:         https://rocm.nightlies.amd.com/packages-multi-arch/deb/20260623-27993312669/index.html
-  Tarball:          https://rocm.nightlies.amd.com/tarball-multi-arch/therock-dist-linux-multiarch-7.14.0a20260623.tar.gz
+  - run_id: 27993312669 (created 2026-06-23T00:22:14Z)
+  - pin_sha: 971dc6904568e810f00473760000939deaf30e84 (34 commits ahead)
+  - the_rock_commit: 86af3706e7bf2e43f673dbf2f9038e226ede3af7
+  - Repo snapshot: https://github.com/ROCm/rocm-systems/tree/971dc6904568e810f00473760000939deaf30e84
+  - GitHub Actions: https://github.com/ROCm/rockrel/actions/runs/27993312669
+  - Compare: https://github.com/ROCm/rocm-systems/compare/d22352b782e728115786965046088fc4a71341fb...971dc6904568e810f00473760000939deaf30e84
+  - Manifest: https://therock-nightly-artifacts.s3.amazonaws.com/27993312669-linux/manifests/therock_manifest.json
+  - Packages (deb): https://rocm.nightlies.amd.com/packages-multi-arch/deb/20260623-27993312669/index.html
+  - Tarball: https://rocm.nightlies.amd.com/tarball-multi-arch/therock-dist-linux-multiarch-7.14.0a20260623.tar.gz
 ```
 
 ### Example 1b: Pre-migration commit — use `--legacy`
@@ -175,7 +174,7 @@ python3 "$SKILL_DIR/find_first_build.py" --commit "$COMMIT"
 This skill produces:
 
 - Per-iteration progress on stderr (one line per nightly run, with status and ahead/behind counts).
-- Final result on stdout - either a human-readable block (default) or a JSON object (`--json`).
+- Final result on stdout - either a human-readable bullet list (default) or a JSON object (`--json`).
 - Exit codes: `0` found, `3` invalid input, `4` upstream/network failure, `5` exhausted window without finding. (`5` rather than `2` so callers can distinguish "no match" from Python's argparse default of `2`.)
 
 No files are written.

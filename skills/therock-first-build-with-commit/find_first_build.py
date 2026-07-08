@@ -340,25 +340,29 @@ def format_human(result: dict[str, Any]) -> str:
 
     b = result["first_build"]
     pin = b["pin_sha"]
-    short_pin = pin[:8]
-    short_commit = result["commit"][:8]
+
+    ahead_by = b.get("ahead_by")
+    if ahead_by == 1:
+        pin_note = " (1 commit ahead)"
+    elif ahead_by:
+        pin_note = f" ({ahead_by} commits ahead)"
+    else:
+        pin_note = ""
+
     lines = [
         f"First nightly build to include {result['commit']}:",
-        f"  run_id:           {b['run_id']}",
-        f"  created_at:       {b['created_at']}",
-        f"  the_rock_commit:  {b['the_rock_commit']}",
-        f"  pin_sha:          {pin}",
-        f"  Repo snapshot:    https://github.com/{result['repo']}/tree/{pin}",
-        f"  GitHub Actions:   {b['run_url']}",
-        f"  Compare:          https://github.com/{result['repo']}/compare/"
-        f"{short_commit}...{short_pin}  (full URL below)",
-        f"  Compare (full):   {b['compare_url']}",
-        f"  Manifest:         {b['manifest_url']}",
+        f"  - run_id: {b['run_id']} (created {b['created_at']})",
+        f"  - pin_sha: {pin}{pin_note}",
+        f"  - the_rock_commit: {b['the_rock_commit']}",
+        f"  - Repo snapshot: {b['snapshot_url']}",
+        f"  - GitHub Actions: {b['run_url']}",
+        f"  - Compare: {b['compare_url']}",
+        f"  - Manifest: {b['manifest_url']}",
     ]
     if b.get("packages_url"):
-        lines.append(f"  Packages:         {b['packages_url']}")
+        lines.append(f"  - Packages (deb): {b['packages_url']}")
     if b.get("tarball_url"):
-        lines.append(f"  Tarball:          {b['tarball_url']}")
+        lines.append(f"  - Tarball: {b['tarball_url']}")
     return "\n".join(lines)
 
 
@@ -508,6 +512,8 @@ def main(argv: list[str] | None = None) -> int:
                     "rocm_package_version": rocm_package_version,
                     "pin_sha": pin,
                     "compare_status": status,
+                    "ahead_by": ahead_by,
+                    "behind_by": behind_by,
                     "compare_url": (
                         f"https://github.com/{args.repo}/compare/{full_sha}...{pin}"
                     ),
