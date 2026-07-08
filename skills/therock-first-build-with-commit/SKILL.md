@@ -105,6 +105,8 @@ Inspecting 9 runs in chronological order.
 Sample stdout (final result):
 
 ```text
+Commit d22352b7 first shipped in the 2026-06-23 nightly.
+
 First nightly build to include d22352b782e728115786965046088fc4a71341fb:
   - run_id: 27993312669 (created 2026-06-23T00:22:14Z)
   - pin_sha: 971dc6904568e810f00473760000939deaf30e84 (34 commits ahead)

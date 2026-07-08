@@ -92,10 +92,25 @@ def _found_result(**overrides):
 
 def test_format_human_is_bullet_list():
     out = ffb.format_human(_found_result())
-    body = out.splitlines()[1:]
+    body = [line for line in out.splitlines() if line.startswith("  ")]
     assert all(line.startswith("  - ") for line in body)
     assert "  - run_id: 28066115163 (created 2026-06-24T00:17:13Z)" in out
     assert "  - pin_sha: 8b2f7145 (3 commits ahead)" in out
+
+
+def test_format_human_intro_line():
+    b = _found_result()["first_build"]
+    b["rocm_package_version"] = "7.14.0a20260624"
+    out = ffb.format_human(
+        {"found": True, "commit": "b697dfca1234", "repo": "ROCm/rocm-systems",
+         "first_build": b}
+    )
+    assert out.splitlines()[0] == "Commit b697dfca first shipped in the 2026-06-24 nightly."
+
+
+def test_format_human_intro_falls_back_to_created_at():
+    out = ffb.format_human(_found_result(rocm_package_version=None))
+    assert out.splitlines()[0] == "Commit d22352b first shipped in the 2026-06-24 nightly."
 
 
 def test_format_human_singular_commit_ahead():

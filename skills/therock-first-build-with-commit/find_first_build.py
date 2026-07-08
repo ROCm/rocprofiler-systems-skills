@@ -349,7 +349,15 @@ def format_human(result: dict[str, Any]) -> str:
     else:
         pin_note = ""
 
+    date_prefix = date_prefix_from_package_version(b.get("rocm_package_version"))
+    if date_prefix:
+        nightly_date = f"{date_prefix[:4]}-{date_prefix[4:6]}-{date_prefix[6:]}"
+    else:
+        nightly_date = b["created_at"][:10]
+
     lines = [
+        f"Commit {result['commit'][:8]} first shipped in the {nightly_date} nightly.",
+        "",
         f"First nightly build to include {result['commit']}:",
         f"  - run_id: {b['run_id']} (created {b['created_at']})",
         f"  - pin_sha: {pin}{pin_note}",
