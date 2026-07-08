@@ -36,7 +36,7 @@ from typing import Any
 DEFAULT_REPO = "ROCm/rocm-systems"
 DEFAULT_SUBMODULE = "rocm-systems"
 DEFAULT_GPU_FAMILY = "gfx94X-dcgpu"  # legacy per-family manifest layout only
-DEFAULT_PLATFORM = "linux"
+PLATFORM = "linux"  # nightlies only publish Linux artifacts to the canonical S3 path
 DEFAULT_WORKFLOW_ID = 265449761  # Multi-Arch Release (nightly) on ROCm/rockrel
 DEFAULT_WORKFLOW_REPO = "ROCm/rockrel"
 LEGACY_WORKFLOW_ID = (
@@ -144,9 +144,9 @@ def list_nightly_runs(
     return runs[:max_runs]
 
 
-def manifest_candidate_urls(run_id: int, platform: str, gpu_family: str) -> list[str]:
+def manifest_candidate_urls(run_id: int, gpu_family: str) -> list[str]:
     """Return manifest URLs to try, current layout first then legacy per-GPU-family."""
-    base = f"{S3_BASE}/{run_id}-{platform}/manifests"
+    base = f"{S3_BASE}/{run_id}-{PLATFORM}/manifests"
     return [
         f"{base}/therock_manifest.json",
         f"{base}/{gpu_family}/therock_manifest.json",
@@ -170,9 +170,9 @@ def _fetch_manifest_url(url: str) -> dict[str, Any] | None:
 
 
 def fetch_manifest(
-    run_id: int, platform: str, gpu_family: str
+    run_id: int, gpu_family: str
 ) -> tuple[str, dict[str, Any] | None]:
-    urls = manifest_candidate_urls(run_id, platform, gpu_family)
+    urls = manifest_candidate_urls(run_id, gpu_family)
     last_url = urls[0]
     for url in urls:
         last_url = url
@@ -192,14 +192,18 @@ def date_prefix_from_package_version(version: str | None) -> str | None:
     return None
 
 
-def packages_index_url(run_id: int, date_prefix: str | None) -> str | None:
+def packages_index_url(
+    run_id: int, date_prefix: str | None, legacy: bool = False
+) -> str | None:
     if not date_prefix:
         return None
-    return f"{NIGHTLIES_BASE}/packages-multi-arch/deb/{date_prefix}-{run_id}/index.html"
+    segment = "deb" if legacy else "packages-multi-arch/deb"
+    return f"{NIGHTLIES_BASE}/{segment}/{date_prefix}-{run_id}/index.html"
 
 
-def tarball_url(rocm_package_version: str | None) -> str | None:
-    if not rocm_package_version:
+def tarball_url(rocm_package_version: str | None, legacy: bool = False) -> str | None:
+    # Pre-migration nightlies had no multi-arch tarball at a predictable path.
+    if not rocm_package_version or legacy:
         return None
     return (
         f"{NIGHTLIES_BASE}/tarball-multi-arch/"
@@ -277,12 +281,6 @@ def build_arg_parser() -> argparse.ArgumentParser:
             "Legacy manifest folder name for older builds that published "
             "per-GPU-family manifests under manifests/<family>/."
         ),
-    )
-    p.add_argument(
-        "--platform",
-        default=DEFAULT_PLATFORM,
-        choices=("linux", "windows"),
-        help="Platform segment of the artifact bucket prefix.",
     )
     p.add_argument(
         "--legacy",
@@ -379,6 +377,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.workflow is not None:
         workflow_id = args.workflow
 
+    # Legacy TheRock builds used the /deb/ packages layout and had no multi-arch
+    # tarball; detect from the resolved repo so --workflow-repo also counts.
+    is_legacy = workflow_repo == LEGACY_WORKFLOW_REPO
+
     log(f"Resolving commit {args.commit} on {args.repo}...")
     full_sha, committer_when = resolve_commit(args.repo, args.commit)
     log(f"  full sha: {full_sha}")
@@ -418,7 +420,7 @@ def main(argv: list[str] | None = None) -> int:
     for idx, run in enumerate(runs, start=1):
         run_id = run["id"]
         created = run["created_at"]
-        manifest_url, manifest = fetch_manifest(run_id, args.platform, args.gpu_family)
+        manifest_url, manifest = fetch_manifest(run_id, args.gpu_family)
         if manifest is None:
             log(
                 f"[{idx:>3}/{total}] run={run_id} created={created}"
@@ -515,8 +517,12 @@ def main(argv: list[str] | None = None) -> int:
                         f"https://github.com/{workflow_repo}/actions/runs/{run_id}",
                     ),
                     "manifest_url": manifest_url,
-                    "packages_url": packages_index_url(run_id, date_prefix),
-                    "tarball_url": tarball_url(rocm_package_version),
+                    "packages_url": packages_index_url(
+                        run_id, date_prefix, legacy=is_legacy
+                    ),
+                    "tarball_url": tarball_url(
+                        rocm_package_version, legacy=is_legacy
+                    ),
                 },
                 "inspected": inspected,
             }

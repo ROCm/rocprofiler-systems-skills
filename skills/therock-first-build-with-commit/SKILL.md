@@ -29,7 +29,6 @@ Unless the user says otherwise, this skill targets the `rocm-systems` submodule 
 | `--repo OWNER/REPO` | no | `ROCm/rocm-systems` | The repo that hosts the commit |
 | `--submodule NAME` | no | `rocm-systems` | Submodule name in `therock_manifest.json` |
 | `--gpu-family FAMILY` | no | `gfx94X-dcgpu` | **Legacy only** — fallback path for older builds with per-GPU-family manifests |
-| `--platform {linux,windows}` | no | `linux` | Bucket prefix segment |
 | `--legacy` | no | off | Walk `ROCm/TheRock` workflow `161312296` instead of current `ROCm/rockrel` / `265449761` |
 | `--workflow-repo OWNER/REPO` | no | `ROCm/rockrel` | Override repo hosting the nightly workflow (`ROCm/TheRock` with `--legacy`) |
 | `--workflow ID` | no | `265449761` | Override workflow id (`161312296` with `--legacy`) |
@@ -247,7 +246,7 @@ Decision matrix:
 
 ## Notes
 
-- This is the first skill in this repository to ship an executable helper script. The rationale: this lookup has multiple knobs (`--commit`, `--repo`, `--submodule`, `--platform`, `--legacy`, `--workflow`, `--workflow-repo`, `--since`, `--max-runs`, `--json`), needs structured per-iteration progress, and is most useful when reusable from a shell prompt or CI - not just from inside an agent session.
+- This is the first skill in this repository to ship an executable helper script. The rationale: this lookup has multiple knobs (`--commit`, `--repo`, `--submodule`, `--legacy`, `--workflow`, `--workflow-repo`, `--since`, `--max-runs`, `--json`), needs structured per-iteration progress, and is most useful when reusable from a shell prompt or CI - not just from inside an agent session.
 - Standard library only; no `pip install` required.
 - Bounded by GitHub Actions' default 90-day retention - older commits may not be locatable via this method even if they did ship.
 - Source recipe: [Wiki - Helpful Links and Information](https://amd.atlassian.net/wiki/spaces/AGSRCIT/pages/1306934643), *TheRock Nightly Builds* section.

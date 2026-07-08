@@ -870,7 +870,7 @@ Find the first TheRock nightly build that contains a given `rocm-systems` commit
 - Verifying a PR landed in a downstream consumer
 
 **Features:**
-- Bundled Python script with `--commit`, `--repo`, `--submodule`, `--platform`, `--legacy`, `--workflow`, `--workflow-repo`, `--since`, `--max-runs`, `--json` flags (`--gpu-family` for legacy manifest fallback only)
+- Bundled Python script with `--commit`, `--repo`, `--submodule`, `--legacy`, `--workflow`, `--workflow-repo`, `--since`, `--max-runs`, `--json` flags (`--gpu-family` for legacy manifest fallback only)
 - Lists scheduled runs of [**Multi-Arch Release**](https://github.com/ROCm/rockrel/actions/workflows/multi_arch_release.yml) on `ROCm/rockrel` (workflow id `265449761`) since the commit date and walks them oldest-first
 - Fetches each build's `therock_manifest.json` from S3 (current flat path first, legacy per-GPU-family fallback), skipping runs that did not publish artifacts
 - Stops on the first build where the ancestry check returns `identical` or `ahead`

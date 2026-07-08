@@ -160,13 +160,21 @@ echo "$MANIFEST" | jq -r '.submodules[].submodule_name'
 # Date prefix from rocm_package_version (7.14.0a20260624 -> 20260624)
 DATE_PREFIX="${ROCM_PACKAGE_VERSION##*a}"
 
-PACKAGES_URL="https://rocm.nightlies.amd.com/packages-multi-arch/deb/${DATE_PREFIX}-${RUN_ID}/index.html"
-TARBALL_URL="https://rocm.nightlies.amd.com/tarball-multi-arch/therock-dist-linux-multiarch-${ROCM_PACKAGE_VERSION}.tar.gz"
+if [ -n "$LEGACY" ]; then
+  # Pre-migration builds: /deb/ packages layout, no multi-arch tarball.
+  PACKAGES_URL="https://rocm.nightlies.amd.com/deb/${DATE_PREFIX}-${RUN_ID}/index.html"
+  TARBALL_URL=""
+else
+  PACKAGES_URL="https://rocm.nightlies.amd.com/packages-multi-arch/deb/${DATE_PREFIX}-${RUN_ID}/index.html"
+  TARBALL_URL="https://rocm.nightlies.amd.com/tarball-multi-arch/therock-dist-linux-multiarch-${ROCM_PACKAGE_VERSION}.tar.gz"
+fi
 ```
+
+Set `LEGACY=1` when resolving a pre-migration build (manifest served from the per-GPU-family path, or run found under `ROCm/TheRock`).
 
 ### Phase 6: Report
 
-Report back, in this exact shape, so other skills can parse it:
+Report back, in this exact shape, so other skills can parse it. `<WORKFLOW_REPO>` is `ROCm/rockrel` for current builds and `ROCm/TheRock` for legacy ones; omit the `Tarball:` line when it is empty (legacy builds).
 
 ```text
 Build:            <RUN_ID>          (platform=<PLATFORM>)
@@ -175,7 +183,7 @@ ROCm package:     <ROCM_PACKAGE_VERSION>
 Submodule:        <SUBMODULE_NAME>
 pin_sha:          <PIN_SHA>
 Repo snapshot:    https://github.com/ROCm/rocm-systems/tree/<PIN_SHA>
-GitHub Actions:   https://github.com/ROCm/rockrel/actions/runs/<RUN_ID>
+GitHub Actions:   https://github.com/<WORKFLOW_REPO>/actions/runs/<RUN_ID>
 Manifest:         <MANIFEST_URL>
 Packages:         <PACKAGES_URL>
 Tarball:          <TARBALL_URL>
