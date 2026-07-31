@@ -15,7 +15,36 @@ Read the current PR description and branch changes, then produce an updated desc
 gh auth status
 ```
 
-### Phase 1: Read Current PR State
+### Phase 1: Load PR Template and Read Current PR State
+
+**FIRST: discover the PR template in the current working repository.** Do not hardcode rocm-systems or any other repo path.
+
+```bash
+# Check standard GitHub template locations (first match wins)
+TEMPLATE=""
+for path in \
+  .github/pull_request_template.md \
+  .github/PULL_REQUEST_TEMPLATE.md \
+  .github/PULL_REQUEST_TEMPLATE/pull_request_template.md \
+  .github/PULL_REQUEST_TEMPLATE/default.md; do
+  if [ -f "$path" ]; then
+    TEMPLATE="$path"
+    break
+  fi
+done
+
+# Multiple templates in directory — prefer pull_request_template.md, else ask user
+if [ -z "$TEMPLATE" ] && [ -d .github/PULL_REQUEST_TEMPLATE ]; then
+  TEMPLATE=$(ls .github/PULL_REQUEST_TEMPLATE/*.md 2>/dev/null | head -1)
+fi
+
+# Read template if found
+[ -n "$TEMPLATE" ] && cat "$TEMPLATE"
+```
+
+Extract all `##` section headings from the template — these define the required structure. If no template file exists, use the fallback structure in Phase 4.
+
+Then read the PR:
 
 ```bash
 gh pr view --json number,title,body,baseRefName,headRefName
@@ -38,14 +67,24 @@ git diff --name-only "$BASE".."$HEAD"     # File list → Test Plan
 
 ### Phase 3: Decide How to Handle Existing Description
 
-| Situation | Action |
-|-----------|--------|
-| Body is empty or placeholder | Generate fresh from branch analysis |
-| Body has real content | Preserve user-written Motivation, update Technical Details and Test Plan from diff |
+Match sections by `##` heading from the repo template (or fallback). Treat a section as **placeholder** when it is empty or contains only HTML comments / boilerplate from the template.
 
-Do NOT discard user-written Motivation — it captures domain context the code cannot express.
+| Section | Action |
+|---------|--------|
+| Body is empty or all placeholders | Generate fresh using template structure |
+| **Motivation** | Preserve if real content; otherwise regenerate from commits |
+| **Technical Details** | Always regenerate from diff |
+| **Issue Tracking** | **Always preserve** — JIRA IDs and issue links are user-provided |
+| **Test Plan** | Regenerate from diff and verification performed |
+| **Test Result** | **Always preserve** — outcomes are user-provided |
+| **Submission Checklist** | **Always preserve** checkbox state |
+| Any other template section | Preserve if real content; regenerate only if clearly stale vs diff |
+
+Do NOT discard user-written Motivation or metadata sections — they capture domain context the code cannot express.
 
 ### Phase 4: Draft the Description
+
+Use the repo template's section order and headings. When no template file exists, use this fallback:
 
 ```markdown
 ## Motivation
@@ -57,6 +96,29 @@ Do NOT discard user-written Motivation — it captures domain context the code c
 ## Test Plan
 - [ ] <how this was tested>
 - [ ] <edge cases verified>
+```
+
+When a repo template exists (e.g. rocm-systems), follow its full structure:
+
+```markdown
+## Motivation
+<Why this change — problem being solved, user need, or context>
+
+## Technical Details
+<Key implementation decisions, trade-offs, architecture changes; include relevant GitHub links>
+
+## Issue Tracking
+<!-- Preserve from existing body, or leave placeholder comments from template -->
+
+## Test Plan
+- [ ] <how this was tested>
+- [ ] <edge cases verified>
+
+## Test Result
+<!-- Preserve from existing body, or leave placeholder comments from template -->
+
+## Submission Checklist
+<!-- Preserve checkbox state from existing body, or copy unchecked items from template -->
 ```
 
 Reference actual commits, files, and decisions — never use generic filler text.
@@ -120,6 +182,8 @@ gh pr view <NUMBER>
 - Using `main` as the base branch without reading `baseRefName` from the PR.
 - Overwriting the body without reading and displaying the current content first.
 - Applying changes without showing before/after and using `AskUserQuestion` Yes/No.
+- Ignoring `.github/pull_request_template.md` when it exists in the repo.
+- Dropping Issue Tracking, Test Result, or Submission Checklist from an existing description.
 
 ## Common Mistakes
 
@@ -127,7 +191,9 @@ gh pr view <NUMBER>
 |---------|-----|
 | Using `gh pr edit` or `gh pr create` | Use `gh api --method PATCH repos/{owner}/{repo}/pulls/<NUMBER>` |
 | Hardcoding base branch as `main` | Read `baseRefName` from `gh pr view` |
+| Hardcoding a 3-section template | Read `.github/pull_request_template.md` from the current repo first |
 | Overwriting user-written motivation | Read existing body first, preserve domain context |
+| Overwriting Issue Tracking / Test Result | Always preserve metadata sections |
 | Skipping confirmation | Show before/after diff, then use `AskUserQuestion` Yes/No |
 | Generic description | Reference actual commits, files, and decisions from the diff |
 | Hard-wrapping lines at 80 chars | Write prose as continuous lines; only break at paragraph boundaries |
