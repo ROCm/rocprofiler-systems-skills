@@ -437,67 +437,68 @@ Large Feature
 
 ## Phase 5: Create the PR
 
+### Load PR Template from Repository
+
+**FIRST: discover the PR template in the current working repository.** Do not hardcode rocm-systems or any other repo path.
+
+```bash
+# Check standard GitHub template locations (first match wins)
+TEMPLATE=""
+for path in \
+  .github/pull_request_template.md \
+  .github/PULL_REQUEST_TEMPLATE.md \
+  .github/PULL_REQUEST_TEMPLATE/pull_request_template.md \
+  .github/PULL_REQUEST_TEMPLATE/default.md; do
+  if [ -f "$path" ]; then
+    TEMPLATE="$path"
+    break
+  fi
+done
+
+# Multiple templates in directory — prefer pull_request_template.md, else ask user
+if [ -z "$TEMPLATE" ] && [ -d .github/PULL_REQUEST_TEMPLATE ]; then
+  TEMPLATE=$(ls .github/PULL_REQUEST_TEMPLATE/*.md 2>/dev/null | head -1)
+fi
+
+# Read template if found
+[ -n "$TEMPLATE" ] && cat "$TEMPLATE"
+```
+
+Use the template's `##` section headings as the required PR structure. When no template file exists, use the fallback below.
+
 ### PR Structure
 
-Every PR MUST have these sections:
+Every PR MUST include all sections from the repo template. Fill each section as follows:
 
-#### 1. Motivation
+| Section | Content source |
+|---------|----------------|
+| **Motivation** | Why the change is needed — from plan, commits, or linked issue |
+| **Technical Details** | What changed and how — from diff analysis and design decisions |
+| **Issue Tracking** | GitHub issue and/or JIRA ID — leave template placeholders if unknown |
+| **Test Plan** | How this was or will be tested — from verification phase and test plan file |
+| **Test Result** | Brief summary of outcomes — fill after testing, or leave placeholder |
+| **Submission Checklist** | Copy unchecked items from template |
 
-**Why** is this change needed?
+For repos without a template file, use this fallback:
 
 ```markdown
 ## Motivation
 
 [Explain the problem or need this PR addresses]
 
-- What issue does this solve?
-- What feature does this enable?
-- What improvement does this bring?
-
-Related issue: #123 (if applicable)
-```
-
-#### 2. Technical Details
-
-**What** does this PR change and **how**?
-
-```markdown
 ## Technical Details
 
-[Explain the implementation approach]
+[Explain the implementation approach, key changes, and design decisions]
 
-### Changes
-- [List key changes]
-- [Explain architectural decisions]
-- [Note any trade-offs made]
-
-### Files Changed
-- `src/module/file.cpp` - [Brief description]
-- `include/module/file.hpp` - [Brief description]
-```
-
-#### 3. Test Plan
-
-**How** was this tested?
-
-```markdown
 ## Test Plan
 
-### Unit Tests
-- [ ] `test_feature_basic` - Tests basic functionality
-- [ ] `test_feature_edge_cases` - Tests boundary conditions
-- [ ] `test_feature_error_handling` - Tests error paths
-
-### Manual Testing
-- [ ] [Step-by-step manual test if applicable]
-
-### Verification
-- [ ] All existing tests pass
-- [ ] New tests added for new functionality
-- [ ] No new warnings introduced
+- [ ] [Describe automated tests run]
+- [ ] [Describe manual verification performed]
 ```
 
-### PR Template
+### PR Template (fallback only)
+
+Use this **only when no `.github/pull_request_template.md` exists** in the repo:
 
 ```markdown
 ## Motivation
@@ -506,40 +507,12 @@ Related issue: #123 (if applicable)
 
 ## Technical Details
 
-### Summary
-[One paragraph summary of the changes]
-
-### Key Changes
-- [Change 1]
-- [Change 2]
-- [Change 3]
-
-### Design Decisions
-[Explain any significant design choices and their rationale]
+[One paragraph summary of the changes, key files changed, and design decisions]
 
 ## Test Plan
 
-### Automated Tests
-- [ ] Unit tests added/updated
-- [ ] All tests passing
-
-### Manual Verification
-- [ ] [Describe manual testing performed]
-
-## Pre-PR Verification
-
-- [x] Code verified against programming standards
-- [x] No blocking issues found
-- [x] TODOs addressed or tracked
-- [x] No unnecessary code duplication
-
-## Checklist
-
-- [ ] Code follows project style guidelines
-- [ ] Self-review completed
-- [ ] Comments added only for non-obvious logic
-- [ ] Documentation updated (if applicable)
-- [ ] No unrelated changes included
+- [ ] Unit tests added/updated and passing
+- [ ] Manual verification performed (if applicable)
 ```
 
 ### Creating the PR
@@ -561,7 +534,7 @@ git commit -m "feat: add user avatar upload
 # Push and create PR
 git push -u origin HEAD
 
-# Create PR with gh CLI
+# Create PR with gh CLI — body must follow repo template sections
 gh pr create --title "feat: Add user avatar upload" --body "$(cat <<'EOF'
 ## Motivation
 
@@ -570,38 +543,26 @@ This feature was requested in #123.
 
 ## Technical Details
 
-### Summary
-Adds avatar upload functionality with client-side preview and server-side validation.
+Adds avatar upload functionality with client-side preview and server-side validation. Added `POST /api/users/avatar` endpoint, `AvatarUpload` React component with drag-and-drop, image validation (size, format), and server-side resizing to 256x256 WebP for consistent storage.
 
-### Key Changes
-- Added `POST /api/users/avatar` endpoint
-- Created `AvatarUpload` React component with drag-and-drop
-- Implemented image validation (size, format)
-- Added image resizing to reduce storage
+## Issue Tracking
 
-### Design Decisions
-- Chose to resize on server to ensure consistent dimensions
-- Using WebP format for storage to reduce size
+<!-- GitHub issue: https://github.com/ROCm/rocm-systems/issues/123 -->
 
 ## Test Plan
 
-### Automated Tests
-- [x] `test_avatar_upload_valid_image` - Upload succeeds with valid JPG
-- [x] `test_avatar_upload_invalid_format` - Rejects non-image files
-- [x] `test_avatar_upload_too_large` - Rejects files > 5MB
-- [x] `test_avatar_resize` - Verifies resizing to 256x256
+- [x] `test_avatar_upload_valid_image` — upload succeeds with valid JPG
+- [x] `test_avatar_upload_invalid_format` — rejects non-image files
+- [x] `test_avatar_upload_too_large` — rejects files > 5MB
+- [x] Manual verification in Chrome, Firefox, Safari with drag-and-drop
 
-### Manual Verification
-- [x] Upload works in Chrome, Firefox, Safari
-- [x] Drag-and-drop works correctly
-- [x] Preview displays before upload
+## Test Result
 
-## Pre-PR Verification
+All unit tests pass. Manual upload and preview verified across browsers.
 
-- [x] Code verified against C++ Core Guidelines
-- [x] No blocking issues found
-- [x] All TODOs addressed
-- [x] No code duplication
+## Submission Checklist
+
+- [ ] Look over the contributing guidelines at https://github.com/ROCm/rocm-systems/blob/develop/CONTRIBUTING.md.
 
 EOF
 )"
@@ -660,6 +621,8 @@ When creating a plan in `planning/feature-*.md` or `planning/refactor-*.md`:
 
 ### Good PR: Focused and Clean
 
+Follows the repo template structure (all sections present):
+
 ```markdown
 ## Motivation
 
@@ -668,31 +631,25 @@ causing users to be logged out unexpectedly. Fixes #456.
 
 ## Technical Details
 
-### Summary
-Fixed token refresh timing comparison that caused premature session expiry.
+Fixed token refresh timing comparison in `tokenService.ts:45` (`>` → `>=`) that caused premature session expiry. Added `SESSION_TIMEOUT_MS` constant to centralize configuration.
 
-### Key Changes
-- Fixed comparison operator in `tokenService.ts:45` (`>` → `>=`)
-- Added constant `SESSION_TIMEOUT_MS` to centralize configuration
+## Issue Tracking
 
-### Design Decisions
-- Moved timeout value to config for easier adjustment in future
+<!-- GitHub issue: https://github.com/ROCm/rocm-systems/issues/456 -->
 
 ## Test Plan
 
-### Automated Tests
-- [x] `test_token_refresh_at_boundary` - Tests exact timeout boundary
-- [x] `test_session_persists_29_minutes` - Verifies no early logout
+- [x] `test_token_refresh_at_boundary` — tests exact timeout boundary
+- [x] `test_session_persists_29_minutes` — verifies no early logout
+- [x] Manual: logged in and waited 25 minutes — session persisted
 
-### Manual Verification
-- [x] Logged in and waited 25 minutes - session persisted
-- [x] Verified refresh token request at expected time
+## Test Result
 
-## Pre-PR Verification
+All unit tests pass. Manual session persistence verified at 25 minutes.
 
-- [x] Code verified against standards
-- [x] No TODOs or commented code
-- [x] No duplication introduced
+## Submission Checklist
+
+- [x] Look over the contributing guidelines at https://github.com/ROCm/rocm-systems/blob/develop/CONTRIBUTING.md.
 ```
 
 ### Bad PR: Unverified, Messy
@@ -708,6 +665,7 @@ Fixed token refresh timing comparison that caused premature session expiry.
 
 **Problems:**
 - No verification performed
+- Missing template sections (Issue Tracking, Test Result, Submission Checklist)
 - Contains TODO
 - Contains commented-out code
 - Multiple unrelated changes
