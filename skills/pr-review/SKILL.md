@@ -231,7 +231,7 @@ Sub-agent findings are **leads, not verified facts**. Before promoting any findi
 
 In particular, when a finding's severity depends on the behavior of a **library, framework, macro, or external API** (e.g. "this logging call can throw", "this API allocates", "this macro expands to X"), read the relevant definition/source before blocking on it. Tracing the *call path* to a library boundary is not enough — confirm what that library actually *does* (e.g. does it catch internally? is the throwing path reachable with these inputs?). The higher the severity assigned, the stronger the verification owed.
 
-If verification is impractical within the run, do **not** mark it Critical/Must Fix — record it as a "Should Fix / needs confirmation" item stating the unverified assumption explicitly, so the author isn't handed a blocking claim that may be wrong.
+If verification is impractical within the run, do **not** mark it Critical/Must Fix — keep it at **Should Fix (50)** and state the unverified assumption explicitly in the finding description (prefix with `Unverified assumption:`), so the author isn't handed a blocking claim that may be wrong.
 
 ### 2.1 Severity scale (used by every agent)
 
@@ -239,7 +239,7 @@ If verification is impractical within the run, do **not** mark it Critical/Must 
 |----------|-------|----------|
 | Critical | 100 | Security vulnerability, data loss, crash, UB |
 | Must Fix | 80 | Incorrect behavior, logic bugs, resource leaks, tool errors |
-| Should Fix | 50 | Best practices, code smells, maintainability |
+| Should Fix | 50 | Best practices, code smells, maintainability; also unverified library/macro/API behavior claims (must include `Unverified assumption:` in the description) |
 | Nitpick | 20 | Style, minor improvements, suggestions |
 
 **UB never downgrades.** Any finding from the UB Detection Agent defaults to **Critical (100)**. Drop to **Must Fix (80)** only when the code path is provably unreachable on every target platform (documented with citation). Never **Should Fix** or below.
