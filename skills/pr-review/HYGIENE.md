@@ -14,7 +14,7 @@ These rules apply to **every** invocation of the `pr-review` skill, regardless o
 
 ## Analysis is read-only (no working-tree changes)
 
-A pr-review run is **analysis only**. Neither the orchestrator nor any spawned analysis agent may modify the working tree: no Edit/Write, no file create/delete, no `git add`/`restore`/`rm`/`checkout` of content, no applying fixes, no build artifacts left behind. This holds **even when an agent loads a skill that normally applies changes** (e.g. `simplify`, `static-analysis` autofix) — those skills are used for their detection heuristics only. Proposed changes belong in the report as findings, never in the tree.
+A pr-review run is **analysis only**. Neither the orchestrator nor any spawned analysis agent may modify the working tree: no Edit/Write, no file create/delete, no `git add`/`restore`/`rm`, no `git checkout -- <path>` (or any command that modifies tracked file content), no applying fixes. Branch checkout to navigate or restore the starting branch is allowed per "Local clone hygiene" below — that moves HEAD, it does not edit source files. Build artifacts in ignored directories (e.g. `build/`) are fine; do not leave edits to tracked source. This holds **even when an agent loads a skill that normally applies changes** (e.g. `simplify`, `static-analysis` autofix) — those skills are used for their detection heuristics only. Proposed changes belong in the report as findings, never in the tree.
 
 The only writes a run may make are the **report artifact** (under `.claude/pr-review-summaries/` when the user asks to save) and **agent memory files**. Posting to GitHub is governed by the destination rule below.
 
