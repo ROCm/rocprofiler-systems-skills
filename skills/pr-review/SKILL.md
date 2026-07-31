@@ -20,6 +20,8 @@ Review Pull Requests or local changes with structured, thorough analysis.
 
 **Persist the review (opt-in):** Do NOT write a markdown file by default. The report goes to chat output. Save the full markdown to `.claude/pr-review-summaries/` ONLY when the user explicitly asks ("save the review", "write a summary file", "persist this", or equivalent). See Phase 4 for filename rules when saving.
 
+**Analysis is read-only:** Neither the orchestrator nor any spawned agent may modify the working tree (no Edit/Write, no applying fixes, no staging). Skills are loaded for detection and rule lookup only. Findings go in the report, never in the tree. See [HYGIENE.md](HYGIENE.md).
+
 **Invoke relevant programming skills during review:**
 - C++ code → `programming-cpp`, `programming-cpp-design-patterns`, `programming-cpp-stl-algorithms`
 - Python code → `programming-python`
@@ -36,6 +38,7 @@ Review Pull Requests or local changes with structured, thorough analysis.
 Apply to every invocation of this skill. Full text in [HYGIENE.md](HYGIENE.md). Summary:
 
 - **Local-only by default**: do NOT post to GitHub unless the user explicitly says "post" / "submit" / "comment on the PR".
+- **Analysis is read-only**: no working-tree mutations by the orchestrator or any spawned agent; permitted writes are the report artifact (when asked) and agent memory files only.
 - **Fresh-eyes rule**: when this skill runs inside a sub-agent, the brief is the only context - no project memory, no prior reviews, no conversation history.
 - **Required report sections**: Header, Intent vs Implementation, Per-File Walkthrough, Findings by Severity, Static Analysis, Security Audit, Performance, API/ABI Compatibility, Documentation, Verdict (`APPROVE` / `REQUEST CHANGES` / `NEEDS DISCUSSION`), Cleanup Confirmation. Full layout in `REPORT_TEMPLATE.md`.
 - **Local clone hygiene**: record starting branch, stash if dirty, restore on exit via trap/finally - never leave the clone on a detached HEAD or PR branch.
@@ -222,13 +225,21 @@ Architecture Agent fires only when the architectural-signal table below matches.
 
 Wait for all spawned agents from Phase 1.5. Then:
 
+### 2.0 Verify before blocking (orchestrator responsibility)
+
+Sub-agent findings are **leads, not verified facts**. Before promoting any finding to **Critical** or **Must Fix** in the final report, the orchestrator MUST independently confirm it against the actual source — do not pass a sub-agent's correctness claim straight into a blocking bucket on trust.
+
+In particular, when a finding's severity depends on the behavior of a **library, framework, macro, or external API** (e.g. "this logging call can throw", "this API allocates", "this macro expands to X"), read the relevant definition/source before blocking on it. Tracing the *call path* to a library boundary is not enough — confirm what that library actually *does* (e.g. does it catch internally? is the throwing path reachable with these inputs?). The higher the severity assigned, the stronger the verification owed.
+
+If verification is impractical within the run, do **not** mark it Critical/Must Fix — keep it at **Should Fix (50)** and state the unverified assumption explicitly in the finding description (prefix with `Unverified assumption:`), so the author isn't handed a blocking claim that may be wrong.
+
 ### 2.1 Severity scale (used by every agent)
 
 | Category | Score | Criteria |
 |----------|-------|----------|
 | Critical | 100 | Security vulnerability, data loss, crash, UB |
 | Must Fix | 80 | Incorrect behavior, logic bugs, resource leaks, tool errors |
-| Should Fix | 50 | Best practices, code smells, maintainability |
+| Should Fix | 50 | Best practices, code smells, maintainability; also unverified library/macro/API behavior claims (must include `Unverified assumption:` in the description) |
 | Nitpick | 20 | Style, minor improvements, suggestions |
 
 **UB never downgrades.** Any finding from the UB Detection Agent defaults to **Critical (100)**. Drop to **Must Fix (80)** only when the code path is provably unreachable on every target platform (documented with citation). Never **Should Fix** or below.

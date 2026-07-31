@@ -327,12 +327,14 @@ notable suppressions. "Clean" if nothing to report.]
 
 ---
 
-## [OPTIONAL] Cleanup Confirmation
+## [REQUIRED] Cleanup Confirmation
 
-- [ ] Local clone restored to original branch (`<orig_branch>`)
-- [ ] Stash popped (if one was created) - no leftover
-      `pr-review-skill autostash` entry in `git stash list`
-- [ ] `git status` matches pre-review state
+Applies to **every** run, not only PR checkouts.
+
+- [ ] `git status` matches pre-review state — no edits, new files, or staged changes left by the orchestrator or any analysis agent
+- [ ] If the tree differed from pre-run state, stray changes were reverted and noted in the report
+- [ ] If a PR was checked out: local clone restored to original branch (`<orig_branch>`)
+- [ ] If a stash was created: stash popped — no leftover `pr-review-skill autostash` entry in `git stash list`
 - [ ] No detached HEAD, no leftover PR branch checkout
 
 ---

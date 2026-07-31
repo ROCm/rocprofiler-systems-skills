@@ -2,6 +2,7 @@
 
 ## Contents
 
+- Analysis is read-only (no working-tree changes)
 - Default destination: local artifact only
 - Fresh-eyes rule (sub-agent invocations)
 - Report content rules (required sections)
@@ -10,6 +11,14 @@
 These rules apply to **every** invocation of the `pr-review` skill, regardless of workspace.
 
 ---
+
+## Analysis is read-only (no working-tree changes)
+
+A pr-review run is **analysis only**. Neither the orchestrator nor any spawned analysis agent may modify the working tree: no Edit/Write, no file create/delete, no `git add`/`restore`/`rm`, no `git checkout -- <path>` (or any command that modifies tracked file content), no applying fixes. Branch checkout to navigate or restore the starting branch is allowed per "Local clone hygiene" below — that moves HEAD, it does not edit source files. Build artifacts in ignored directories (e.g. `build/`) are fine; do not leave edits to tracked source. This holds **even when an agent loads a skill that normally applies changes** (e.g. `simplify`, `static-analysis` autofix) — those skills are used for their detection heuristics only. Proposed changes belong in the report as findings, never in the tree.
+
+The only writes a run may make are the **report artifact** (under `.claude/pr-review-summaries/` when the user asks to save) and **agent memory files**. Posting to GitHub is governed by the destination rule below.
+
+A run that mutates the tree (especially one that leaves it non-compiling) is a **failed run**: revert the stray changes, restore `git status` to its pre-run state, and note the incident in the report.
 
 ## Default destination: local artifact only
 
@@ -40,7 +49,7 @@ A written report (as opposed to inline chat feedback) MUST contain all of the fo
 9. **API/ABI compatibility** - does the PR change a public API or ABI? If yes, is the change additive, deprecating, or breaking? Migration notes?
 10. **Documentation review** - are README, doc comments, changelog, man pages updated to match behavior changes?
 11. **Verdict** - one of `APPROVE`, `REQUEST CHANGES`, or `NEEDS DISCUSSION` (use these exact labels).
-12. **Cleanup confirmation** - confirm the local clone was restored to its starting branch, any stash was popped, and `git status` matches the pre-review state.
+12. **Cleanup confirmation** - confirm `git status` matches the pre-review state. This applies to **every** run, not just ones that checked out a PR: verify no analysis agent left edits, new files, or staged changes in the working tree. If a PR was checked out, additionally confirm the clone was restored to its starting branch and any stash was popped. If the tree differs from its pre-run state, revert the difference and say so in the report.
 
 See `REPORT_TEMPLATE.md` for the full layout.
 
