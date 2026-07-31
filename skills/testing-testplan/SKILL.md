@@ -1,6 +1,6 @@
 ---
 name: testing-testplan
-description: Create test plan files for developer verification and QA handoff - use after implementation is complete
+description: Use when implementation is complete and a developer-verification or QA-handoff document is needed - a structured test plan describing what to test, how, and expected outcomes. **Triggered by the `testing` dispatcher** after testing-gtest-gmock or testing-pytest finishes; do NOT invoke directly during the test-writing stage. Composes with: testing (parent dispatcher decides when a plan is needed), testing-gtest-gmock / testing-pytest (the implemented tests the plan documents), pr-review (which references the plan during review).
 ---
 
 # Test Plan Skill

@@ -1,6 +1,6 @@
 ---
 name: programming-cpp-design-patterns
-description: C++ design patterns reference - suggests applicable patterns when code matches a problem that a pattern solves
+description: Use when implementing C++ where a known design pattern (Strategy, Observer, Visitor, Factory, etc.) fits the problem at hand. Suggests the appropriate pattern based on the structure of the code, not as decoration. Skip if a simple function or struct is sufficient - patterns are not free. Composes with: programming-cpp (parent), programming-cpp-stl-algorithms (when std lib already implements the pattern, prefer that), planning-architecture (during design phase).
 ---
 
 # C++ Design Patterns Skill

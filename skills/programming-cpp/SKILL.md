@@ -1,6 +1,6 @@
 ---
 name: programming-cpp
-description: C++ programming skill based on C++ Core Guidelines - use for implementing C++ code
+description: Use when implementing or modifying C++ code (`.cpp`, `.hpp`, `.h`, `.cc`, `.cxx`). Applies C++ Core Guidelines, modern C++ idioms (RAII, smart pointers, value semantics), and project-local rules (no `tim::*`, avoid virtual inheritance). Skip for build-system changes (use programming-cmake-best-practices), pure structural refactoring (use planning-refactor → refactoring-techniques), or naming-only changes (use programming-cpp-naming-rules). Composes with: programming-cpp-naming-rules (file/class names), programming-cpp-design-patterns (pattern fit), programming-cpp-stl-algorithms (container/algorithm choice), testing (test coverage via the testing dispatcher).
 ---
 
 # C++ Programming Skill
@@ -58,6 +58,56 @@ Follow the [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppC
 - **F.26**: Use a `unique_ptr<T>` to transfer ownership where a pointer is needed
 - **F.27**: Use a `shared_ptr<T>` to share ownership
 
+### Pointer parameters
+
+A function that takes `T*` and dereferences it MUST either (a) take `T&` instead if null is not a valid input, or (b) guard with an early return on null:
+
+```cpp
+// BAD: dereferences without check; if caller ever passes null, UB
+void healthcheck(data_store* store, worker* w) {
+    auto v = store->get("probe");   // UB if store == nullptr
+    w->stats();
+}
+
+// GOOD: take by reference - null is impossible at the type level
+void healthcheck(data_store& store, worker& w) {
+    auto v = store.get("probe");
+    w.stats();
+}
+
+// ALSO GOOD: pointer + guard, when null is a valid "absent" sentinel
+void healthcheck(data_store* store, worker* w) {
+    if (!store || !w) return;
+    // ...
+}
+```
+
+If the function genuinely cannot accept null, prefer the reference form - it's checked at the call site instead of at every entry.
+
+### No positional bool parameters
+
+A bare `bool` at a call site is opaque. `warmup(store, 10, true)` - what does `true` mean? Use an `enum class` or named struct flag.
+
+```cpp
+// BAD: positional bool, meaningless at call site
+int warmup(data_store& store, int count, bool with_logging);
+warmup(store, 10, true);                       // what does true mean?
+
+// BAD: bool selecting between two completely different behaviours
+config apply_defaults(config cfg, bool use_production_defaults);
+
+// GOOD: enum class - self-documenting at call site
+enum class warmup_logging { silent, verbose };
+int warmup(data_store& store, int count, warmup_logging logging);
+warmup(store, 10, warmup_logging::verbose);
+
+// GOOD: split functions when the bool selects radically different behaviour
+config apply_production_defaults(config cfg);
+config apply_development_defaults(config cfg);
+```
+
+Single trailing bool with a self-explanatory function name (`set_enabled(true)`) is fine. The rule fires when the bool's meaning isn't recoverable from the call site.
+
 ## Classes and Class Hierarchies
 
 - **C.1**: Organize related data into structures (`struct`s or `class`es)
@@ -76,6 +126,50 @@ Follow the [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppC
 - **C.128**: Virtual functions should specify exactly one of `virtual`, `override`, or `final`
 - **C.131**: Avoid trivial getters and setters
 - **C.149**: Use `unique_ptr` or `shared_ptr` to avoid forgetting to `delete` objects created using `new`
+
+### Command/Query Separation
+
+A function whose name starts with `get_`, `read_`, `peek_`, `size`, `empty`, `count`, `contains`, or any other query verb MUST NOT mutate observable state. If a "read" needs side effects, name it for the side effect, or split into two functions.
+
+```cpp
+// BAD: get_stats() resets the counters it returned
+std::string get_stats() {
+    auto s = format(request_counter_, error_counter_);
+    request_counter_ = 0;  // surprise mutation - breaks repeated reads
+    error_counter_ = 0;
+    return s;
+}
+
+// GOOD: split read from reset
+std::string stats() const;       // pure query
+void reset_stats();              // explicit command
+
+// ALSO GOOD: if the consume-on-read is genuinely the contract, name it
+std::string consume_stats();     // verb makes the mutation visible
+```
+
+Same rule for `get_ref` / `get_view` style: if `operator[]` on a missing key would insert (as `std::map`/`std::unordered_map` do), the function name MUST signal that, or the implementation MUST use `find` + explicit error handling.
+
+### Self-assignment in mutating member functions
+
+When you define a member function that takes `T` (by value, ref, or rvalue-ref) and writes into `*this`, consider self-assignment. The defaulted copy-assignment / move-assignment operators do NOT guard against `a = a` - neither do your hand-written merge/append/swap-style functions.
+
+```cpp
+// BAD: merge(self) corrupts data while iterating it
+void merge(const data_store& other) {
+    for (const auto& [k, v] : other.entries_) {
+        entries_[k] = v;   // if &other == this, iterator invalidation
+    }
+}
+
+// GOOD: guard, or document that self-merge is unsupported
+void merge(const data_store& other) {
+    if (&other == this) return;
+    for (const auto& [k, v] : other.entries_) entries_[k] = v;
+}
+```
+
+Applies to any function that walks one container while mutating another that could be the same object.
 
 ## Resource Management
 
@@ -105,6 +199,63 @@ Follow the [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppC
 - **E.17**: Don't try to catch every exception in every function
 - **E.18**: Minimize the use of explicit `try`/`catch`
 - **E.25**: If you can't throw exceptions, simulate RAII for resource management
+
+### Empty `catch(...)` is forbidden
+
+A bare `catch (...) { }` silently swallows every exception - including bugs, OOM, broken invariants - and is one of the highest-leverage sources of "impossible" production failures. Don't write it.
+
+```cpp
+// BAD: every error vanishes; the loop keeps spinning on a corrupted store
+for (auto& ev : batch) {
+    try { process_event(ev); }
+    catch (...) {}
+}
+
+// GOOD: catch a specific type, log, decide
+for (auto& ev : batch) {
+    try {
+        process_event(ev);
+    } catch (const std::exception& e) {
+        log_error("process_event failed for ev=" + ev.key + ": " + e.what());
+        ++error_counter_;
+    }
+}
+
+// ALSO GOOD: if "keep going on any error" is genuinely the contract,
+// rethrow after logging or use a named no-op with a justification comment
+catch (...) {
+    log_error("unknown exception in run_loop");   // at minimum, evidence
+    throw;                                        // or document why we swallow
+}
+```
+
+The rule: every `catch` either (a) handles the exception type-specifically, (b) logs and continues with a documented reason, or (c) rethrows. Empty `catch (...)` is never one of those three.
+
+## Concurrency Primitives
+
+- `volatile` is NOT a synchronization primitive. It prevents the compiler from optimizing away memory accesses but provides no memory ordering or atomicity guarantees. Never use `volatile` to communicate between threads or between a signal handler and the main program.
+
+```cpp
+// BAD: volatile is not a memory barrier
+volatile int g_shutdown = 0;
+void signal_handler(int) { g_shutdown = 1; }
+while (!g_shutdown) { ... }    // racy, no happens-before edge
+
+// GOOD: std::atomic for thread/signal-handler communication
+std::atomic<bool> g_shutdown{false};
+void signal_handler(int) { g_shutdown.store(true, std::memory_order_relaxed); }
+while (!g_shutdown.load(std::memory_order_relaxed)) { ... }
+
+// GOOD: volatile sig_atomic_t when you ONLY need signal-handler safety
+// (no cross-thread communication implied)
+volatile std::sig_atomic_t g_received = 0;
+```
+
+- Signal handlers MUST only call async-signal-safe functions. `std::cout`, `printf`, `std::string` construction, `malloc`, `new`, mutex lock are all unsafe. Set a flag, return.
+
+- Any counter mutated from multiple threads is `std::atomic<T>` or guarded by a mutex. Plain `int++` is a data race even on x86 (compiler may tear the read/modify/write; the C++ standard says it's UB regardless of what the hardware does).
+
+- File I/O under a mutex blocks every other waiter for the duration of the syscall. Format the string under the lock, do the actual write outside; or buffer and flush off the critical path.
 
 ## Performance (CRITICAL)
 
@@ -1036,6 +1187,13 @@ Before submitting C++ code:
 - [ ] Virtual destructor for base classes (or protected non-virtual)
 - [ ] Rule of 0/5 followed
 - [ ] Clear ownership semantics
+- [ ] Pointer params either take `T&` or guard for null on entry
+- [ ] No positional bool parameters (use `enum class` or named flag)
+- [ ] No empty `catch(...)` - handle, log+continue with reason, or rethrow
+- [ ] No `volatile` for cross-thread / signal communication - use `std::atomic`
+- [ ] Signal handlers call only async-signal-safe functions
+- [ ] Query-named functions (`get_*`, `size`, `contains`, …) don't mutate state
+- [ ] Member functions that walk one container while mutating another guard against self-aliasing
 
 ### Performance
 - [ ] No allocations in hot paths

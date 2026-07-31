@@ -1,6 +1,6 @@
 ---
 name: programming-python
-description: Python programming skill based on PEP 8 and modern Python best practices - use for implementing Python code
+description: Use when implementing or modifying Python code (`.py`). Applies PEP 8, modern Python idioms (type hints, dataclasses, pathlib, f-strings), and project-local rules. Skip for pure structural refactoring (use planning-refactor → refactoring-techniques) or test code (testing-pytest covers test specifics). Composes with: testing (test coverage via the testing dispatcher → testing-pytest).
 ---
 
 # Python Programming Skill

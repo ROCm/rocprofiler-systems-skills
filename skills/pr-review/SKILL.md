@@ -20,10 +20,25 @@ Review Pull Requests or local changes with structured, thorough analysis.
 
 **Persist the review (opt-in):** Do NOT write a markdown file by default. The report goes to chat output. Save the full markdown to `.claude/pr-review-summaries/` ONLY when the user explicitly asks ("save the review", "write a summary file", "persist this", or equivalent). See Phase 4 for filename rules when saving.
 
-**Invoke relevant programming skills during review:**
-- C++ code → `programming-cpp`, `programming-cpp-design-patterns`, `programming-cpp-stl-algorithms`
-- Python code → `programming-python`
-- CMake files → `programming-cmake-best-practices`
+**Mandatory: invoke the same skills the code was written under.** A
+review that doesn't know the project's rules can't catch violations.
+For every file in the changeset:
+
+- `.cpp/.hpp/.h/.cc/.cxx` → MUST invoke `programming-cpp`, plus
+  `programming-cpp-naming-rules` (if identifiers added/renamed),
+  `programming-cpp-design-patterns` (if structural changes), and
+  `programming-cpp-stl-algorithms` (if iteration / containers touched)
+- `.py` → MUST invoke `programming-python`
+- `CMakeLists.txt` / `cmake/**` / `CMakePresets.json` → MUST invoke
+  `programming-cmake-best-practices`
+- Test files → MUST invoke `testing` (the dispatcher) and the
+  language-specific `testing-*` it routes to
+- Architecture-touching changes → MUST invoke `review-architecture`
+  agent (sub-agent of code-reviewer) and consult
+  `programming-cpp-design-patterns`
+- Refactor-style changes → MUST invoke `code-smells` and
+  `refactoring-techniques` so smells are flagged with the named
+  refactoring that would fix them
 </IMPORTANT>
 
 > **Workspace-level overrides.** Workspaces may define additional
@@ -44,23 +59,66 @@ Apply to every invocation of this skill. Full text in [HYGIENE.md](HYGIENE.md). 
 
 | Phase | Purpose |
 |-------|---------|
-| 0. Determine target | PR# / URL -> GitHub PR; nothing -> local diff vs main; "re-review" -> changes since last review |
-| 1. Gather + read | Changed files, full diff, commit messages, CI status; read each file ONCE; build Data Package |
-| 1.5. Spawn 8 agents in parallel | Static, Dead Code, Code Smells + Quality, Language Rules, Architecture (conditional), Simplify, Performance, UB Detection (C/C++/unsafe-Rust only) |
+| 0. Determine target + mode | Diff review (PR/local diff/re-review) vs Full-repo audit (no baseline / "audit the repo") |
+| 1. Gather + read | Changed files (or every file under audit root), full diff, commit messages, CI status; read each file ONCE; build Data Package |
+| 1.5. Spawn agents in parallel | Up to 8 specialized agents per the lite-mode gate. **Full-repo audit is never lite-mode eligible — full fan-out always.** |
+| 1.6. Orchestrator sweeps | Doc-vs-Code drift + Repo-meta presence (full-repo audit always; diff review when docs / meta files touched) |
 | 2. Aggregate | Merge findings, map to severity, deduplicate, sort, classify change type |
 | 3. Review tests | Coverage, edge cases, naming, independence, assertions; suggest missing tests |
-| 4. Final report | Severity-sorted, agent-sourced, with code fixes; chat-only by default, save .md only if asked |
+| 4. Final report | Severity-sorted, agent-sourced, with code fixes; pre-publish gates must clear or report marked PARTIAL |
 
-## Phase 0: Determine Review Target
+## Enforcement Gates (orchestrator-level, non-negotiable)
+
+These rules apply to YOU, the orchestrator, in addition to the per-agent
+rules inside Phase 1.5. They are listed here, not buried inside phase
+descriptions, because that is where they get rationalized past. None of
+them are advisory.
+
+- **Mode-fit rule.** Do NOT downgrade the mandated agent set for any
+  reason not listed in the Phase 1.5 lite-mode gate. "Save tokens", "the
+  diff looks simple", "I already see the issues myself" — none are valid.
+  The lite-mode gate is the ONLY legitimate downgrade.
+- **Synthesis ban.** "I'll synthesize the review directly without
+  spawning agents" is not a valid mode. It is the failure mode this skill
+  exists to prevent. If the Data Package is too large to pass inline,
+  save it to `<repo-root>/.claude/pr-review-data-package.md` and have
+  agents Read it from disk. Token cost is never a reason to skip fan-out.
+- **File-coverage rule.** Every file in scope (diff file list, or every
+  file under the audit root for full-repo audit) MUST be read with the
+  Read tool at least once before the report is published. "I skimmed" /
+  "obvious from context" / "the file is small" do not count.
+- **Per-site enumeration rule.** Multiple violations of the same class do
+  NOT collapse into a single representative finding. Five `eval()` sites
+  in five files = five rows. Cross-cutting summary subsections are
+  ADDITIVE (they group what was already enumerated), never SUBSTITUTIVE
+  (they never replace per-site rows). This rule is restated inside
+  Phase 1.5 ("Completeness discipline") and Phase 2 ("Aggregation
+  discipline"); it lives here because the orchestrator owns the merged
+  output.
+- **No-findings-dropped rule.** Every finding returned by an agent or by
+  a Phase 1.6 sweep appears in the merged output. Long shortlists are
+  condensed by lowering severity of marginal items, never by deletion.
+  Deduplication names the row each suppressed entry duplicates.
+
+Failing any of these gates means the report is incomplete. Either fix the
+gap and re-check, or mark the report **PARTIAL** in the Header with the
+failed gates listed (see Phase 4 Pre-publish gates).
+
+## Phase 0: Determine Review Target AND Mode
 
 **Do NOT ask the user what to review. Determine automatically:**
 
-| User Input | Action |
-|------------|--------|
-| PR number (e.g., `123`, `#123`) | Review GitHub PR #123 |
-| PR URL (e.g., `github.com/.../pull/123`) | Review that GitHub PR |
-| "re-review" or "review again" | Re-review mode (show only new changes) |
-| Nothing / just "review" | Review local changes vs main branch |
+| User Input / Repo State | Target | Mode | Lite-mode eligible? |
+|---|---|---|---|
+| PR number (`123`, `#123`) | GitHub PR #123 | Diff review | Yes (per Phase 1.5 lite gate) |
+| PR URL (`github.com/.../pull/123`) | That GitHub PR | Diff review | Yes |
+| "re-review" / "review again" | Changes since last review | Diff review (delta) | Yes |
+| Nothing / "review" / "review the diff" with a git baseline available | Local changes vs main/master | Diff review | Yes |
+| "audit / review the repo / review the codebase" OR no `main`/`master` baseline OR path is not a git work tree | Every file under the audit root | **Full-repo audit** | **No — always full fan-out + orchestrator sweeps in Phase 1.6** |
+
+**Mode determination rule.** If `git rev-parse --verify main` and `git rev-parse --verify master` both fail, OR the path is not a git work tree, OR the user explicitly asks to audit / review the repository or codebase, the mode is **Full-repo audit**. In that mode the file list under the audit root replaces the diff file list — every file is in scope.
+
+**Record the chosen mode in the report Header.** The mode determines which Phase 1.5 gating applies and whether the Phase 1.6 orchestrator sweeps fire.
 
 ### GitHub PR
 
@@ -119,7 +177,16 @@ Each agent has a unique identity, loads its skill, and maintains memory.
 
 ### Lite mode gate
 
-Before spawning all agents, check the diff scope. Agent IDs match the table in "Agent Identity & Memory System" below.
+Before spawning all agents, check the mode (from Phase 0) and the diff
+scope. Agent IDs match the table in "Agent Identity & Memory System" below.
+
+**Full-repo audit is NEVER lite-mode eligible.** If Phase 0 selected
+Full-repo audit mode, skip the rest of this gate and go straight to the
+full 8-agent fan-out (subject only to the Architecture and UB triggers
+below). Token cost, repo size, and "the issues look obvious" are not
+grounds to downgrade.
+
+For Diff review mode:
 
 - **Diff < 50 lines added/removed AND** no logic changes (docs / comments / formatting / imports / type aliases only): spawn ONLY Agents 1 (`static-analysis-agent`) and 2 (`dead-code-agent`). Skip 3, 4, 5, 6, 7, 8.
 - **Diff < 200 lines AND** affects only one file: spawn Agents 1, 2, 3 (`code-smells-agent`), 4 (`language-rules-agent`), 7 (`performance-agent`), 8 (`ub-detection-agent` if a C/C++/unsafe-Rust file changed). Skip 5 (architecture) and 6 (simplify).
@@ -218,6 +285,83 @@ Each agent's full prompt lives in its own file under `agents/prompts/`. The orch
 
 Architecture Agent fires only when the architectural-signal table below matches. UB Detection Agent fires only when the UB-trigger rule above matches. All others fire per the lite-mode gate.
 
+## Phase 1.6: Orchestrator Sweeps
+
+Two sweeps the orchestrator owns directly. They feed rows into Phase 2
+aggregation alongside agent findings. They are not delegated to agents
+because they cross-cut layers (docs vs code, repo metadata) that no single
+analysis agent owns.
+
+**Trigger gate.**
+- Full-repo audit mode → BOTH sweeps fire (1.6.a and 1.6.b).
+- Diff review mode → 1.6.a fires when any doc file is in the diff
+  (`README*`, `CHANGELOG*`, `docs/**`, `ARCHITECTURE*`); 1.6.b fires when
+  any meta file is in the diff (`LICENSE*`, `CONTRIBUTING*`, `CODEOWNERS`,
+  `SECURITY*`, `.gitignore`, `.pre-commit-config.yaml`, `pyproject.toml`,
+  `setup.py`, `setup.cfg`, `tox.ini`, `.editorconfig`, `.github/**`,
+  `Dockerfile*`, `Makefile`, CI workflow files).
+
+### 1.6.a — Doc-vs-Code drift sweep
+
+Read every doc file in scope and compare claims against current code:
+
+| Claim type | Verify against |
+|---|---|
+| Stated stack / framework / database | Imports in source files |
+| Stated architecture (n-tier, layers, modules) | Filesystem layout, module graph |
+| Stated test coverage / quality | Coverage measurement if any; count of `assert`/`EXPECT`/`ASSERT` |
+| Stated module / file list | `find` / actual files |
+| Stated security properties ("JWT auth", "salted hashes", "TLS only") | Auth / crypto / network code |
+| Install / run / usage commands | Packaging file, `Makefile`, actual entry points |
+| "Known issues: none" / "0 bugs" / similar | The list of findings being raised in this review |
+| Versioning claims | Single source of truth check (multiple `version`/`__version__` strings disagreeing is itself a finding) |
+
+Each mismatch is ONE row. Default severity **Should Fix (50)**; raise to
+**Must Fix (80)** when the doc actively misleads about a security,
+correctness, or installability property. Tag findings with source
+`orch:doc-drift`.
+
+### 1.6.b — Repo-meta presence + quality sweep
+
+Walk this checklist (omit checks the trigger gate did not enable):
+
+- `LICENSE` present? Matches what README claims? If README mentions one
+  and no `LICENSE` file exists, that is one finding (missing file) plus
+  one finding (README inaccurate).
+- `CONTRIBUTING.md` present?
+- `CODEOWNERS` present (for shared repos)?
+- `SECURITY.md` present (especially when security findings are non-zero)?
+- `.gitignore` present and language-appropriate (Python: `__pycache__/`,
+  `*.pyc`, `*.egg-info/`, `.pytest_cache/`, `dist/`, `build/`, `.coverage`,
+  `.env`; Node: `node_modules/`; C++: `build/`, `*.o`, `*.so`).
+- `.pre-commit-config.yaml` present, with at least format / lint hooks?
+- Packaging: `pyproject.toml` (preferred over `setup.py`), or
+  language-equivalent (`Cargo.toml`, `package.json`, `CMakeLists.txt`)?
+- Matrix runner / multi-version testing: `tox.ini`, `noxfile.py`, CI
+  matrix?
+- `.editorconfig` present?
+- `.github/ISSUE_TEMPLATE/` and `.github/pull_request_template.md` (for
+  GitHub-hosted)?
+- CI workflow quality (when CI config exists): pinned action versions
+  (not `@v1` if `@v4` exists), secrets via `${{ secrets.* }}` not inline
+  `env:`, deploy gated by `if: success()` not `if: always()`, matrix over
+  supported language versions, dependency cache configured, no EOL
+  language versions targeted, concurrency control for non-trivial repos.
+- Dockerfile quality (when present): pinned base image (not `:latest`),
+  single `RUN apt-get update && apt-get install ... && rm -rf /var/lib/apt/lists/*`,
+  non-root `USER`, `COPY` not `ADD` for local files, no `ENV SECRET=...`
+  baked in, exec-form `CMD`, `HEALTHCHECK` for services, `.dockerignore`
+  present.
+
+Each missing or substandard item is ONE row. Severity default **Should
+Fix (50)**; **Must Fix (80)** when the gap actively harms security or
+reproducibility (e.g. secrets in CI env, deploy on failed tests). Tag
+findings with source `orch:repo-meta`.
+
+Sweep findings feed the same Phase 2 merge pipeline as agent findings and
+are subject to the Per-site enumeration and No-findings-dropped rules
+from Enforcement Gates.
+
 ## Phase 2: Aggregate Agent Findings
 
 Wait for all spawned agents from Phase 1.5. Then:
@@ -236,6 +380,10 @@ Wait for all spawned agents from Phase 1.5. Then:
 ### 2.2 Merge
 
 Collect every issue. Group by severity (Critical -> Must Fix -> Should Fix -> Nitpick). Sort within each group by file path then line number. Tag each finding with the source agent ID.
+
+**Aggregation discipline - no findings dropped.** Every finding returned by an agent MUST appear in the merged output. Condense by *grouping* (multiple agents flag the same line -> one row with combined source tags), never by *deletion*. If the shortlist gets long, lower the severity of the marginal items - do not silently omit them. The agents are the detection layer; the aggregator is presentation only. Dropping a finding here means the next reviewer cannot see what was checked.
+
+Before publishing, reconcile agent-table-row-counts against merged-row-counts. Every missing row is either a genuine duplicate of another row (name which row) or it must be added back.
 
 ### 2.3 Deduplicate
 
@@ -292,6 +440,47 @@ If agents missed cross-cutting concerns, manually check:
 
 **Compile aggregated findings from all phases into a comprehensive review.**
 
+### Pre-publish gates (block the report)
+
+Before saving (or chatting) the report, clear all four gates. Each gate is
+a self-check the orchestrator runs against the assembled report.
+
+**Gate A — File coverage.**
+- Count files in scope (diff file list, or every file under the audit
+  root).
+- Confirm each was Read with the Read tool at least once during Phase 1.
+- Confirm the Files Reviewed table in the report has one row per in-scope
+  file. Any gap is enumerated under that table as a `Gaps: [list]` line —
+  an empty `Gaps:` line is forbidden (write `Gaps: none` explicitly).
+
+**Gate B — Per-site enumeration.**
+- Identify any class of finding flagged with ≥ 2 sites by any agent or
+  sweep (e.g. SQL injection, mutable defaults, bare except,
+  `range(len(x))`).
+- Confirm the merged Findings section contains one row per site, not one
+  representative row.
+- Cross-cutting summary subsections are allowed only as ADDITIONS to the
+  per-site rows. A class with 10 sites and only one row in the report
+  fails this gate.
+
+**Gate C — Mode-fit.**
+- Confirm the agents actually spawned match the agents mandated by the
+  mode determined in Phase 0 (and the lite-mode gate, when applicable).
+- Confirm Phase 1.6 sweeps fired when their triggers matched.
+- The Header records both `Mode` and `Agents spawned`; the values must
+  reflect what actually ran.
+
+**Gate D — Reconciliation.**
+- Sum agent-table row counts (each agent's returned findings table).
+- Add Phase 1.6 sweep row counts.
+- Confirm the merged Findings section row count = sum of inputs − named
+  duplicates. Each suppressed duplicate names the row it duplicates.
+
+**On gate failure.** Fix the gap and re-run the gate. If a gap cannot be
+closed (e.g. an agent crashed and cannot be re-spawned), mark the report
+**PARTIAL** in the Header, list the failed gate(s), and proceed. Never
+publish a report that silently fails a gate.
+
 ### Save final report to disk (opt-in)
 
 Default behaviour: do NOT write a markdown file. The report is delivered as chat output. Saving to disk happens ONLY when the user explicitly asks ("save the review", "write a summary file to disk", "persist this report", "drop a markdown under the project", or equivalent).
@@ -311,7 +500,7 @@ When the user has asked, persist the report under the **git repository root** of
 
 - **GitHub PR review:** `<pr-number>-<pr-title-slug>.md`
   - `pr-number`: the PR number (digits only, no `#`).
-  - `pr-title-slug`: slug derived from the PR **title** — lowercase, replace spaces and punctuation with single hyphens, strip leading/trailing hyphens, ASCII only; collapse repeated hyphens; **max 60 characters** so paths stay reasonable. If the title slug is empty, use `review`.
+  - `pr-title-slug`: slug derived from the PR **title** - lowercase, replace spaces and punctuation with single hyphens, strip leading/trailing hyphens, ASCII only; collapse repeated hyphens; **max 60 characters** so paths stay reasonable. If the title slug is empty, use `review`.
 - **Local review (no PR):** `local-<branch-slug>-<short-slug>.md`
   - `branch-slug`: current branch name slugified the same way (max 40 chars), or `detached` if not on a branch.
   - `short-slug`: from the first line of `git log -1 --pretty=%s` (slugified, max 40 chars), or `changes` if unavailable.

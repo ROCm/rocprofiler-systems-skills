@@ -1,6 +1,6 @@
 ---
 name: testing-pytest
-description: Pytest testing skill with modern patterns - use for writing Python tests with fixtures, parametrization, and modular design
+description: Use when writing Python tests with pytest - fixtures, parametrization, modular design. **Triggered by the `testing` dispatcher** when Python test work is needed; do NOT invoke directly. Going through the `testing` dispatcher applies the test-first dispatch and failure-triage discipline, prevents tailoring tests to existing-but-wrong code, and decides scope (unit vs internal-integration vs CTest+pytest). Composes with: programming-python (the code under test), testing (parent dispatcher), testing-testplan (handoff doc when implementation is complete).
 ---
 
 # Pytest Testing Skill

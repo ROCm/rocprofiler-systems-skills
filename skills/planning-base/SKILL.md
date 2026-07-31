@@ -1,6 +1,6 @@
 ---
 name: planning-base
-description: Base planning skill with shared rules - do not invoke directly, use specific planning skills instead
+description: Shared rules for the planning-* family. **Do not invoke directly** - use the specific skill (planning-architecture, planning-bugfix, planning-feature, planning-refactor, planning-docs). Composition: invoked transitively by the specific planning-* skills, never standalone.
 ---
 
 # Base Planning Rules
@@ -55,6 +55,109 @@ Before writing ANY code or making ANY changes:
 2. **Identify the scope** - What files/components are affected?
 3. **Find dependencies** - What existing code/patterns should be followed?
 4. **Spot risks** - What could go wrong? What needs extra attention?
+5. **Consult programming skills for the languages involved** - see below.
+
+### Mandatory: consult programming skills BEFORE drafting the plan
+
+For any language the plan will touch, the corresponding programming
+skill MUST be loaded BEFORE the plan is drafted, not after. The plan
+should reference language rules so the implementation phase doesn't
+have to retrofit them.
+
+| Language / file type the plan touches | MUST invoke |
+|---|---|
+| C++ (`.cpp/.hpp/.h/.cc/.cxx`) | `programming-cpp`; add `programming-cpp-naming-rules` if new identifiers; add `programming-cpp-design-patterns` if structural decisions are involved; add `programming-cpp-stl-algorithms` if iteration / containers are a focus |
+| Python (`.py`) | `programming-python` |
+| CMake (`CMakeLists.txt`, `cmake/**`, `CMakePresets.json`) | `programming-cmake-best-practices` |
+
+Skip ONLY if the plan is doc-only (`planning-docs`). Even refactors
+without new identifiers MUST load `programming-cpp` for testability +
+RAII + virtual-inheritance avoidance.
+
+### Mandatory: grill-me on heavy or underspecified plans
+
+When the request is heavy (multi-file, multi-module) or vague
+(missing acceptance criteria, ambiguous scope), invoke `grill-me`
+alongside this skill BEFORE finalizing the plan. The grilled answers
+become inputs to Phase 2 / 3.
+
+### Mandatory: "All Needed Context" section in every plan
+
+Context is the difference between a plan that works and one that
+needs three iterations. Every plan MUST include an "All Needed
+Context" section with:
+
+- **URLs** - links to documentation, with the specific section that
+  matters (not just the root URL)
+- **Code references** - files in THIS codebase that exemplify the
+  pattern to follow, with `file:line` so the implementer can read
+  them; if the project has an `examples/` folder, ALWAYS check it
+- **Gotchas** - library quirks, version issues, project-local
+  conventions that violate generic advice (e.g., "this project bans
+  `tim::*` use even though timemory is bundled")
+- **Patterns to follow** - named existing approaches in the codebase
+  (e.g., "follow the pattern in `source/lib/core/rocpd/storage_parser.cpp`
+  for parser composition")
+
+Format inside the plan:
+
+```markdown
+## All Needed Context
+
+### Documentation
+- url: <doc URL>
+  section: <specific section>
+  why: <what you'll need from it>
+
+### Code references
+- file: `<path>:<line>`
+  why: <pattern to mirror / gotcha to avoid>
+
+### Gotchas
+- <one-line gotcha + where it surfaces>
+
+### Patterns
+- <named pattern> as in `<file:line>`
+```
+
+A plan without this section is incomplete - do not advance to
+Phase 4.
+
+### Mandatory: "Validation Gates" section in every plan
+
+Plans MUST end with executable validation commands the agent will
+self-run to confirm completion. Not "tests should pass" prose - 
+actual shell commands.
+
+Format:
+
+```markdown
+## Validation Gates
+
+Each command MUST exit 0 for the plan to be considered done.
+
+```bash
+# Build
+cmake --build build/debug-optimized -j$(nproc)
+
+# Unit tests
+build/debug-optimized/bin/rocprof-sys-unit-tests --gtest_filter='<pattern>'
+
+# Integration / CTest (when relevant)
+ctest --test-dir build/debug-optimized -R '<pattern>' --output-on-failure
+
+# Static checks (when relevant)
+clang-format-18 --dry-run --Werror <changed files>
+```
+```
+
+Validation gates are determined by the `testing` skill's scope
+decision: which test tiers apply (unit / internal-integration /
+CTest-pytest / e2e / format-validation). Include the runnable
+command for each tier that applies.
+
+A plan with prose-only validation ("run the tests") is not
+done - write the actual command.
 
 ## Phase 2: Assess PR Scope
 

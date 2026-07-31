@@ -1,6 +1,6 @@
 ---
 name: planning-refactor
-description: Planning skill for refactoring - improves existing code following best practices, reduces duplication, improves readability and testability
+description: Use when reshaping existing code WITHOUT changing observable behavior - extract method, move field, replace conditional, eliminate duplication. Triggers on "refactor", "clean up", "simplify", or when code-smells flags structural issues. Skip for behavior changes (use planning-feature) or single-line cosmetic edits (just edit). Composes with: code-smells (smell detection), refactoring-techniques (catalog of named refactorings), programming-cpp / programming-python (implementation), testing (REQUIRED - regression coverage MUST exist before refactoring starts; refactor never goes ahead without green tests).
 ---
 
 # Refactoring Planning

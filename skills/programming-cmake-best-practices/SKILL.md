@@ -1,6 +1,6 @@
 ---
 name: programming-cmake-best-practices
-description: Create, refactor, link, and build CMake projects following modern CMake guidelines from official documentation
+description: Use when creating, modifying, or refactoring CMake projects - `CMakeLists.txt`, `cmake/**`, `CMakePresets.json`. Modern CMake (3.x+) idioms: target-based, no global state, explicit dependencies, generator-expression-aware. Triggers on changes to those files. Skip for pure source code changes (use programming-cpp). Composes with: programming-cpp (the code being built), testing (CTest registration), rocprofsys-configure / rocprofsys-build (project-specific build wrappers).
 ---
 
 # CMake Best Practices

@@ -1,6 +1,6 @@
 ---
 name: programming-cpp-naming-rules
-description: C++ file and class naming conventions - folder structure matches namespaces, no redundant prefixes
+description: Use when creating new C++ files / classes / functions or reviewing existing names - folder structure matches namespaces, no redundant prefixes, screaming-snake-case for constants. Skip if you are not adding or renaming identifiers. Composes with: programming-cpp (parent skill - these rules apply to all programming-cpp work).
 ---
 
 # C++ Naming Rules
