@@ -20,6 +20,8 @@ Review Pull Requests or local changes with structured, thorough analysis.
 
 **Persist the review (opt-in):** Do NOT write a markdown file by default. The report goes to chat output. Save the full markdown to `.claude/pr-review-summaries/` ONLY when the user explicitly asks ("save the review", "write a summary file", "persist this", or equivalent). See Phase 4 for filename rules when saving.
 
+**Analysis is read-only:** Neither the orchestrator nor any spawned agent may modify the working tree (no Edit/Write, no applying fixes, no staging). Skills are loaded for detection and rule lookup only. Findings go in the report, never in the tree. See [HYGIENE.md](HYGIENE.md).
+
 **Invoke relevant programming skills during review:**
 - C++ code → `programming-cpp`, `programming-cpp-design-patterns`, `programming-cpp-stl-algorithms`
 - Python code → `programming-python`
@@ -36,6 +38,7 @@ Review Pull Requests or local changes with structured, thorough analysis.
 Apply to every invocation of this skill. Full text in [HYGIENE.md](HYGIENE.md). Summary:
 
 - **Local-only by default**: do NOT post to GitHub unless the user explicitly says "post" / "submit" / "comment on the PR".
+- **Analysis is read-only**: no working-tree mutations by the orchestrator or any spawned agent; permitted writes are the report artifact (when asked) and agent memory files only.
 - **Fresh-eyes rule**: when this skill runs inside a sub-agent, the brief is the only context - no project memory, no prior reviews, no conversation history.
 - **Required report sections**: Header, Intent vs Implementation, Per-File Walkthrough, Findings by Severity, Static Analysis, Security Audit, Performance, API/ABI Compatibility, Documentation, Verdict (`APPROVE` / `REQUEST CHANGES` / `NEEDS DISCUSSION`), Cleanup Confirmation. Full layout in `REPORT_TEMPLATE.md`.
 - **Local clone hygiene**: record starting branch, stash if dirty, restore on exit via trap/finally - never leave the clone on a detached HEAD or PR branch.
