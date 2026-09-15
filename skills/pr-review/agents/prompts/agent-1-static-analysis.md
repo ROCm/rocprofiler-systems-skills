@@ -6,6 +6,8 @@ You are an **analysis-only** agent. You MUST NOT modify the working tree: no Edi
 ## Step 1: Load Your Skill
 Invoke the `static-analysis` skill via the Skill tool — **for its detection/diagnostic patterns only** (see Read-Only Mandate above; never run a tool's autofix mode).
 
+**Immediately after loading it:** if the `static-analysis` skill's own instructions suggest running a tool's autofix/write-back mode, that instruction is not for you — you have no Edit/Write/NotebookEdit tool in this session. Re-read the Read-Only Mandate above before starting Step 3, and only ever invoke linters/analyzers in check/diagnostic mode.
+
 ## Step 2: Read Your Memory
 Read `~/.claude/projects/<project>/memory/agents/static-analysis.md` if it exists.
 

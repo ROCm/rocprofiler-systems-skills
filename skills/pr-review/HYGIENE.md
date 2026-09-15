@@ -36,22 +36,14 @@ This keeps sub-agent reviews unbiased by prior conclusions. The parent orchestra
 
 ## Report content rules
 
-A written report (as opposed to inline chat feedback) MUST contain all of the following sections, in roughly this order. Omit a section's body only if it is genuinely N/A, and say so explicitly ("No public API touched - N/A").
+A written report (as opposed to inline chat feedback) MUST contain every section `REPORT_TEMPLATE.md`'s Contents list tags `[REQUIRED]` — that file is the single canonical list; this section only calls out rationale for the less obvious ones. Omit a required section's body only if it is genuinely N/A, and say so explicitly ("No public API touched - N/A").
 
-1. **Header** - PR number, title, author, target branch, base SHA, head SHA, files changed count, +/- line counts, commit count.
-2. **Intent vs implementation** - what the PR claims to do (from description / commits) vs what the diff actually does. Flag mismatches.
-3. **Per-file walkthrough** - one short paragraph per changed file explaining what changed and why, in reviewer's own words.
-4. **Findings ranked by severity** - Critical -> Must Fix -> Should Fix -> Nitpick (covered by agent aggregation in Phase 2).
-5. **Static analysis pass** - summary of linter/tool findings (from Static Analysis Agent).
-6. **Security audit** - input validation, injection, auth, secrets, unsafe deserialization, path traversal, crypto misuse.
-7. **Performance review** - algorithmic complexity, hot-path allocations, unnecessary copies, lock contention, I/O patterns.
-8. **Undefined behaviour audit** (C/C++ / unsafe-Rust / low-level C-FFI only) - signed-integer overflow, uninitialized reads, OOB access, lifetime / use-after-free / dangling references, strict aliasing, type punning, alignment violations, data races, null deref, shift width >= type width, integer / pointer-arithmetic UB, unsequenced modifications, invalid `union` active-member reads, `std::memcpy` size / overlap errors, signed-to-unsigned conversions producing subsequent UB. Recommend a sanitizer build (UBSan + ASan, plus TSan / MSan when relevant) if the project does not already run one in CI. Skip entirely for pure docs / Python / CMake diffs.
-9. **API/ABI compatibility** - does the PR change a public API or ABI? If yes, is the change additive, deprecating, or breaking? Migration notes?
-10. **Documentation review** - are README, doc comments, changelog, man pages updated to match behavior changes?
-11. **Verdict** - one of `APPROVE`, `REQUEST CHANGES`, or `NEEDS DISCUSSION` (use these exact labels).
-12. **Cleanup confirmation** - confirm `git status` matches the pre-review state. This applies to **every** run, not just ones that checked out a PR: verify no analysis agent left edits, new files, or staged changes in the working tree. If a PR was checked out, additionally confirm the clone was restored to its starting branch and any stash was popped. If the tree differs from its pre-run state, revert the difference and say so in the report.
+Notable required sections and their content:
 
-See `REPORT_TEMPLATE.md` for the full layout.
+- **Undefined behaviour audit** (C/C++ / unsafe-Rust / low-level C-FFI only) - signed-integer overflow, uninitialized reads, OOB access, lifetime / use-after-free / dangling references, strict aliasing, type punning, alignment violations, data races, null deref, shift width >= type width, integer / pointer-arithmetic UB, unsequenced modifications, invalid `union` active-member reads, `std::memcpy` size / overlap errors, signed-to-unsigned conversions producing subsequent UB. Recommend a sanitizer build (UBSan + ASan, plus TSan / MSan when relevant) if the project does not already run one in CI. State "N/A - no C/C++/unsafe-Rust changes" for pure docs / Python / CMake diffs — that still counts as present, not omitted.
+- **Cleanup confirmation** - confirm `git status` matches the pre-review state. This applies to **every** run, not just ones that checked out a PR: verify no analysis agent left edits, new files, or staged changes in the working tree. If a PR was checked out, additionally confirm the clone was restored to its starting branch and any stash was popped. If the tree differs from its pre-run state, revert the difference and say so in the report.
+
+See `REPORT_TEMPLATE.md` for the full layout and the authoritative required/optional tagging.
 
 ## Local clone hygiene (when checking out a PR)
 

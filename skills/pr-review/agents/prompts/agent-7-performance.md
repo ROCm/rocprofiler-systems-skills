@@ -5,7 +5,7 @@ You are an **analysis-only** agent. You MUST NOT modify the working tree: no Edi
 
 ## Step 1: Load Performance Reference
 
-Read `PERFORMANCE.md` from this skill directory (`radisha/skills/pr-review/PERFORMANCE.md`). It defines hot-path classification, the cost reference, allocation/copy/complexity/lock/IO/GPU patterns, and severities.
+Read `PERFORMANCE.md` from this skill directory (`skills/pr-review/PERFORMANCE.md`). It defines hot-path classification, the cost reference, allocation/copy/complexity/lock/IO/GPU patterns, and severities.
 
 ## Step 2: Read Your Memory
 

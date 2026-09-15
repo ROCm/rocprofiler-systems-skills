@@ -7,23 +7,29 @@ silently dropping the section.
 
 ## Contents
 
+This list is the canonical required-sections definition for pr-review reports;
+`SKILL.md` and `HYGIENE.md` both point here rather than restating it.
+`[REQUIRED]` sections must appear in every report (state "N/A" with a reason
+when genuinely inapplicable, e.g. Undefined Behaviour on a pure-Python diff -
+that still counts as present). `[OPTIONAL]` sections may be silently omitted.
+
 - [REQUIRED] Header
 - [REQUIRED] Summary
-- [OPTIONAL] Intent vs Implementation
-- [OPTIONAL] Per-File Walkthrough
+- [REQUIRED] Intent vs Implementation
+- [REQUIRED] Per-File Walkthrough
 - [OPTIONAL] Agent Analysis Summary
 - [OPTIONAL] Architecture (if applicable)
 - [OPTIONAL] What's Good
 - [REQUIRED] Issues Found (sorted by severity)
 - [OPTIONAL] Test Coverage
 - [REQUIRED] Files Reviewed
-- [OPTIONAL] Static Analysis Pass
-- [OPTIONAL] Security Audit
-- [OPTIONAL] Performance Review
-- [OPTIONAL] Undefined Behaviour
-- [OPTIONAL] API / ABI Compatibility
-- [OPTIONAL] Documentation Review
-- [OPTIONAL] Cleanup Confirmation
+- [REQUIRED] Static Analysis Pass
+- [REQUIRED] Security Audit
+- [REQUIRED] Performance Review
+- [REQUIRED] Undefined Behaviour (N/A for pure docs/Python/CMake diffs)
+- [REQUIRED] API / ABI Compatibility
+- [REQUIRED] Documentation Review
+- [REQUIRED] Cleanup Confirmation
 - [OPTIONAL] Previous Review Comments (GitHub PRs)
 - [REQUIRED] Checklist
 - [OPTIONAL] Questions for Author
@@ -56,7 +62,7 @@ silently dropping the section.
 
 ---
 
-## [OPTIONAL] Intent vs Implementation
+## [REQUIRED] Intent vs Implementation
 
 **Stated intent (from PR description / commits):**
 [Summary]
@@ -68,7 +74,7 @@ silently dropping the section.
 
 ---
 
-## [OPTIONAL] Per-File Walkthrough
+## [REQUIRED] Per-File Walkthrough
 
 ### `path/to/file1.cpp`
 [1 short paragraph: what changed and why]
@@ -256,14 +262,14 @@ TEST(HandlerTest, Process_EmptyInput_ReturnsError) {
 
 ---
 
-## [OPTIONAL] Static Analysis Pass
+## [REQUIRED] Static Analysis Pass
 
 [Summary of Static Analysis Agent findings: tools run, totals,
 notable suppressions. "Clean" if nothing to report.]
 
 ---
 
-## [OPTIONAL] Security Audit
+## [REQUIRED] Security Audit
 
 | Area | Result |
 |------|--------|
@@ -277,7 +283,7 @@ notable suppressions. "Clean" if nothing to report.]
 
 ---
 
-## [OPTIONAL] Performance Review
+## [REQUIRED] Performance Review
 
 | Aspect | Result |
 |--------|--------|
@@ -289,7 +295,7 @@ notable suppressions. "Clean" if nothing to report.]
 
 ---
 
-## [OPTIONAL] Undefined Behaviour
+## [REQUIRED] Undefined Behaviour
 
 (C/C++ / unsafe-Rust only. State "N/A - no C/C++/unsafe-Rust changes" otherwise.)
 
@@ -308,7 +314,7 @@ notable suppressions. "Clean" if nothing to report.]
 
 ---
 
-## [OPTIONAL] API / ABI Compatibility
+## [REQUIRED] API / ABI Compatibility
 
 **Public API touched?** [Yes / No]
 **ABI impact:** [None / Additive / Deprecating / Breaking]
@@ -316,7 +322,7 @@ notable suppressions. "Clean" if nothing to report.]
 
 ---
 
-## [OPTIONAL] Documentation Review
+## [REQUIRED] Documentation Review
 
 | Doc Surface | Updated? |
 |-------------|----------|

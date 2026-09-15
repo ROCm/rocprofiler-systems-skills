@@ -69,7 +69,7 @@ Apply learned patterns:
 | parser.cpp:42 | Missing const& | `void foo(string s)` | `void foo(const string& s)` | Should Fix (50) |
 | utils.py:12 | Missing type hint | `def parse(data):` | `def parse(data: str) -> dict:` | Should Fix (50) |
 
-Apply best practices strictly - the standard, not existing codebase patterns. **Report ALL violations.**
+Apply best practices strictly - the standard, not undocumented existing codebase patterns. Project conventions and intentional exceptions recorded in memory (Step 2) still apply and are not violations. **Report ALL violations.**
 
 ## Step 4: Update Memory (if new learnings)
 

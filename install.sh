@@ -8,7 +8,11 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILLS_DIR="$HOME/.claude/skills"
+AGENTS_DIR="$HOME/.claude/agents"
 REPO_URL="git@github.com:ROCm/rocprofiler-systems-skills.git"
+# Set once a fresh clone happens (non-local install), so install_agents can
+# reuse it instead of cloning the repo a second time.
+CLONE_DIR=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -46,58 +50,64 @@ is_local_install() {
         [ -f "$SCRIPT_DIR/skills/radisha-help/SKILL.md" ]
 }
 
-install_skills() {
-    echo "Installing skills to $SKILLS_DIR..."
+# Symlinks $SCRIPT_DIR/<src_subdir> (or a fresh clone of it) into $dest_dir.
+# Shared by install_skills and install_agents so both directories are kept
+# in sync the same way, instead of duplicating the symlink/clone logic.
+install_dir() {
+    local label="$1" src_subdir="$2" dest_dir="$3"
+    echo "Installing $label to $dest_dir..."
 
     # Create .claude directory if needed
     mkdir -p "$HOME/.claude"
 
     if is_local_install; then
         # Installing from local clone
-        if [ -L "$SKILLS_DIR" ]; then
+        local src="$SCRIPT_DIR/$src_subdir"
+        if [ -L "$dest_dir" ]; then
             # Already a symlink
-            EXISTING_TARGET=$(readlink -f "$SKILLS_DIR")
-            if [ "$EXISTING_TARGET" = "$SCRIPT_DIR/skills" ]; then
-                print_success "Skills already linked to $SCRIPT_DIR/skills"
+            local existing_target
+            existing_target=$(readlink -f "$dest_dir")
+            if [ "$existing_target" = "$src" ]; then
+                print_success "$label already linked to $src"
             else
-                print_warning "Existing symlink points to $EXISTING_TARGET"
-                read -p "  Replace with link to $SCRIPT_DIR/skills? [y/N] " -n 1 -r
+                print_warning "Existing symlink points to $existing_target"
+                read -p "  Replace with link to $src? [y/N] " -n 1 -r
                 echo
                 if [[ $REPLY =~ ^[Yy]$ ]]; then
-                    rm "$SKILLS_DIR"
-                    ln -s "$SCRIPT_DIR/skills" "$SKILLS_DIR"
+                    rm "$dest_dir"
+                    ln -s "$src" "$dest_dir"
                     print_success "Symlink updated"
                 else
                     print_info "Keeping existing symlink"
                 fi
             fi
-        elif [ -d "$SKILLS_DIR" ]; then
+        elif [ -d "$dest_dir" ]; then
             # Directory exists (not symlink)
-            print_warning "Directory already exists at $SKILLS_DIR"
-            read -p "  Replace with symlink to $SCRIPT_DIR/skills? [y/N] " -n 1 -r
+            print_warning "Directory already exists at $dest_dir"
+            read -p "  Replace with symlink to $src? [y/N] " -n 1 -r
             echo
             if [[ $REPLY =~ ^[Yy]$ ]]; then
-                rm -rf "$SKILLS_DIR"
-                ln -s "$SCRIPT_DIR/skills" "$SKILLS_DIR"
+                rm -rf "$dest_dir"
+                ln -s "$src" "$dest_dir"
                 print_success "Replaced with symlink"
             else
                 print_info "Keeping existing directory"
             fi
         else
             # Fresh install - create symlink
-            ln -s "$SCRIPT_DIR/skills" "$SKILLS_DIR"
-            print_success "Created symlink: $SKILLS_DIR -> $SCRIPT_DIR/skills"
+            ln -s "$src" "$dest_dir"
+            print_success "Created symlink: $dest_dir -> $src"
         fi
     else
         # Installing from curl/wget - clone the repo
-        if [ -d "$SKILLS_DIR" ] || [ -L "$SKILLS_DIR" ]; then
-            print_warning "Skills directory already exists"
-            if [ -d "$SKILLS_DIR/.git" ] || [ -L "$SKILLS_DIR" ]; then
+        if [ -d "$dest_dir" ] || [ -L "$dest_dir" ]; then
+            print_warning "$label directory already exists"
+            if [ -d "$dest_dir/.git" ] || [ -L "$dest_dir" ]; then
                 print_info "Updating existing installation..."
-                if [ -L "$SKILLS_DIR" ]; then
-                    cd "$(readlink -f "$SKILLS_DIR")/.."
+                if [ -L "$dest_dir" ]; then
+                    cd "$(readlink -f "$dest_dir")/.."
                 else
-                    cd "$SKILLS_DIR/.."
+                    cd "$dest_dir/.."
                 fi
                 git pull origin main --quiet 2>/dev/null || true
                 print_success "Updated to latest version"
@@ -105,16 +115,26 @@ install_skills() {
                 print_info "Keeping existing directory"
             fi
         else
-            # Clone the repo
-            TEMP_DIR=$(mktemp -d)
-            git clone --quiet "$REPO_URL" "$TEMP_DIR/radisha"
-            ln -s "$TEMP_DIR/radisha/skills" "$SKILLS_DIR"
-            print_success "Cloned and linked skills"
-            print_info "Repo location: $TEMP_DIR/radisha"
+            # Clone the repo once and reuse it for every dest_dir in this run
+            if [ -z "$CLONE_DIR" ]; then
+                CLONE_DIR=$(mktemp -d)
+                git clone --quiet "$REPO_URL" "$CLONE_DIR/radisha"
+            fi
+            ln -s "$CLONE_DIR/radisha/$src_subdir" "$dest_dir"
+            print_success "Cloned and linked $label"
+            print_info "Repo location: $CLONE_DIR/radisha"
         fi
     fi
 
-    print_success "Skills installation complete"
+    print_success "$label installation complete"
+}
+
+install_skills() {
+    install_dir "Skills" "skills" "$SKILLS_DIR"
+}
+
+install_agents() {
+    install_dir "Agents" "agents" "$AGENTS_DIR"
 }
 
 setup_project() {
@@ -280,5 +300,6 @@ print_usage() {
 # Main
 print_header
 install_skills
+install_agents
 setup_project
 print_usage

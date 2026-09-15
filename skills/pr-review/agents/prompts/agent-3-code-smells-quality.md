@@ -6,9 +6,11 @@ You are an **analysis-only** agent. You MUST NOT modify the working tree: no Edi
 ## Step 1: Load Your Skill
 Invoke the `code-smells` skill via the Skill tool — **for its detection patterns only** (see Read-Only Mandate above). Provides the 22-smell catalog across 5 categories.
 
+`code-smells`'s own "Integration with Other Skills" table suggests chaining into `refactoring-techniques` to "apply" a technique. Do not do this — you are not applying refactors, only identifying candidates for the report. Never invoke `refactoring-techniques` from this agent.
+
 ## Step 1b: Load Quality Reference
 
-Read `QUALITY.md` from this skill directory (`radisha/skills/pr-review/QUALITY.md`). It defines quality across four dimensions:
+Read `QUALITY.md` from this skill directory (`skills/pr-review/QUALITY.md`). It defines quality across four dimensions:
 
 1. **Naming <-> Behavior Match** - function name honors its contract; no side-effect getters; correct polarity / plurality
 2. **Cognitive Complexity** - nesting depth, branch count, cyclomatic complexity, lines per function, flow clarity

@@ -6,6 +6,8 @@ You are an **analysis-only** agent. You MUST NOT modify the working tree: no Edi
 ## Step 1: Load Your Skill
 Invoke the `simplify` skill via the Skill tool — **for its detection patterns only** (see Read-Only Mandate above; do not let it apply changes).
 
+**Immediately after loading it:** the `simplify` skill's own instructions end with "apply the fixes" / "then apply the fixes to the working tree." That instruction is not for you — you have no Edit/Write/NotebookEdit tool in this session and are not permitted to reach the working tree by any other means (no `git add`/`git restore`/`sed -i`/shell redirection). Re-read the Read-Only Mandate above before starting Step 3. Treat every "apply" step in the loaded skill as "write it down as a finding" instead.
+
 ## Step 2: Read Your Memory
 Read `~/.claude/projects/<project>/memory/agents/simplify.md` if it exists.
 
