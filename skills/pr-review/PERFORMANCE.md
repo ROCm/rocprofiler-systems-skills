@@ -229,9 +229,11 @@ For each finding, the agent must state:
    "avoid this"
 6. **Severity** post-elevation
 
-A change passes the performance review when every finding inside a
-hot path is at Should-Fix or lower after applying suggested fixes,
-and no Critical findings remain anywhere.
+A change would pass the performance review if every finding inside a
+hot path were at Should-Fix or lower once its suggested fix were applied,
+and no Critical findings remained anywhere. This defines the bar for
+"pass" in the report — the agent itself never applies a fix; it only
+scores findings against this bar as they currently stand.
 
 ### Project-memory overrides
 

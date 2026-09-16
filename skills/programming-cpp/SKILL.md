@@ -10,7 +10,7 @@ Use this skill when writing or modifying C++ code.
 <IMPORTANT>
 Follow the [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines) as the primary reference for best practices.
 
-**C++17 Standard.** This project uses C++17. Use only features available in C++17. Do NOT use C++20 features (concepts, ranges, std::span, etc.).
+**C++20 Standard.** This project uses C++20. Use features available in C++20 (concepts, ranges, std::span, etc.) in addition to C++17.
 
 **Compile-time execution is a PRIORITY.** If code CAN be executed at compile time, it SHOULD be. Use `constexpr`, `if constexpr`, template metaprogramming. Move as much computation as possible from runtime to compile time.
 
@@ -484,12 +484,13 @@ void process(T& obj) noexcept(noexcept(obj.do_work())) {
 [[nodiscard]] bool try_lock();
 [[nodiscard]] iterator find(const key_type& key);
 
-// Entire class (C++17) - all methods return important values
+// Entire class - all methods return important values
 class [[nodiscard]] result {
     // ...
 };
 
-// Note: [[nodiscard("message")]] requires C++20, use without message in C++17
+// [[nodiscard("message")]] is available in C++20
+[[nodiscard("check the error code")]] error_code save_file(const std::string& path);
 ```
 
 ### [[maybe_unused]]
@@ -534,7 +535,7 @@ void critical_section() {
 
 ## C++17 Features (USE THESE)
 
-This project uses **C++17**. Use these features:
+This project uses **C++20** (which includes all C++17 features). Use these features:
 
 ### Type Deduction & Inference
 - **`auto`** for type inference when type is obvious
@@ -583,19 +584,36 @@ std::optional<int> find_value(int key);  // Optional return
 std::string_view get_name();  // Zero-copy string view
 ```
 
-### NOT Available (C++20+) - DO NOT USE
-- ~~`std::span`~~ - scan project for existing span implementation, otherwise use pointer + size
-- ~~Concepts~~ - use SFINAE or `static_assert`
-- ~~Ranges~~ - use STL algorithms
-- ~~`std::format`~~ - use `fmt` library or streams (if available in project)
-- ~~Coroutines~~ - not available
-- ~~`[[nodiscard("message")]]`~~ - use `[[nodiscard]]` without message
-- ~~`gsl::span`~~ - GSL library is NOT used in this project
+## C++20 Features (USE THESE)
+
+This project uses **C++20**. In addition to the C++17 features above, use these:
+
+### Type Safety & Generic Programming
+- **Concepts** - constrain templates with `concept`/`requires` instead of SFINAE
+- **`std::span<T>`** - non-owning view over contiguous data (replaces pointer + size)
+
+### Ranges
+- **Ranges library** (`std::ranges::`) - composable, lazy algorithms over ranges
+- **Range views** (`std::views::filter`, `std::views::transform`, etc.)
+
+### Standard Library
+- **`std::format`** - type-safe string formatting (prefer over `fmt`/streams if available)
+- **`std::erase_if`** - uniform container element removal
+
+### Attributes
+- **`[[nodiscard("message")]]`** - nodiscard with a custom diagnostic message
+
+### Coroutines
+- Available, but only use if there's a clear need — prefer straightforward control flow otherwise
+
+### NOT Available (C++23+) - DO NOT USE
+- ~~`std::expected`~~ - use error codes or exceptions
+- ~~`std::print`/`std::println`~~ - use `std::format` with streams, or `fmt` library
 
 **For span-like functionality:**
-1. First, search the codebase for existing span implementation (e.g., `span`, `array_view`, `buffer_view`)
-2. If found, use the project's existing implementation
-3. If not found, use pointer + size parameters:
+1. Prefer `std::span<T>` (C++20)
+2. If the codebase already has a custom span-like type in use (e.g., `array_view`, `buffer_view`), match existing usage instead
+3. Otherwise, use pointer + size or iterator pair:
    ```cpp
    // Instead of span
    void process(const T* data, size_t size);

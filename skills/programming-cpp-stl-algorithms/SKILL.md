@@ -276,11 +276,12 @@ When you detect an algorithm opportunity, present it like this:
 
 ### Erase-Remove Idiom
 ```cpp
-// Remove all even numbers
+// C++20: prefer std::erase_if for containers that support it (vector, list, map, set, ...)
+std::erase_if(v, [](int x) { return x % 2 == 0; });
+
+// Pre-C++20 erase-remove idiom (still needed for containers std::erase_if doesn't cover)
 v.erase(std::remove_if(v.begin(), v.end(), 
     [](int x) { return x % 2 == 0; }), v.end());
-
-// C++20 only (NOT available): std::erase_if(v, pred);
 ```
 
 ### Transform + Back Inserter
@@ -308,23 +309,27 @@ std::string result = std::accumulate(strings.begin(), strings.end(),
     });
 ```
 
-## C++20 Ranges (NOT AVAILABLE)
+## C++20 Ranges
 
-<IMPORTANT>
-This project uses **C++17**. C++20 Ranges are NOT available.
-Use traditional STL algorithms with iterators instead.
-</IMPORTANT>
+This project uses **C++20**. Ranges are available — prefer `std::ranges::` algorithms and views over raw-iterator STL calls where they improve clarity.
 
 ```cpp
-// Use this (C++17) - traditional iterators
+// Traditional iterators - still fine, especially with back_inserter
 std::vector<int> evens;
 std::copy_if(v.begin(), v.end(), std::back_inserter(evens),
     [](int x) { return x % 2 == 0; });
 std::sort(evens.begin(), evens.end());
 
-// NOT available (C++20 ranges) - DO NOT USE
-// auto evens = v | std::views::filter(...) | std::ranges::to<...>();
+// Ranges equivalent - no begin()/end() boilerplate
+std::ranges::copy_if(v, std::back_inserter(evens),
+    [](int x) { return x % 2 == 0; });
+std::ranges::sort(evens);
+
+// Lazy views - composable, no intermediate containers
+auto evens_view = v | std::views::filter([](int x) { return x % 2 == 0; });
 ```
+
+Note: `std::ranges::to<...>()` (materializing a view into a container) is a C++23 feature — not available here. Use `std::ranges::copy`/`std::copy` into a `back_inserter`, or construct the container from the view's iterators.
 
 ## References
 
