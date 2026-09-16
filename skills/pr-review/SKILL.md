@@ -41,6 +41,7 @@ Apply to every invocation of this skill. Full text in [HYGIENE.md](HYGIENE.md). 
 - **Analysis is read-only**: no working-tree mutations by the orchestrator or any spawned agent; permitted writes are the report artifact (when asked) and agent memory files only.
 - **Fresh-eyes rule**: when this skill runs inside a sub-agent, the brief is the only context - no project memory, no prior reviews, no conversation history.
 - **Required report sections**: see the `[REQUIRED]` tags in `REPORT_TEMPLATE.md`'s Contents list — that file is the single canonical source; do not restate the list elsewhere, it will drift.
+- **Numbered lists everywhere, not tables**: every section that enumerates items uses a sequentially numbered list so items can be referred back to by number (e.g. "see #4"). No tables anywhere in the report. See `REPORT_TEMPLATE.md`.
 - **Local clone hygiene**: record starting branch, stash if dirty, restore on exit via trap/finally - never leave the clone on a detached HEAD or PR branch.
 
 ## Review Process

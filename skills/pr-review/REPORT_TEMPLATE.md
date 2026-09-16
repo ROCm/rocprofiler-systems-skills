@@ -5,6 +5,14 @@ Sections marked `[OPTIONAL]` may be omitted only when genuinely not applicable;
 when omitted, state why (e.g. "No public API touched - N/A") rather than
 silently dropping the section.
 
+**Numbered-list rule.** Use numbered lists, not tables, throughout this
+report - every section that enumerates items (findings, files, checklist
+entries, or anything else) uses a numbered list. Numbering makes it
+possible to refer back to a specific item (e.g. "see #4") and numbered
+prose reads far better than a table in a raw markdown/text file. Number
+sequentially within each section; do not restart or reuse numbers across
+sections.
+
 ## Contents
 
 This list is the canonical required-sections definition for pr-review reports;
@@ -38,17 +46,15 @@ that still counts as present). `[OPTIONAL]` sections may be silently omitted.
 
 ## [REQUIRED] Header
 
-| Field | Value |
-|-------|-------|
-| PR # | #123 |
-| Title | [PR title] |
-| Author | @username |
-| Target branch | main |
-| Base SHA | abc1234 |
-| Head SHA | def5678 |
-| Files changed | X |
-| Lines | +Y / -Z |
-| Commits | N |
+1. **PR #:** #123
+2. **Title:** [PR title]
+3. **Author:** @username
+4. **Target branch:** main
+5. **Base SHA:** abc1234
+6. **Head SHA:** def5678
+7. **Files changed:** X
+8. **Lines:** +Y / -Z
+9. **Commits:** N
 
 ## [REQUIRED] Summary
 
@@ -88,16 +94,14 @@ that still counts as present). `[OPTIONAL]` sections may be silently omitted.
 
 **Up to 8 agents analyzed the changes in parallel:**
 
-| Agent | Purpose | Issues Found |
-|-------|---------|--------------|
-| Static Analysis | Linter/tool findings | X issues |
-| Dead Code Detection | Unused code, comments | Y issues |
-| Code Smells + Quality | Anti-patterns, long functions, naming/complexity/SRP/magic numbers | Z issues |
-| Language Rules | C++/Python best practices | W issues |
-| Architecture | Module boundaries, dependencies | V issues (or N/A) |
-| Simplification | Reuse, complexity reduction | U issues |
-| Performance | Hot-path classification, allocations, locks, I/O | P issues |
-| UB Detection | Undefined behaviour (C/C++/unsafe-Rust) | T issues (or N/A) |
+1. **Static Analysis** — Linter/tool findings: X issues
+2. **Dead Code Detection** — Unused code, comments: Y issues
+3. **Code Smells + Quality** — Anti-patterns, long functions, naming/complexity/SRP/magic numbers: Z issues
+4. **Language Rules** — C++/Python best practices: W issues
+5. **Architecture** — Module boundaries, dependencies: V issues (or N/A)
+6. **Simplification** — Reuse, complexity reduction: U issues
+7. **Performance** — Hot-path classification, allocations, locks, I/O: P issues
+8. **UB Detection** — Undefined behaviour (C/C++/unsafe-Rust): T issues (or N/A)
 
 **All findings below are sourced from agent analysis.**
 
@@ -222,10 +226,8 @@ std::for_each(items.begin(), items.end(), process);
 
 ## [OPTIONAL] Test Coverage
 
-| New Code | Has Tests | Missing Tests |
-|----------|-----------|---------------|
-| `parser.cpp:parseToken()` | Yes | - |
-| `handler.cpp:process()` | **No** | See suggested tests below |
+1. `parser.cpp:parseToken()` — Has tests: Yes
+2. `handler.cpp:process()` — Has tests: **No**. See suggested tests below
 
 ### Suggested Tests for `handler.cpp:process()`
 
@@ -254,11 +256,9 @@ TEST(HandlerTest, Process_EmptyInput_ReturnsError) {
 
 ## [REQUIRED] Files Reviewed
 
-| File | Status | Issues (by severity) |
-|------|--------|----------------------|
-| `src/parser.cpp` | OK | 0 critical, 1 must-fix, 0 should-fix |
-| `src/handler.cpp` | OK | 1 critical, 0 must-fix, 1 should-fix |
-| `tests/parser_test.cpp` | OK | Clean |
+1. `src/parser.cpp` — OK — 0 critical, 1 must-fix, 0 should-fix
+2. `src/handler.cpp` — OK — 1 critical, 0 must-fix, 1 should-fix
+3. `tests/parser_test.cpp` — OK — Clean
 
 ---
 
@@ -271,27 +271,23 @@ notable suppressions. "Clean" if nothing to report.]
 
 ## [REQUIRED] Security Audit
 
-| Area | Result |
-|------|--------|
-| Input validation | [OK / Issue at file:line] |
-| Injection (SQL/shell/etc.) | [OK / Issue] |
-| AuthN / AuthZ | [OK / N/A / Issue] |
-| Secrets / credentials | [OK / Issue] |
-| Unsafe deserialization | [OK / N/A / Issue] |
-| Path traversal | [OK / N/A / Issue] |
-| Crypto usage | [OK / N/A / Issue] |
+1. **Input validation:** [OK / Issue at file:line]
+2. **Injection (SQL/shell/etc.):** [OK / Issue]
+3. **AuthN / AuthZ:** [OK / N/A / Issue]
+4. **Secrets / credentials:** [OK / Issue]
+5. **Unsafe deserialization:** [OK / N/A / Issue]
+6. **Path traversal:** [OK / N/A / Issue]
+7. **Crypto usage:** [OK / N/A / Issue]
 
 ---
 
 ## [REQUIRED] Performance Review
 
-| Aspect | Result |
-|--------|--------|
-| Algorithmic complexity | [OK / Concern at file:line] |
-| Hot-path allocations | [OK / Concern] |
-| Unnecessary copies | [OK / Concern] |
-| Lock contention / threading | [OK / N/A / Concern] |
-| I/O patterns | [OK / N/A / Concern] |
+1. **Algorithmic complexity:** [OK / Concern at file:line]
+2. **Hot-path allocations:** [OK / Concern]
+3. **Unnecessary copies:** [OK / Concern]
+4. **Lock contention / threading:** [OK / N/A / Concern]
+5. **I/O patterns:** [OK / N/A / Concern]
 
 ---
 
@@ -299,18 +295,17 @@ notable suppressions. "Clean" if nothing to report.]
 
 (C/C++ / unsafe-Rust only. State "N/A - no C/C++/unsafe-Rust changes" otherwise.)
 
-| UB class | File:Line | Snippet | Std citation | Fix | Severity |
-|----------|-----------|---------|--------------|-----|----------|
-| [class]  | [file:N]  | [code]  | [ref]        | [fix] | Critical (100) |
+1. **[UB class]** in `file:line` (Severity: Critical (100))
+   **Snippet:** `[code]`
+   **Std citation:** [ref]
+   **Fix:** [fix]
 
 ### Sanitizer Coverage
 
-| Sanitizer | In CI? | Recommendation |
-|-----------|--------|----------------|
-| UBSan | [Yes / No] | [N/A or "Add `-fsanitize=undefined`"] |
-| ASan  | [Yes / No] | [N/A or "Add `-fsanitize=address`"] |
-| TSan  | [Yes / No / N/A] | [N/A or "Add separate `-fsanitize=thread` job"] |
-| MSan  | [Yes / No / N/A] | [N/A or "Add separate clang `-fsanitize=memory` job"] |
+1. **UBSan** — In CI? [Yes / No]. [N/A or "Add `-fsanitize=undefined`"]
+2. **ASan** — In CI? [Yes / No]. [N/A or "Add `-fsanitize=address`"]
+3. **TSan** — In CI? [Yes / No / N/A]. [N/A or "Add separate `-fsanitize=thread` job"]
+4. **MSan** — In CI? [Yes / No / N/A]. [N/A or "Add separate clang `-fsanitize=memory` job"]
 
 ---
 
@@ -324,12 +319,10 @@ notable suppressions. "Clean" if nothing to report.]
 
 ## [REQUIRED] Documentation Review
 
-| Doc Surface | Updated? |
-|-------------|----------|
-| README | [Yes / No / N/A] |
-| Doc comments / docstrings | [Yes / No / N/A] |
-| Changelog / release notes | [Yes / No / N/A] |
-| Man pages / API docs | [Yes / No / N/A] |
+1. **README:** [Yes / No / N/A]
+2. **Doc comments / docstrings:** [Yes / No / N/A]
+3. **Changelog / release notes:** [Yes / No / N/A]
+4. **Man pages / API docs:** [Yes / No / N/A]
 
 ---
 
@@ -347,10 +340,8 @@ Applies to **every** run, not only PR checkouts.
 
 ## [OPTIONAL] Previous Review Comments (GitHub PRs)
 
-| Status | Comment | Author |
-|--------|---------|--------|
-| Resolved | "Add null check in parser" | @reviewer1 |
-| Open | "Consider using std::optional" | @reviewer2 |
+1. **Resolved:** "Add null check in parser" — @reviewer1
+2. **Open:** "Consider using std::optional" — @reviewer2
 
 ---
 
