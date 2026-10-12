@@ -47,7 +47,10 @@ During analysis, actively look for these code smells:
 **Complexity:**
 - Long functions (> 30 lines)
 - Deep nesting (> 3 levels)
-- God classes (too many responsibilities)
+- God classes: for every class with 10+ member functions run the Class Cohesion Check from
+  `programming-cpp` FIRST (disjoint state, stateless helpers bundled with stateful code,
+  unrelated static state). Size is only the trigger; the smell is a class that CAN be split and is not.
+
 - Long parameter lists
 
 **Poor Abstractions:**

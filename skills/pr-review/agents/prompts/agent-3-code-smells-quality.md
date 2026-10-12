@@ -31,7 +31,7 @@ Apply learned patterns:
 
 **Bloaters:**
 - Long Method (>50 lines: Should Fix, >100 lines: Must Fix)
-- Large Class (>500 lines: Should Fix, >1000 lines: Must Fix)
+- Large Class (trigger: 10+ member functions or >500 lines; then run the splittability test from `code-smells`: Should Fix / Must Fix only if the class CAN be split into parts with disjoint state or holds stateless/static code unrelated to its objects and is not; a large but cohesive class is not a finding; below 10 member functions do not flag)
 - Primitive Obsession (primitives instead of domain objects)
 - Long Parameter List (>4 params: Should Fix, >6 params: Must Fix)
 - Data Clumps (same parameters appearing together)

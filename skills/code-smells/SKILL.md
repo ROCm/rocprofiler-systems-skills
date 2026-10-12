@@ -70,12 +70,20 @@ Code that has grown to excessive proportions, making it hard to work with.
 - Makes testing difficult
 - Long methods accumulate like "Hotel California" - easy to add, hard to remove
 
-**Detection criteria:**
+**Detection criteria:** sizes only say WHEN to look; the verdict is the splittability test.
 ```
-- Lines > 50: Should Fix (50)
-- Lines > 100: Must Fix (80)
-- Method does more than one thing (multiple responsibilities)
-- Requires extensive comments to explain
+Trigger (run the test):  10+ member functions (public + private), or > 500 lines
+Below 10 member functions: do not flag.
+
+Verdict - Should Fix (50) / Must Fix (80) when the class CAN be split and is not:
+- its methods partition into groups using disjoint subsets of the data members
+- stateless helpers (anonymous-namespace functions, statics touching no members)
+  are bundled with stateful code
+- unrelated static/process-wide state lives inside it (registries, atfork handlers)
+- it has several unrelated reasons to change (git log --follow shows divergent change)
+- it cannot be described in one sentence without "and"
+Must Fix when several of these hold or the class is > 1000 lines.
+A big class whose methods all share one state and one invariant is cohesive: do not flag it.
 ```
 
 **Refactoring:**

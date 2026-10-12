@@ -15,6 +15,16 @@ Follow all base planning rules, plus the feature-specific rules below.
 
 ## Feature-Specific Requirements
 
+### Where Does the Change Live
+
+For every class the feature adds code to, measure it first (member functions, public + private;
+`git log --follow --oneline <file> | wc -l` for churn). If it has **10 or more member functions**,
+run the Class Cohesion Check from `programming-cpp` (reasons to change, disjoint state, stateless
+helpers, unrelated static state, one-sentence description). If the new code adds another
+independent responsibility, or the class can already be split, put the extraction in the plan
+(same PR, before the feature) instead of growing the class. Below 10 member functions: skip.
+Record the outcome in the plan's Analysis ("cohesive because ..." or "extract X first").
+
 ### Changelog Summary
 
 Every new feature MUST include a changelog summary. After analysis, create a concise summary:

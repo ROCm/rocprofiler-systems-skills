@@ -236,7 +236,7 @@ Check for:
 
 **Structural issues:**
 - [ ] Functions too long (>50 lines)
-- [ ] Classes with too many responsibilities
+- [ ] Class cohesion: for every touched class with 10+ member functions the Class Cohesion Check from `programming-cpp` was run (disjoint state, stateless helpers, unrelated static state, divergent change); splittable groups are extracted in this PR or the description says why the class is cohesive
 - [ ] Deep nesting (>3 levels)
 - [ ] Long parameter lists (>5 params)
 - [ ] Circular dependencies
