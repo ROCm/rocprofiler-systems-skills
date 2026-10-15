@@ -24,6 +24,14 @@ Before proposing fixes, identify:
 3. **Why does it happen?** - Root cause, not just symptoms
 4. **When was it introduced?** - If known, helps understand context
 
+### Where Does the Fix Live
+
+If the fix goes into a class with **10 or more member functions**, run the Class Cohesion Check
+from `programming-cpp` before touching it. A bug in a class that mixes several responsibilities is
+often a symptom of the mixing (state shared by unrelated code). If the buggy code can be extracted
+into a smaller class or a pure function, say so in the plan; fix it there when that is cheaper than
+fixing it in place. Below 10 member functions: skip.
+
 ### Changelog Consideration
 
 After analysis, ASK the user:

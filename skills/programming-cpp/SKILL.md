@@ -77,6 +77,37 @@ Follow the [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppC
 - **C.131**: Avoid trivial getters and setters
 - **C.149**: Use `unique_ptr` or `shared_ptr` to avoid forgetting to `delete` objects created using `new`
 
+### Class Cohesion Check (REQUIRED when writing or changing a class)
+
+<IMPORTANT>
+Before adding code to a class, check whether the class could be smaller: can its
+responsibilities be split into sub-classes? **Skip the check when the class has fewer than
+10 member functions** (public + private). From 10 up, the count only says WHEN to run the check;
+it is never the verdict. The problem is a class that CAN be split into smaller parts and is not.
+</IMPORTANT>
+
+The splittability test:
+
+1. **Reasons to change.** List them. More than one unrelated reason means split.
+2. **Disjoint state.** Can the member functions be partitioned into groups where each group uses a
+   disjoint subset of the data members? Each such group is its own class. A shared lock is NOT a
+   reason to keep them together: the extracted class takes no lock of its own and documents that
+   the caller holds it.
+3. **Stateless helpers.** Free functions in an anonymous namespace and statics that touch no
+   members are stateless rules bundled with stateful code. Extract them as pure functions that
+   take their dependencies (a probe, a clock, a source of data) as parameters, so every
+   combination is testable without constructing the class.
+4. **Unrelated static state.** Registries, process-wide handlers (`pthread_atfork`) and similar
+   statics that serve no particular instance: extract them.
+5. **One sentence.** Can you describe the class in one sentence without "and"?
+
+If it can be split: extract in the same change, pass collaborators as arguments, make it testable
+without threads or the OS. If it cannot: say why it is cohesive (what state or invariant every
+method shares) in the plan or the PR description.
+
+Evidence to look at: `git log --follow --oneline <file> | wc -l` and whether the recent commits
+touched it for unrelated reasons (divergent change).
+
 ## Resource Management
 
 - **R.1**: Manage resources automatically using resource handles and RAII
@@ -352,7 +383,7 @@ using test_processor = order_processor<mock_database>;
 - [ ] Dependencies injected via constructor or template parameter
 - [ ] Pure functions where possible (same input → same output)
 - [ ] Side effects isolated and injectable
-- [ ] Classes have single responsibility (easier to test)
+- [ ] Class cohesion check done for any class with 10+ member functions (see Class Cohesion Check); splittable groups extracted
 
 ## Code Style & Attributes (REQUIRED)
 
