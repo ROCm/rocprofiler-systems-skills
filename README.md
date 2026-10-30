@@ -42,6 +42,7 @@ A comprehensive skills system for AI-assisted software development. Skills are r
 ## What is Radisha?
 
 Radisha is a skill library that teaches AI assistants how to:
+
 - **Plan before coding** - Structured planning phases before implementation
 - **Follow best practices** - Language-specific guidelines (C++17, Python, CMake)
 - **Write meaningful commits** - Well-structured commit messages
@@ -86,6 +87,7 @@ Planning Phase (phases 0-4)     Execution Phase
 ```
 
 **Platform-specific:**
+
 - **Cursor:** Use Plan Mode for planning, then switch to Agent Mode
 - **Claude Code:** Use `EnterPlanMode` tool or simply complete planning before coding
 
@@ -194,17 +196,20 @@ curl -fsSL https://raw.githubusercontent.com/ROCm/rocprofiler-systems-skills/mai
 ### Manual Installation (Recommended)
 
 1. **Clone the repository:**
+
    ```bash
    git clone git@github.com:ROCm/rocprofiler-systems-skills.git ~/work/radisha
    ```
 
 2. **Run the installer:**
+
    ```bash
    cd ~/work/radisha
    ./install.sh
    ```
 
 3. **Or manually create symlink:**
+
    ```bash
    # For Claude Code
    ln -sf ~/work/radisha/skills ~/.claude/skills
@@ -227,11 +232,13 @@ Or run `./install.sh` from your project directory and answer "y" to project setu
 ### Claude Code CLI
 
 Just ask naturally - skills are automatically applied:
+
 - "commit these changes" → uses `git/commit` skill
 - "plan this feature" → uses `planning/feature` skill
 - "review the PR" → uses `git/review-pull-request` skill
 
 **How it works:**
+
 1. Skills are auto-loaded from `~/.claude/skills/`
 2. Core rules are loaded from `CLAUDE.md` in your project root
 3. When you make requests, Claude reads the appropriate skill and follows it
@@ -240,11 +247,13 @@ Just ask naturally - skills are automatically applied:
 ### Cursor IDE
 
 Use `@skill-name` mentions:
+
 - `@git/commit` - Create a commit
 - `@planning/feature` - Plan a feature
 - `@git/prepare-pull-request` - Prepare a PR
 
 **How it works:**
+
 1. Skills are loaded from `.cursor/skills/` or user skills folder
 2. Core rules are loaded from `.cursorrules` in your project root
 3. Type `@skill-name` in Chat/Composer to invoke a skill
@@ -388,6 +397,7 @@ After completing EACH implementation step that modifies code:
 **1. Autonomous Verification First**
 
 Before asking user, verify autonomously (if possible):
+
 - Run relevant tests if they exist
 - Check for linter errors
 - Verify the change works as expected
@@ -400,13 +410,16 @@ Present summary with verification results and options:
 > "I've completed [step description].
 >
 > **Changes:**
+>
 > - [List of changes made]
 >
 > **Verification:**
+>
 > - All existing tests pass
 > - No linter errors
 >
 > **Please review and choose:**
+>
 > 1. **Continue** - Implementation is good, proceed to next step
 > 2. **Revert & Stop** - Revert to previous state and stop
 > 3. **Improve** - Try to improve this implementation
@@ -416,12 +429,14 @@ Present summary with verification results and options:
 If something goes sideways during implementation, **STOP and re-plan immediately**. Don't keep pushing forward hoping it will work out.
 
 **When to stop and re-plan:**
+
 - Multiple unexpected errors or failures
 - The approach reveals unforeseen complexity
 - Tests fail in ways that suggest the design is wrong
 - You find yourself making "just one more fix" repeatedly
 
 **How to re-plan:**
+
 1. Stop current implementation
 2. Document what went wrong and what was learned
 3. Switch back to Plan Mode
@@ -441,6 +456,7 @@ planning/
 ```
 
 Benefits:
+
 - **Resume work** - Continue from where you left off
 - **Track progress** - `[x]` done vs `[ ]` pending
 - **Reuse plans** - Similar requests can adapt existing plans
@@ -541,7 +557,9 @@ skills/
 ### Planning Skills
 
 #### `planning/base`
+
 Shared planning rules - **do not invoke directly**. Provides:
+
 - **Phase 0**: Check for existing plans in `planning/` folder
 - **Phase 1**: Analyze (understand, scope, dependencies, risks)
 - **Phase 2**: Assess PR scope (split if > 800 lines)
@@ -551,14 +569,18 @@ Shared planning rules - **do not invoke directly**. Provides:
 - **Phase 6**: Optional confirmation for high-risk changes
 
 #### `planning/feature`
+
 For new functionality. Adds:
+
 - **Changelog entry** - Required summary for CHANGELOG.md
 - **Test consideration** - Asks about unit tests after completion
 
 Plan file format: `planning/feature-<name>.md`
 
 #### `planning/bugfix`
+
 For fixing bugs. Adds:
+
 - **Root cause analysis** - What, where, why, when
 - **Changelog consideration** - Asks if user-facing
 - **Regression test** - Asks about preventing recurrence
@@ -566,7 +588,9 @@ For fixing bugs. Adds:
 Plan file format: `planning/bugfix-<name>.md`
 
 #### `planning/refactor`
+
 For improving existing code without changing behavior. Adds:
+
 - **Code smell detection** - Duplication, complexity, poor abstractions
 - **Design pattern opportunities** - Strategy, Factory, Adapter, etc.
 - **STL algorithm opportunities** - Replace loops with algorithms
@@ -584,14 +608,17 @@ Goals:
 Plan file format: `planning/refactor-<name>.md`
 
 #### `planning/docs`
+
 For documentation. No changelog, no tests.
 
 Plan file format: `planning/docs-<name>.md`
 
 #### `planning/architecture`
+
 For architecture documentation. Produces iterative, user-guided documents describing component behavior, interactions, hierarchy, expansion points, and weaknesses. No code snippets -- prose and tables only.
 
 **Process:**
+
 1. Silent codebase analysis
 2. Ask scope (single component / multiple components / whole system)
 3. Present discovered components, ask what to cover
@@ -604,14 +631,17 @@ Output file: `planning/architecture-<scope-name>.md`
 ### Programming Skills
 
 #### `programming/cpp`
+
 Comprehensive C++17 guidelines based on [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines).
 
 Key principles:
+
 - **Compile-time execution is PRIORITY** - `constexpr`, `if constexpr`, templates
 - **Performance is critical** - Zero-cost abstractions, cache-friendly
 - **All code MUST be unit testable** - Dependency Injection or Policy-based design
 
 Covers:
+
 - Philosophy, Interfaces, Functions, Classes
 - Resource Management (RAII, smart pointers)
 - Error Handling (exceptions, RAII)
@@ -621,14 +651,17 @@ Covers:
 - C++17 Features (what to use, what NOT to use)
 
 #### `programming/cpp/design-patterns`
+
 Reference from [Refactoring.Guru](https://refactoring.guru/design-patterns/cpp).
 
 Actively suggests patterns when code matches a problem:
+
 - **Creational**: Factory Method, Abstract Factory, Builder, Prototype, Singleton
 - **Structural**: Adapter, Bridge, Composite, Decorator, Facade, Flyweight, Proxy
 - **Behavioral**: Chain of Responsibility, Command, Iterator, Mediator, Memento, Observer, State, Strategy, Template Method, Visitor
 
 #### `programming/cpp/stl-algorithms`
+
 Suggests STL algorithms instead of manual loops:
 
 | Manual Loop | STL Algorithm |
@@ -645,7 +678,9 @@ Suggests STL algorithms instead of manual loops:
 Also covers container selection (vector vs map vs unordered_map, etc.)
 
 #### `programming/cpp/naming-rules`
+
 File and class naming conventions for C++:
+
 - **Folder structure = namespace** - Don't repeat namespace prefixes in filenames
 - **No redundant prefixes** - `amd_smi/driver.hpp` not `amd_smi/amd_smi_driver.hpp`
 - **Class name = file name** - `driver.hpp` contains `class driver`
@@ -654,7 +689,9 @@ File and class naming conventions for C++:
 Uses C++17 nested namespace syntax.
 
 #### `programming/cmake-best-practices`
+
 Modern CMake (3.15+) following official guidelines:
+
 - Target-based approach (`target_*()` instead of global variables)
 - Visibility keywords (`PUBLIC`, `PRIVATE`, `INTERFACE`)
 - Generator expressions
@@ -662,15 +699,18 @@ Modern CMake (3.15+) following official guidelines:
 - Proper install/export
 
 #### `programming/python`
+
 Python best practices based on [PEP 8](https://peps.python.org/pep-0008/).
 
 Key principles:
+
 - **Python 3.8+ standard** - Use modern features (dataclasses, type hints, walrus operator)
 - **Type hints are REQUIRED** - All functions, methods, and class attributes must have type annotations
 - **Readability counts** - Follow the Zen of Python (PEP 20)
 - **All code MUST be unit testable** - Dependency injection, avoid global state
 
 Covers:
+
 - Naming conventions (PascalCase classes, snake_case functions/variables)
 - Type annotations and mypy
 - Exception handling
@@ -681,9 +721,11 @@ Covers:
 ### Testing Skills
 
 #### `testing/testplan`
+
 Create test plan files that document what needs to be verified for a change.
 
 **When to create:**
+
 - After implementation is complete
 - Before or alongside writing unit tests
 - Before creating a Pull Request
@@ -691,15 +733,18 @@ Create test plan files that document what needs to be verified for a change.
 **Test plan file:** `planning/testplan-<feature-name>.md`
 
 Includes:
+
 - Automated tests (unit/integration)
 - Manual verification scenarios
 - Regression checklist
 - Notes for QA
 
 #### `testing/gtest-gmock`
+
 GTest/GMock patterns for C++ testing.
 
 **Workflow:**
+
 1. After feature/bugfix/refactor completion, ask about tests
 2. Create test plan with:
    - Test cases for each function/class
@@ -710,6 +755,7 @@ GTest/GMock patterns for C++ testing.
 5. Only proceed to next test after approval
 
 Covers:
+
 - Test fixtures, parameterized tests
 - Mock creation with GMock
 - Matchers (value, string, container, pointer)
@@ -719,15 +765,18 @@ Covers:
 - CMake configuration
 
 #### `testing/pytest`
+
 Pytest patterns for Python testing.
 
 **Key principles:**
+
 - **Tests MUST be isolated** - Each test independent, no execution order dependencies
 - **Fixtures over setup/teardown** - Use pytest fixtures for test dependencies
 - **Parametrize for data-driven tests** - Use `@pytest.mark.parametrize`
 - **Test behavior, not implementation** - Focus on what code does, not how
 
 Covers:
+
 - Test discovery and naming conventions
 - Fixtures (scope, autouse, factory patterns)
 - Parametrization
@@ -740,15 +789,18 @@ Covers:
 ### Library Skills
 
 #### `libraries/amd-smi`
+
 AMD System Management Interface (SMI) library for GPU/CPU monitoring.
 
 **Use when:**
+
 - Working with AMD hardware monitoring
 - GPU temperature, power, memory, clocks
 - PCIe, XGMI topology
 - Any `amdsmi.h` functions
 
 Covers:
+
 - Initialization and shutdown patterns
 - Device handle hierarchy (socket → processor → GPU/CPU)
 - GPU metrics (temperature, power, memory, clocks, utilization)
@@ -759,14 +811,17 @@ Covers:
 ### Project Skills
 
 #### `rocprofsys`
+
 Main entry point for ROCm Systems Profiler (rocprofiler-systems) workflows.
 
 **Use when:**
+
 - User asks about rocprofiler-systems or rocprof-sys
 - User wants to configure, build, or work with the project
 - User needs guidance on project structure or workflows
 
 **Features:**
+
 - Project overview and structure
 - Workflow dispatcher (configure → build → test)
 - CMake presets reference
@@ -774,14 +829,17 @@ Main entry point for ROCm Systems Profiler (rocprofiler-systems) workflows.
 - Routes to specialized sub-skills
 
 #### `rocprofsys-configure`
+
 Configure rocprofiler-systems build with CMake presets and custom options.
 
 **Use when:**
+
 - Setting up build for first time
 - Switching between debug/release builds
 - Changing CMake options or dependencies
 
 **Features:**
+
 - Dynamic project location detection (supports git worktrees)
 - CMake preset selection (ci, debug, release, debug-optimized)
 - Dependency management (Dyninst, TBB, Boost, elfutils)
@@ -789,20 +847,24 @@ Configure rocprofiler-systems build with CMake presets and custom options.
 - Build directory configuration
 
 **Covers:**
+
 - Monorepo structure awareness
 - CMakePresets.json usage
 - Building dependencies from source vs system packages
 - Common configuration errors
 
 #### `rocprofsys-build`
+
 Build, test, and install rocprofiler-systems after configuration.
 
 **Use when:**
+
 - Project is already configured
 - User wants to compile rocprofsys
 - Running tests or installing
 
 **Features:**
+
 - Incremental and full builds
 - Parallel build job optimization
 - Test execution with CTest
@@ -810,6 +872,7 @@ Build, test, and install rocprofiler-systems after configuration.
 - Build error diagnosis
 
 **Covers:**
+
 - Memory-aware parallel builds
 - Build error handling (OOM, dependencies, linker errors)
 - Test result analysis
@@ -818,14 +881,17 @@ Build, test, and install rocprofiler-systems after configuration.
 ### TheRock Skills
 
 #### `therock-build-to-commit`
+
 Resolve a TheRock nightly build (URL or run-id) to the `rocm-systems` `pin_sha` it shipped.
 
 **Use when:**
+
 - User asks "what rocm-systems commit is in TheRock build X?"
 - User provides a nightly URL like `https://rocm.nightlies.amd.com/packages-multi-arch/deb/YYYYMMDD-<RUN_ID>/...` (or legacy `/deb/...`) or a bare run-id
 - Another skill needs the `pin_sha` for a build (e.g. `therock-commit-in-build`)
 
 **Features:**
+
 - Accepts full nightly URL (current multi-arch or legacy), index path, or bare run-id
 - Parses the GitHub Actions run id from the input
 - Fetches `therock_manifest.json` from the public S3 artifact bucket (`.../manifests/therock_manifest.json`, with legacy per-GPU-family fallback)
@@ -833,6 +899,7 @@ Resolve a TheRock nightly build (URL or run-id) to the `rocm-systems` `pin_sha` 
 - Reports `pin_sha`, `rocm_package_version`, GitHub tree URL, run URL, manifest URL, packages index URL, and tarball URL
 
 **Covers:**
+
 - Current multi-arch layout (`packages-multi-arch`, flat manifest path, `tarball-multi-arch`)
 - Legacy `/deb/` packages URLs and per-`gpu_family` manifest paths for older builds
 - `jq` extraction with a `python3` fallback
@@ -840,14 +907,17 @@ Resolve a TheRock nightly build (URL or run-id) to the `rocm-systems` `pin_sha` 
 - Recipe source: [Wiki - Helpful Links and Information](https://amd.atlassian.net/wiki/spaces/AGSRCIT/pages/1306934643)
 
 #### `therock-commit-in-build`
+
 Check whether a specific `rocm-systems` commit is included in a TheRock nightly build.
 
 **Use when:**
+
 - User asks "is commit `<sha>` in TheRock build `<X>`?"
 - User wants to confirm a fix has shipped in last night's build
 - A yes/no inclusion answer is needed (not just the `pin_sha`)
 
 **Features:**
+
 - Delegates to `therock-build-to-commit` to resolve the build's `pin_sha`
 - Accepts current `packages-multi-arch/deb/...` nightly URLs (and legacy `/deb/...`)
 - Uses `gh api repos/ROCm/rocm-systems/compare/<commit>...<pin_sha>` for an ancestry check
@@ -855,21 +925,25 @@ Check whether a specific `rocm-systems` commit is included in a TheRock nightly 
 - Returns `ahead_by` / `behind_by` counts and a compare URL for inspection
 
 **Covers:**
+
 - Pre-flight checks for `gh` availability and authentication (via `git-gh-client`)
 - Handling of forks, abbreviated SHAs, and unresolvable commits
 - Offline fallback note (`git merge-base --is-ancestor`)
 - Recipe source: [Wiki - Helpful Links and Information](https://amd.atlassian.net/wiki/spaces/AGSRCIT/pages/1306934643)
 
 #### `therock-first-build-with-commit`
+
 Find the first TheRock nightly build that contains a given `rocm-systems` commit. Backed by an executable helper script (`find_first_build.py`) — the first repo skill to ship one.
 
 **Use when:**
+
 - User asks "what is the first nightly build to include commit `<sha>`?"
 - User asks "has my fix shipped yet, and if so where can I grab it?"
 - Bisecting which nightly first contained a regression
 - Verifying a PR landed in a downstream consumer
 
 **Features:**
+
 - Bundled Python script with `--commit`, `--repo`, `--submodule`, `--legacy`, `--workflow`, `--workflow-repo`, `--since`, `--max-runs`, `--json` flags (`--gpu-family` for legacy manifest fallback only)
 - Lists scheduled runs of [**Multi-Arch Release**](https://github.com/ROCm/rockrel/actions/workflows/multi_arch_release.yml) on `ROCm/rockrel` (workflow id `265449761`) since the commit date and walks them oldest-first
 - Fetches each build's `therock_manifest.json` from S3 (current flat path first, legacy per-GPU-family fallback), skipping runs that did not publish artifacts
@@ -878,6 +952,7 @@ Find the first TheRock nightly build that contains a given `rocm-systems` commit
 - Exit codes: `0` found, `3` invalid input, `4` upstream failure, `5` exhausted (kept distinct from Python's argparse `2`)
 
 **Covers:**
+
 - Pre-flight checks for `gh` availability and authentication (via `git-gh-client`)
 - Standard library only — no `pip install` required (`python3 >= 3.8`)
 - Bounded by GitHub Actions' ~90-day retention; documents how to widen via `--since` / `--max-runs`
@@ -888,14 +963,17 @@ Find the first TheRock nightly build that contains a given `rocm-systems` commit
 ### Exploration Skills
 
 #### `exploration/explore-code`
+
 Systematic exploration of unfamiliar codebases before extraction.
 
 **When to use:**
+
 - Understanding code before extracting it into a library
 - Learning how a database layer, API client, or subsystem works
 - Preparing for refactoring by mapping dependencies
 
 **The What/How/Where framework:**
+
 1. **What is used** - Components, functions, resources
 2. **How it is used** - Patterns, conditions, parameters
 3. **Where to use it** - Call sites, contexts, triggers
@@ -903,6 +981,7 @@ Systematic exploration of unfamiliar codebases before extraction.
 **Output:** `planning/exploration-<topic>.md`
 
 **Process:**
+
 1. Scoping questions (mandatory)
 2. Initial exploration with checkpoint
 3. Deep dive with checkpoints per area
@@ -913,9 +992,11 @@ The exploration document feeds into `planning/feature` or `planning/refactor` sk
 ### Git Skills
 
 #### `git/gh-client`
+
 Core GitHub CLI operations (base skill invoked by other git skills).
 
 **Purpose:**
+
 - ✅ Check if gh CLI is installed and authenticated
 - 🔍 Search and filter pull requests
 - 📋 Get PR details and metadata
@@ -923,6 +1004,7 @@ Core GitHub CLI operations (base skill invoked by other git skills).
 - 📝 Create and manage pull requests
 
 **Key capabilities:**
+
 - Installation verification and setup instructions
 - PR search by author, label, date, status
 - Status check parsing (SUCCESS, FAILURE, PENDING, etc.)
@@ -930,14 +1012,17 @@ Core GitHub CLI operations (base skill invoked by other git skills).
 - GraphQL API access for complex queries
 
 **Invoked by:**
+
 - `git/prepare-pull-request` - Verify gh before creating PRs
 - `git/review-pull-request` - Access PR data for reviews
 - `git/pull-request-status` - Check CI/CD status and failures
 
 #### `git/commit`
+
 Create meaningful git commits with well-structured messages.
 
 **Process:**
+
 1. Analyze staged changes and understand purpose
 2. Categorize commit type (feat, fix, refactor, etc.)
 3. Draft commit message following conventional commits
@@ -945,6 +1030,7 @@ Create meaningful git commits with well-structured messages.
 5. Execute commit
 
 **Message structure:**
+
 ```
 <type>(<scope>): <subject>
 
@@ -954,32 +1040,39 @@ Create meaningful git commits with well-structured messages.
 ```
 
 **Key rules:**
+
 - Subject line: imperative mood, max 50 chars, no period
 - Body: explains WHY (72 char wrap)
 - Footer: issue references, breaking changes
 
 #### `git/prepare-pull-request`
+
 Guidelines for creating reviewable Pull Requests.
 
 **PR Size Guidelines:**
+
 - **< 400 lines** - Ideal, easy to review
 - **400-800 lines** - Acceptable
 - **> 800 lines** - Must split
 
 **When to Split:**
+
 - Changes touch multiple unrelated systems
 - Refactoring can be separated from features
 - Infrastructure changes can land independently
 
 **Every PR MUST have:**
+
 1. **Motivation** - Why is this change needed?
 2. **Technical Details** - What changed and how?
 3. **Test Plan** - How was this tested?
 
 #### `git/review-pull-request`
+
 Structured approach to reviewing Pull Requests.
 
 **Process:**
+
 1. Ask user what to review (GitHub PR or local changes)
 2. Invoke `git/gh-client` to verify gh availability (if GitHub PR selected)
 3. Gather PR info (description, files, commits)
@@ -989,18 +1082,22 @@ Structured approach to reviewing Pull Requests.
 7. Summarize with categorized issues
 
 **Review options:**
+
 - **GitHub PR** - Review specific PR by number/URL (requires gh CLI)
 - **Local changes** - Review changes in current directory vs branch (git only)
 
 **Issue Categories:**
+
 - **Must Fix** - Blocking issues (bugs, security, missing tests)
 - **Should Fix** - Non-blocking improvements
 - **Nitpicks** - Optional suggestions
 
 #### `pr-review-interactive`
+
 Walk through PR review findings one by one with the user before any comment lands on GitHub.
 
 **Process:**
+
 1. Resolve PR (URL or owner/repo#N), fetch head SHA
 2. Generate report via `pr-review` skill (or reuse existing)
 3. Parse findings into ordered list (Must-Fix -> Should-Fix -> Nits)
@@ -1011,6 +1108,7 @@ Walk through PR review findings one by one with the user before any comment land
 8. Submit (or hold) review with chosen event
 
 **Key rules:**
+
 - Never auto-submit (review stays PENDING until explicit user confirmation)
 - Never use `gh pr comment` (silently drops body on Projects-classic orgs)
 - Comments are 1-3 sentences, root cause first, fix snippet only when non-obvious
@@ -1019,9 +1117,11 @@ Walk through PR review findings one by one with the user before any comment land
 **State files:** `head-sha.txt`, `review-id.txt`, `findings.json`, `diff-lines.json`, `accepted.json`, `skipped.json`
 
 #### `git/pull-request-status`
+
 Check pull request CI/CD status and explain failures with actionable fixes.
 
 **Process:**
+
 1. Invoke `git/gh-client` to verify gh availability
 2. Get PR number (from user or auto-detect current branch)
 3. Fetch all status checks (CI/CD, tests, linting)
@@ -1031,6 +1131,7 @@ Check pull request CI/CD status and explain failures with actionable fixes.
 7. Provide fix recommendations
 
 **Status checks:**
+
 - ✅ **SUCCESS** - Check passed
 - ❌ **FAILURE** - Check failed (investigate required)
 - ⚠️ **ERROR** - Check encountered error
@@ -1039,6 +1140,7 @@ Check pull request CI/CD status and explain failures with actionable fixes.
 - ⏱️ **TIMED_OUT** - Check timed out
 
 **Report includes:**
+
 - Overall merge readiness
 - Summary of all checks (passed/failed/pending)
 - Detailed failure explanations with error messages
@@ -1048,12 +1150,15 @@ Check pull request CI/CD status and explain failures with actionable fixes.
 ### Radisha Skills
 
 #### `radisha/help`
+
 Full workflow reference with detailed rules for using radisha effectively.
 
 #### `radisha/create-skill`
+
 Meta-skill for creating new radisha skills with validation and integration.
 
 **Process:**
+
 1. User provides skill content
 2. AI analyzes for usefulness, alignment, and conflicts
 3. AI presents findings and suggests fixes
@@ -1061,26 +1166,31 @@ Meta-skill for creating new radisha skills with validation and integration.
 5. AI creates skill and integrates with radisha
 
 **What it checks:**
+
 - Usefulness (structure, triggers, anti-patterns)
 - Alignment with existing skills
 - Conflicts/overlaps with other skills
 - Consistency (tool names, formatting, conventions)
 
 **What it updates:**
+
 - Creates `skills/<skill-name>/SKILL.md` (directory name is the skill name, for example `planning-feature`)
 - Updates `skills/radisha-help/SKILL.md`
 - Updates `README.md` (category table, detailed section, directory tree)
 - Updates related skills when the new skill needs a "when not to use" note
 
 #### `radisha/update`
+
 Update radisha to the latest version by pulling from the git repository.
 
 #### `radisha/skills`
+
 List all available skills with their descriptions and command aliases.
 
 ### Code Quality Skills
 
 #### `code-smells`
+
 Comprehensive catalog of code smells for detecting anti-patterns and identifying refactoring opportunities. Based on the [Refactoring.Guru Code Smells Catalog](https://refactoring.guru/refactoring/smells).
 
 **Categories covered (22 smells total):**
@@ -1094,18 +1204,21 @@ Comprehensive catalog of code smells for detecting anti-patterns and identifying
 | Couplers | Feature Envy, Inappropriate Intimacy, Message Chains, Middle Man, Incomplete Library Class |
 
 **Severity levels:**
+
 - Critical (100): Causes bugs, crashes, security issues
 - Must Fix (80): Significantly harms maintainability
 - Should Fix (50): Reduces code quality
 - Nitpick (20): Minor improvement opportunity
 
 **Key thresholds:**
+
 - Long Method: >50 lines (Should Fix), >100 lines (Must Fix)
 - Large Class: >500 lines (Should Fix), >1000 lines (Must Fix)
 - Long Parameter List: >4 params (Should Fix), >6 params (Must Fix)
 - Deep Nesting: >3 levels (Should Fix), >5 levels (Must Fix)
 
 **Used by:**
+
 - `pr-review` Agent 3 (Code Smells Agent)
 - `planning-refactor` for identifying improvement targets
 
@@ -1124,6 +1237,7 @@ Commit messages use [Conventional Commits](https://www.conventionalcommits.org/)
 ## Resources
 
 ### C++
+
 - [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines)
 - [Refactoring.Guru - Design Patterns](https://refactoring.guru/design-patterns/cpp)
 - [CppReference](https://en.cppreference.com/)
@@ -1131,13 +1245,16 @@ Commit messages use [Conventional Commits](https://www.conventionalcommits.org/)
 - [Modern CMake](https://cliutils.gitlab.io/modern-cmake/)
 
 ### Python
+
 - [PEP 8 - Style Guide](https://peps.python.org/pep-0008/)
 - [PEP 20 - Zen of Python](https://peps.python.org/pep-0020/)
 - [Pytest Documentation](https://docs.pytest.org/)
 - [Mypy Documentation](https://mypy.readthedocs.io/)
 
 ### AMD
+
 - [AMD SMI Documentation](https://rocm.docs.amd.com/projects/amdsmi/en/latest/)
 
 ### Tools
+
 - [Cursor Skills Documentation](https://cursor.com/docs/context/skills)

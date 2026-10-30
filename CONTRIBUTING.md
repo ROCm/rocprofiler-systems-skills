@@ -4,12 +4,12 @@ Radisha (`rocprofiler-systems-skills`) is a library of AI skills. Contributions
 are new skills, fixes to existing skills, and documentation. File an issue when
 something is missing or wrong, or open a pull request that closes the gap.
 
----
+______________________________________________________________________
 
 > **Security vulnerabilities** — do not open a public GitHub issue. See
 > [SECURITY.md](SECURITY.md).
 
----
+______________________________________________________________________
 
 ## Developer policies
 
@@ -30,7 +30,7 @@ Code contributions are covered by the [MIT License](LICENSE).
 Issue tracking and code contributions are managed on GitHub:
 [ROCm/rocprofiler-systems-skills](https://github.com/ROCm/rocprofiler-systems-skills).
 
----
+______________________________________________________________________
 
 ## Development workflows
 
