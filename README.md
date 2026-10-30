@@ -1067,10 +1067,10 @@ Meta-skill for creating new radisha skills with validation and integration.
 - Consistency (tool names, formatting, conventions)
 
 **What it updates:**
-- Creates `skills/[category]/[name]/SKILL.md`
-- Updates `radisha/help` skill
-- Updates `README.md` (tables, details, directory tree)
-- Updates related skills if disambiguation needed
+- Creates `skills/<skill-name>/SKILL.md` (directory name is the skill name, for example `planning-feature`)
+- Updates `skills/radisha-help/SKILL.md`
+- Updates `README.md` (category table, detailed section, directory tree)
+- Updates related skills when the new skill needs a "when not to use" note
 
 #### `radisha/update`
 Update radisha to the latest version by pulling from the git repository.
@@ -1111,11 +1111,15 @@ Comprehensive catalog of code smells for detecting anti-patterns and identifying
 
 ## Contributing
 
-1. Create a folder under appropriate category
-2. Add `SKILL.md` with frontmatter (name, description)
-3. Write detailed, actionable instructions
-4. Test the skill before committing
-5. Submit a pull request
+Governance, issues, commits, pull requests, and security are in [CONTRIBUTING.md](CONTRIBUTING.md). The skill checklist is the same there.
+
+1. Add or edit `skills/<skill-name>/SKILL.md`. The directory name is the skill name (`planning-feature`, `git-commit`). Frontmatter `name` matches that directory; `description` says when to use the skill.
+2. Write detailed, actionable instructions.
+3. Test the skill before committing.
+4. If the skill is new or renamed, update the category table, the detailed section, and the directory tree in this README, and list it in `skills/radisha-help/SKILL.md`.
+5. Open a pull request. The description needs **Motivation**, **Technical Details**, and a **Test Plan**.
+
+Commit messages use [Conventional Commits](https://www.conventionalcommits.org/): `<type>(<scope>): <subject>`, imperative mood, subject at most 50 characters. The body explains why. Keep a pull request under 400 lines when you can; split anything over 800.
 
 ## Resources
 
