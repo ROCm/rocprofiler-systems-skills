@@ -3,7 +3,7 @@ name: programming-cpp-constexpr
 description: Use when moving computation from runtime to compile time — precomputed lookup tables, compile-time constants, type-based template dispatch, or zero-cost conditional branching with if constexpr; use when a function or value could be evaluated before the binary runs
 ---
 
-# C++ constexpr — Compile-Time Computation (C++17)
+# C++ constexpr — Compile-Time Computation (C++20)
 
 Move work to compile time: zero runtime cost, no dependencies, trivially testable.
 
@@ -86,7 +86,7 @@ Assigning to a `constexpr` variable forces compile-time evaluation — the compi
 constexpr int result = expensive_fn(args);  // fails to compile if args are not constexpr
 ```
 
-This is the C++17 equivalent of `consteval` (C++20 — not available).
+Prefer `consteval` (C++20) when a function must *always* run at compile time — it's a clearer, enforced alternative to this assign-to-constexpr trick.
 
 ## Common Mistakes
 
@@ -95,5 +95,5 @@ This is the C++17 equivalent of `consteval` (C++20 — not available).
 | Calling non-`constexpr` function inside `constexpr` function | Mark the callee `constexpr` or extract the computation |
 | `if constexpr` outside a template | Only valid in a template context |
 | Assuming `constexpr` function always runs at compile time | Assign to a `constexpr` variable to enforce it |
-| Using `consteval` / `constinit` | C++20 only — use `constexpr` variable assignment in C++17 |
+| Not using `consteval` for compile-time-only functions | Available in C++20 — prefer it over the constexpr-variable-assignment trick |
 | Mutating state inside `constexpr` function | Allowed in C++14+ but the function must remain pure (no I/O, no globals) |

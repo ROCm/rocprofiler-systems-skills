@@ -20,6 +20,8 @@ Review Pull Requests or local changes with structured, thorough analysis.
 
 **Persist the review (opt-in):** Do NOT write a markdown file by default. The report goes to chat output. Save the full markdown to `.claude/pr-review-summaries/` ONLY when the user explicitly asks ("save the review", "write a summary file", "persist this", or equivalent). See Phase 4 for filename rules when saving.
 
+**Analysis is read-only:** Neither the orchestrator nor any spawned agent may modify the working tree (no Edit/Write, no applying fixes, no staging). Skills are loaded for detection and rule lookup only. Findings go in the report, never in the tree. See [HYGIENE.md](HYGIENE.md).
+
 **Invoke relevant programming skills during review:**
 - C++ code → `programming-cpp`, `programming-cpp-design-patterns`, `programming-cpp-stl-algorithms`
 - Python code → `programming-python`
@@ -36,8 +38,10 @@ Review Pull Requests or local changes with structured, thorough analysis.
 Apply to every invocation of this skill. Full text in [HYGIENE.md](HYGIENE.md). Summary:
 
 - **Local-only by default**: do NOT post to GitHub unless the user explicitly says "post" / "submit" / "comment on the PR".
+- **Analysis is read-only**: no working-tree mutations by the orchestrator or any spawned agent; permitted writes are the report artifact (when asked) and agent memory files only.
 - **Fresh-eyes rule**: when this skill runs inside a sub-agent, the brief is the only context - no project memory, no prior reviews, no conversation history.
-- **Required report sections**: Header, Intent vs Implementation, Per-File Walkthrough, Findings by Severity, Static Analysis, Security Audit, Performance, API/ABI Compatibility, Documentation, Verdict (`APPROVE` / `REQUEST CHANGES` / `NEEDS DISCUSSION`), Cleanup Confirmation. Full layout in `REPORT_TEMPLATE.md`.
+- **Required report sections**: see the `[REQUIRED]` tags in `REPORT_TEMPLATE.md`'s Contents list — that file is the single canonical source; do not restate the list elsewhere, it will drift.
+- **Numbered lists everywhere, not tables**: every section that enumerates items uses a sequentially numbered list so items can be referred back to by number (e.g. "see #4"). No tables anywhere in the report. See `REPORT_TEMPLATE.md`.
 - **Local clone hygiene**: record starting branch, stash if dirty, restore on exit via trap/finally - never leave the clone on a detached HEAD or PR branch.
 
 ## Review Process
@@ -112,7 +116,7 @@ One package, passed to every spawned agent. Required sections: Files Changed (pa
 **Goal:** Launch up to 8 specialized agents in parallel to analyze the packaged data from Phase 1.
 
 <IMPORTANT>
-**Use general-purpose agents** (not Explore agents) since they receive pre-loaded context.
+**Use `pr-review-analyst` agents** (not `general-purpose`, not Explore agents) — they receive pre-loaded context and have no Edit/Write/NotebookEdit tool access, which enforces the read-only mandate at the tool layer. See "Agent Execution Pattern" below.
 All agents run in parallel - invoke all of them in a single tool call block.
 Each agent has a unique identity, loads its skill, and maintains memory.
 </IMPORTANT>
@@ -126,6 +130,8 @@ Before spawning all agents, check the diff scope. Agent IDs match the table in "
 - **Otherwise**: full 8-agent fan-out (Agent 5 still gated by the architectural-signal table below; Agent 8 still gated by the UB-trigger rule below).
 
 **UB-agent trigger (Agent 8).** Spawn Agent 8 ONLY when at least one changed file matches `*.c`, `*.cc`, `*.cpp`, `*.cxx`, `*.h`, `*.hpp`, `*.hxx`, `*.inl`, `*.ipp`, `*.tpp`, OR contains `unsafe {` (Rust). Skip otherwise (pure Python / CMake / docs / shell diffs do not exercise UB classes).
+
+**Gate precedence.** The lite-mode gate above is evaluated first and is the outer bound on which agents can run at all — the architectural-signal table (Agent 5) and the UB-trigger rule (Agent 8) only add agents that the chosen lite-mode tier already permits; they never add an agent a tier explicitly skips. E.g. the `< 50 lines` tier spawns only Agents 1-2 even if a changed `.cpp` file would otherwise trigger Agent 8 — that's intentional, not a gap.
 
 Document the chosen mode and the spawned agent IDs in the final report's Header section.
 
@@ -166,7 +172,7 @@ Each agent has:
 
 **Spawn all selected agents in parallel using the Agent tool** (one tool block, multiple `Agent` calls). For each spawn:
 - `description`: the agent ID from the table in "Agent Identity & Memory System"
-- `subagent_type`: `general-purpose`
+- `subagent_type`: `pr-review-analyst` — ships with this skill repo at `agents/pr-review-analyst.md` and installs to `~/.claude/agents/` via `install.sh` (same symlink mechanism as `skills/`), so it's available globally, not just inside this repo. It has no Edit/Write/NotebookEdit tool access, so the read-only mandate is enforced by tool availability, not just by prompt text. Do NOT use `general-purpose` here: it has full write access and has been observed to edit files anyway when a loaded skill's own instructions say to apply fixes. If `pr-review-analyst` isn't installed (e.g. a stale global install predating this fix), that's a broken environment, not a valid fallback to `general-purpose` — tell the user to re-run `install.sh`.
 - prompt body: contents of the matching file under `agents/prompts/` (see "Agent Prompt Templates" below) + the Data Package from Phase 1
 
 Agent 5 only spawns when the architectural-signal table matches. Agent 8 only spawns when the UB-trigger rule above matches. Lite mode (above) further trims the set.
@@ -182,6 +188,8 @@ Agent 5 only spawns when the architectural-signal table matches. Agent 8 only sp
 Fabricated line numbers are WORSE than missing line numbers. The reviewer who follows a citation to line 660 of a 222-line file loses trust in every other finding from the agent.
 
 **Class-tag discipline.** The `Class` / `Issue Type` column must use the agent's own vocabulary (`UB:*`, `Perf:*`, `Lang:*`, `Smell:*`, `Dim N:*`, `Dead:*`, `Comment:*`, `Test:*`, `CMake:*`, `Arch:*`, `Simplify:*`, `Static:*`). Do not tag a missing-virtual-destructor finding as `Dead:*` or a `catch(...)` as `Comment:*`.
+
+**Skill-load-failure fallback.** If an agent's Step 1 Skill invocation fails (skill not found, or blocked by a tool restriction), do not stall the run: proceed using the checklists already embedded in this agent's own prompt, and add one line to the findings report noting which skill failed to load and that its extra detection patterns were unavailable for this run.
 
 **Completeness discipline.** When a checklist item says MUST flag, the agent emits ONE row per offending site - never collapses multiple violations of the same class into a single representative finding. Five `using namespace std;` instances in five files = five rows.
 
@@ -222,13 +230,21 @@ Architecture Agent fires only when the architectural-signal table below matches.
 
 Wait for all spawned agents from Phase 1.5. Then:
 
+### 2.0 Verify before blocking (orchestrator responsibility)
+
+Sub-agent findings are **leads, not verified facts**. Before promoting any finding to **Critical** or **Must Fix** in the final report, the orchestrator MUST independently confirm it against the actual source — do not pass a sub-agent's correctness claim straight into a blocking bucket on trust.
+
+In particular, when a finding's severity depends on the behavior of a **library, framework, macro, or external API** (e.g. "this logging call can throw", "this API allocates", "this macro expands to X"), read the relevant definition/source before blocking on it. Tracing the *call path* to a library boundary is not enough — confirm what that library actually *does* (e.g. does it catch internally? is the throwing path reachable with these inputs?). The higher the severity assigned, the stronger the verification owed.
+
+If verification is impractical within the run, do **not** mark it Critical/Must Fix — keep it at **Should Fix (50)** and state the unverified assumption explicitly in the finding description (prefix with `Unverified assumption:`), so the author isn't handed a blocking claim that may be wrong.
+
 ### 2.1 Severity scale (used by every agent)
 
 | Category | Score | Criteria |
 |----------|-------|----------|
 | Critical | 100 | Security vulnerability, data loss, crash, UB |
 | Must Fix | 80 | Incorrect behavior, logic bugs, resource leaks, tool errors |
-| Should Fix | 50 | Best practices, code smells, maintainability |
+| Should Fix | 50 | Best practices, code smells, maintainability; also unverified library/macro/API behavior claims (must include `Unverified assumption:` in the description) |
 | Nitpick | 20 | Style, minor improvements, suggestions |
 
 **UB never downgrades.** Any finding from the UB Detection Agent defaults to **Critical (100)**. Drop to **Must Fix (80)** only when the code path is provably unreachable on every target platform (documented with citation). Never **Should Fix** or below.
@@ -401,7 +417,7 @@ Suggestions for improvement:
 
 | Scenario | Skills to Invoke |
 |----------|-----------------|
-| Architectural changes | `architecture-analyze` (Phase 3A) |
+| Architectural changes | `architecture-analyze` (Phase 1.5, architecture-agent — conditional, see architectural-signal table) |
 | C++ PR | `programming-cpp`, optionally `design-patterns`, `stl-algorithms` |
 | Python PR | `programming-python` |
 | CMake changes | `programming-cmake-best-practices` |
